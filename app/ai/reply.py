@@ -14,6 +14,7 @@ KIND_LABELS = {
 ENGINE_LABELS = {
     "gigachat": "GigaChat",
     "fallback": "Правила (демо-режим)",
+    "rules": "База знаний и правила",
     "safety": "Фильтр безопасности",
 }
 

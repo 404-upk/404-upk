@@ -38,7 +38,7 @@ const AI_KIND = {
   unknown: "Нет данных",
   secret: "Закрытые данные",
 };
-const AI_ENGINE = { gigachat: "GigaChat", fallback: "правила (демо)", safety: "фильтр безопасности" };
+const AI_ENGINE = { gigachat: "GigaChat", fallback: "правила (демо)", rules: "база знаний и правила", safety: "фильтр безопасности" };
 
 export function assigneeCell(a) {
   if (!a) return `<span class="faint small">не назначен</span>`;

@@ -9,6 +9,7 @@ from ..models import Attachment, Tracker
 from ..schemas import RateIn, ReplyIn
 from ..security import CODE_LENGTH, client_ip, hash_token, normalize_code, track_limiter
 from ..services import tickets as ts
+from ..services import views
 from ..services.qr import qr_svg
 from ..services.telegram import bot
 from ..services.uploads import attachment_path
@@ -32,7 +33,7 @@ def get_tracker(code: str, request: Request, db: Session) -> tuple[Tracker, str]
 @router.get("/{code}")
 def track(code: str, request: Request, db: Session = Depends(get_db)):
     tracker, normalized = get_tracker(code, request, db)
-    data = ts.ticket_public(tracker.ticket, tracker, normalized)
+    data = views.ticket_public(tracker.ticket, tracker, normalized)
     data["telegram_url"] = bot.tracker_link(normalized)
     return data
 
@@ -44,7 +45,7 @@ def reply(code: str, payload: ReplyIn, request: Request, db: Session = Depends(g
         raise HTTPException(403, "Отвечать может только автор заявки")
     ts.reporter_reply(db, tracker.ticket, payload.body)
     db.commit()
-    return ts.ticket_public(tracker.ticket, tracker, normalized)
+    return views.ticket_public(tracker.ticket, tracker, normalized)
 
 
 @router.post("/{code}/rate")
@@ -54,7 +55,7 @@ def rate(code: str, payload: RateIn, request: Request, db: Session = Depends(get
         raise HTTPException(403, "Оценить может только автор заявки")
     ts.rate_ticket(db, tracker.ticket, payload.rating, payload.comment)
     db.commit()
-    return ts.ticket_public(tracker.ticket, tracker, normalized)
+    return views.ticket_public(tracker.ticket, tracker, normalized)
 
 
 @router.get("/{code}/attachments/{attachment_id}")

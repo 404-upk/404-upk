@@ -178,7 +178,7 @@ export async function render({ el, setHead }) {
             <div class="row between"><span class="muted">Передано сотрудникам (создана заявка)</span><b>${ai.to_ticket}</b></div>
             <hr class="sep">
             ${Object.entries(ai.engine)
-              .map(([k, v]) => `<div class="row between"><span class="muted">${esc({ gigachat: "GigaChat", fallback: "Правила (демо)", safety: "Фильтр безопасности" }[k] || k)}</span><b>${v}</b></div>`)
+              .map(([k, v]) => `<div class="row between"><span class="muted">${esc({ gigachat: "GigaChat", fallback: "Правила (демо)", rules: "База знаний и правила", safety: "Фильтр безопасности" }[k] || k)}</span><b>${v}</b></div>`)
               .join("")}
           </div>
         </div>
