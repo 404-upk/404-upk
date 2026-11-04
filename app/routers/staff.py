@@ -1,12 +1,7 @@
-import csv
-import io
-from collections import defaultdict
 from datetime import date, datetime, timedelta
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
-from fastapi.responses import FileResponse, StreamingResponse
-from openpyxl import Workbook
-from openpyxl.styles import Alignment, Font, PatternFill
+from fastapi.responses import FileResponse, Response
 from sqlalchemy import case, func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
@@ -14,6 +9,7 @@ from ..db import get_db, lower
 from ..models import ROLE_ADMIN, ROLE_EXECUTOR, ROLE_STAFF, Attachment, Category, Location, Ticket, User, utcnow
 from ..schemas import CommentIn, TicketUpdateIn
 from ..security import any_staff, upk_staff
+from ..services import campus, export, views
 from ..services import tickets as ts
 from ..services.stats import build_stats
 from ..services.telegram import bot
@@ -135,7 +131,7 @@ def list_tickets(
     counts = dict(db.execute(counts_stmt).all())
 
     return {
-        "items": [ts.ticket_brief(t) for t in items],
+        "items": [views.ticket_brief(t) for t in items],
         "total": total,
         "page": page,
         "pages": max((total + per_page - 1) // per_page, 1),
@@ -145,7 +141,7 @@ def list_tickets(
 
 @router.get("/tickets/{ticket_id}")
 def get_ticket(ticket_id: int, user: User = Depends(any_staff), db: Session = Depends(get_db)):
-    return ts.ticket_full(_ticket_for(db, ticket_id, user), user)
+    return views.ticket_full(_ticket_for(db, ticket_id, user), user)
 
 
 @router.patch("/tickets/{ticket_id}")
@@ -188,7 +184,7 @@ def update_ticket(
         background.add_task(bot.ticket_changed, ticket.id, "assigned")
     if ticket.status != status_before:
         background.add_task(bot.ticket_changed, ticket.id, "status")
-    return ts.ticket_full(ticket, user)
+    return views.ticket_full(ticket, user)
 
 
 @router.post("/tickets/{ticket_id}/comments")
@@ -205,7 +201,7 @@ def comment(
     db.commit()
     if payload.visibility == "public":
         background.add_task(bot.ticket_changed, ticket.id, "comment", payload.body.strip())
-    return ts.ticket_full(ticket, user)
+    return views.ticket_full(ticket, user)
 
 
 @router.get("/attachments/{attachment_id}")
@@ -246,135 +242,25 @@ def stats(days: int = Query(14, ge=7, le=90), user: User = Depends(upk_staff), d
 
 @router.get("/map")
 def building_map(user: User = Depends(upk_staff), db: Session = Depends(get_db)):
-    locations = db.scalars(
-        select(Location).where(Location.is_active).order_by(Location.building, Location.floor, Location.room)
-    ).all()
-    month_ago = utcnow() - timedelta(days=30)
-    open_counts = dict(
-        db.execute(
-            select(Ticket.location_id, func.count(Ticket.id))
-            .where(Ticket.status.in_(ts.OPEN_STATUSES))
-            .group_by(Ticket.location_id)
-        ).all()
-    )
-    month_counts = dict(
-        db.execute(
-            select(Ticket.location_id, func.count(Ticket.id))
-            .where(Ticket.created_at >= month_ago)
-            .group_by(Ticket.location_id)
-        ).all()
-    )
-    critical = set(
-        db.scalars(
-            select(Ticket.location_id).where(Ticket.status.in_(ts.OPEN_STATUSES), Ticket.priority == "critical")
-        ).all()
-    )
-
-    buildings: dict[str, dict[int | None, list]] = defaultdict(lambda: defaultdict(list))
-    for loc in locations:
-        buildings[loc.building][loc.floor].append(
-            {
-                "id": loc.id,
-                "title": loc.title,
-                "room": loc.room,
-                "zone_name": loc.zone_name,
-                "kind": loc.kind,
-                "open": open_counts.get(loc.id, 0),
-                "month": month_counts.get(loc.id, 0),
-                "critical": loc.id in critical,
-            }
-        )
-    return [
-        {
-            "building": name,
-            "floors": [
-                {"floor": floor, "locations": items}
-                for floor, items in sorted(floors.items(), key=lambda x: (x[0] is None, -(x[0] or 0)))
-            ],
-        }
-        for name, floors in buildings.items()
-    ]
-
-
-EXPORT_COLUMNS = [
-    ("Номер", 12),
-    ("Создана", 18),
-    ("Заголовок", 40),
-    ("Описание", 60),
-    ("Категория", 24),
-    ("Место", 40),
-    ("Статус", 20),
-    ("Приоритет", 14),
-    ("Исполнитель", 24),
-    ("Сообщили", 10),
-    ("Закрыта", 18),
-    ("Оценка", 10),
-]
+    return campus.building_map(db)
 
 
 def _export_rows(db: Session, filters: Filters, user: User) -> list[list]:
     stmt = filters.apply(_base_query(), user).order_by(Ticket.created_at.desc()).limit(5000)
-    rows = []
-    for t in db.scalars(_with_relations(stmt)).unique():
-        rows.append(
-            [
-                t.public_number,
-                t.created_at.strftime("%d.%m.%Y %H:%M"),
-                t.title,
-                t.description,
-                t.category.name,
-                t.place,
-                ts.STATUS_LABELS[t.status],
-                ts.PRIORITY_LABELS.get(t.priority, t.priority),
-                t.assignee.name if t.assignee else "",
-                t.reports_count,
-                t.closed_at.strftime("%d.%m.%Y %H:%M") if t.closed_at else "",
-                t.rating or "",
-            ]
-        )
-    return rows
+    return [export.ticket_row(t) for t in db.scalars(_with_relations(stmt)).unique()]
+
+
+def _download(data: bytes, ext: str, media_type: str) -> Response:
+    name = f"upk-zayavki-{date.today():%Y-%m-%d}.{ext}"
+    return Response(data, media_type=media_type, headers={"Content-Disposition": f'attachment; filename="{name}"'})
 
 
 @router.get("/export.xlsx")
 def export_xlsx(filters: Filters = Depends(), user: User = Depends(upk_staff), db: Session = Depends(get_db)):
-    wb = Workbook()
-    ws = wb.active
-    ws.title = "Заявки"
-    ws.append([c[0] for c in EXPORT_COLUMNS])
-    for i, (_, width) in enumerate(EXPORT_COLUMNS, start=1):
-        ws.column_dimensions[ws.cell(row=1, column=i).column_letter].width = width
-        cell = ws.cell(row=1, column=i)
-        cell.font = Font(bold=True, color="FFFFFF")
-        cell.fill = PatternFill("solid", fgColor="2F5BD3")
-    for row in _export_rows(db, filters, user):
-        ws.append(row)
-    for row in ws.iter_rows(min_row=2):
-        for cell in row:
-            cell.alignment = Alignment(vertical="top", wrap_text=True)
-    ws.freeze_panes = "A2"
-    ws.auto_filter.ref = ws.dimensions
-
-    buf = io.BytesIO()
-    wb.save(buf)
-    buf.seek(0)
-    name = f"upk-zayavki-{date.today():%Y-%m-%d}.xlsx"
-    return StreamingResponse(
-        buf,
-        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={"Content-Disposition": f'attachment; filename="{name}"'},
-    )
+    xlsx = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    return _download(export.to_xlsx(_export_rows(db, filters, user)), "xlsx", xlsx)
 
 
 @router.get("/export.csv")
 def export_csv(filters: Filters = Depends(), user: User = Depends(upk_staff), db: Session = Depends(get_db)):
-    buf = io.StringIO()
-    buf.write("﻿")  # BOM, чтобы Excel правильно открыл кириллицу
-    writer = csv.writer(buf, delimiter=";")
-    writer.writerow([c[0] for c in EXPORT_COLUMNS])
-    writer.writerows(_export_rows(db, filters, user))
-    name = f"upk-zayavki-{date.today():%Y-%m-%d}.csv"
-    return StreamingResponse(
-        iter([buf.getvalue().encode("utf-8")]),
-        media_type="text/csv; charset=utf-8",
-        headers={"Content-Disposition": f'attachment; filename="{name}"'},
-    )
+    return _download(export.to_csv(_export_rows(db, filters, user)), "csv", "text/csv; charset=utf-8")
