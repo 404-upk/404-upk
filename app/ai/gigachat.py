@@ -8,6 +8,8 @@ from ..config import settings
 
 OAUTH_URL = "https://ngw.devices.sberbank.ru:9443/api/v2/oauth"
 API_URL = "https://gigachat.devices.sberbank.ru/api/v1"
+RETRY_STATUSES = {429, 500, 502, 503, 504}
+RETRY_PAUSE = 0.5
 
 
 class GigaChatError(Exception):
@@ -29,7 +31,9 @@ class GigaChatClient:
 
     def _http(self) -> httpx.AsyncClient:
         if self._client is None:
-            self._client = httpx.AsyncClient(verify=settings.gigachat_verify, timeout=settings.gigachat_timeout)
+            # на подключение даём 5 секунд: если сервер недоступен, нет смысла ждать весь таймаут ответа
+            timeout = httpx.Timeout(settings.gigachat_timeout, connect=5.0)
+            self._client = httpx.AsyncClient(verify=settings.gigachat_verify, timeout=timeout)
         return self._client
 
     async def close(self) -> None:
@@ -63,21 +67,31 @@ class GigaChatClient:
             return self._token
 
     async def _request(self, method: str, path: str, **kwargs) -> httpx.Response:
+        """Один повтор: после истёкшего токена, обрыва соединения или временной ошибки сервера.
+        Долгий ответ не повторяем, иначе человек ждал бы вдвое дольше."""
         for attempt in range(2):
+            last = attempt == 1
             token = await self._get_token()
-            headers = kwargs.pop("headers", {})
-            headers["Authorization"] = f"Bearer {token}"
+            headers = {**kwargs.pop("headers", {}), "Authorization": f"Bearer {token}"}
             try:
                 resp = await self._http().request(method, f"{API_URL}{path}", headers=headers, **kwargs)
+            except (httpx.ConnectError, httpx.RemoteProtocolError, httpx.ReadError) as exc:
+                if last:
+                    raise GigaChatError(f"нет связи с GigaChat: {exc}") from exc
+                await asyncio.sleep(RETRY_PAUSE)
+                continue
             except httpx.HTTPError as exc:
                 raise GigaChatError(f"нет связи с GigaChat: {exc}") from exc
-            if resp.status_code == 401 and attempt == 0:
+            if resp.status_code == 401 and not last:
                 self._token = None
+                continue
+            if resp.status_code in RETRY_STATUSES and not last:
+                await asyncio.sleep(RETRY_PAUSE)
                 continue
             if resp.status_code >= 400:
                 raise GigaChatError(f"GigaChat ответил {resp.status_code}: {resp.text[:200]}")
             return resp
-        raise GigaChatError("не удалось авторизоваться в GigaChat")
+        raise GigaChatError("GigaChat не ответил после повтора")
 
     async def chat(
         self,
