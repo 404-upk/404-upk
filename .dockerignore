@@ -1,0 +1,16 @@
+.venv
+.env
+.env.*
+data
+tests
+docs
+deploy
+.github
+.git
+.gitattributes
+.gitignore
+__pycache__
+*.pyc
+*.md
+!certs/README.md
+requirements-dev.txt

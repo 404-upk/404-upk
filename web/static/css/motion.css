@@ -1,0 +1,339 @@
+/* ===== Движение интерфейса ===== */
+:root {
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-io: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --spring: linear(0, 0.009, 0.035 2.1%, 0.141 4.4%, 0.723 12.9%, 0.938 16.7%, 1.017 18.4%, 1.077 20.4%, 1.121 22.8%, 1.149 26%, 1.159 29.7%, 1.14 34.1%, 1.03 47.2%, 0.998 54.3%, 0.989 60.8%, 0.997 81.1%, 1);
+  --spring-soft: linear(0, 0.006, 0.025 2.8%, 0.101 6.1%, 0.539 18.9%, 0.721 25.3%, 0.849 31.5%, 0.937 38.1%, 0.968 41.8%, 0.991 45.7%, 1.006 50.1%, 1.015 55%, 1.017 63.9%, 1.001 85.9%, 1);
+}
+html.intro-exit { --enter: 460ms; }
+
+/* ---------- каскад появления ---------- */
+.rise {
+  animation: rise var(--dur, 0.95s) var(--ease-out) both;
+  animation-delay: calc(var(--enter, 0ms) + var(--d, 0ms) + var(--i, 0) * var(--step, 70ms));
+}
+html:not(.is-revealed) .rise,
+html:not(.is-revealed) .words .word > span,
+html:not(.is-revealed) .topbar,
+html:not(.is-revealed) .footer { animation-play-state: paused; }
+@keyframes rise {
+  from { opacity: 0; transform: translateY(20px); filter: blur(4px); }
+  60% { filter: blur(0); }
+  to { opacity: 1; transform: none; filter: none; }
+}
+@keyframes fade-in { from { opacity: 0; } }
+@keyframes grow-x { from { transform: scaleX(0); } }
+
+.topbar { animation: bar-in 1s var(--ease-out) both; animation-delay: var(--enter, 0ms); }
+@keyframes bar-in { from { opacity: 0; transform: translateY(-14px); } }
+.footer { animation: fade-in 1.4s ease both; animation-delay: calc(var(--enter, 0ms) + 700ms); }
+.topbar { transition: background 0.35s, border-color 0.35s; border-bottom-color: transparent; }
+.topbar.is-stuck { border-bottom-color: var(--border); }
+
+.words .word { display: inline-block; overflow: hidden; vertical-align: top; padding-bottom: 0.14em; margin-bottom: -0.14em; }
+.words .word > span {
+  display: inline-block;
+  animation: word-up 1.15s var(--ease-out) both;
+  animation-delay: calc(var(--enter, 0ms) + var(--d, 0ms) + var(--i, 0) * var(--step, 70ms));
+}
+@keyframes word-up { from { transform: translateY(110%) rotate(3deg); opacity: 0; } to { transform: none; opacity: 1; } }
+
+.on-view { opacity: 0; transform: translateY(26px); transition: opacity 0.9s var(--ease-out), transform 1s var(--ease-out); }
+.on-view.in { opacity: 1; transform: none; }
+
+/* ---------- кнопки ---------- */
+.btn {
+  position: relative;
+  overflow: hidden;
+  translate: var(--mag-x, 0) var(--mag-y, 0);
+  transition: background 0.22s, border-color 0.22s, color 0.2s, box-shadow 0.35s var(--ease-out), translate 0.4s var(--ease-out), scale 0.22s var(--ease-out), opacity 0.2s;
+}
+.btn:active:not(:disabled) { transform: none; scale: 0.965; }
+.btn .icon { transition: transform 0.4s var(--spring); }
+.btn:hover:not(:disabled) .icon { transform: scale(1.1); }
+.btn-primary::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -60%;
+  width: 45%;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.34), transparent);
+  transform: skewX(-18deg);
+  transition: left 0.75s var(--ease-out);
+  pointer-events: none;
+}
+.btn-primary:hover:not(:disabled)::before { left: 120%; }
+.btn-primary:hover:not(:disabled) { box-shadow: 0 12px 34px -12px var(--primary), 0 0 0 1px color-mix(in srgb, var(--primary) 50%, transparent); }
+.ink {
+  position: absolute;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.2;
+  transform: scale(0);
+  animation: ink 0.75s var(--ease-out) forwards;
+  pointer-events: none;
+}
+@keyframes ink { to { transform: scale(1); opacity: 0; } }
+.spinner { border-width: 1.6px; animation-duration: 0.8s; animation-timing-function: cubic-bezier(0.5, 0.15, 0.5, 0.85); }
+#theme .icon { transition: transform 0.7s var(--spring); }
+#theme:hover .icon { transform: rotate(40deg) scale(1.1); }
+
+/* смена темы: круг расходится от кнопки */
+::view-transition-old(root), ::view-transition-new(root) { animation: none; mix-blend-mode: normal; }
+::view-transition-new(root) { z-index: 9998; }
+::view-transition-old(root) { z-index: 1; }
+
+/* ---------- поля ---------- */
+.input, .select, .textarea { transition: border-color 0.22s, box-shadow 0.3s var(--ease-out), background 0.22s; }
+.input:hover:not(:focus), .select:hover:not(:focus), .textarea:hover:not(:focus) { border-color: color-mix(in srgb, var(--text) 26%, transparent); }
+
+/* ---------- свет под курсором ---------- */
+.card, .place-pill, .composer, .room-note, .kcard { position: relative; }
+.card::after, .place-pill::after, .composer::after, .room-note::after, .kcard::after, .example::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.4s;
+  background:
+    radial-gradient(360px circle at var(--mx, 50%) var(--my, 50%), color-mix(in srgb, var(--primary) 13%, transparent), transparent 68%);
+}
+.is-lit::after { opacity: 1; }
+.card.is-lit, .place-pill.is-lit, .room-note.is-lit, .kcard.is-lit { border-color: color-mix(in srgb, var(--primary) 30%, var(--border)); }
+.card, .place-pill, .room-note { transition: border-color 0.35s, box-shadow 0.35s, transform 0.4s var(--ease-out); }
+
+/* бегущая рамка у поля ввода */
+@property --spin { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
+.composer::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: conic-gradient(from var(--spin), transparent 0 52%, var(--primary) 74%, var(--text) 84%, transparent 94%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity 0.5s;
+  pointer-events: none;
+}
+.composer:focus-within::before { opacity: 1; animation: spin-border 4.5s linear infinite; }
+@keyframes spin-border { to { --spin: 360deg; } }
+.composer { transition: border-color 0.35s, box-shadow 0.5s var(--ease-out); }
+.composer:focus-within { border-color: transparent; box-shadow: 0 0 0 4px var(--primary-soft), 0 20px 50px -24px var(--primary); }
+.composer > *:not(.sr-only) { position: relative; z-index: 1; }
+
+.example { position: relative; overflow: hidden; transition: color 0.2s, border-color 0.2s, translate 0.35s var(--ease-out), scale 0.2s var(--ease-out), background 0.2s; }
+.example:hover { translate: 0 -2px; color: var(--text); border-color: color-mix(in srgb, var(--primary) 55%, var(--border)); }
+.example:active { scale: 0.97; translate: 0 0; }
+.my-ticket { transition: background 0.2s, padding-left 0.35s var(--ease-out); }
+.my-ticket:hover { padding-left: 20px; }
+
+/* ---------- переписка ---------- */
+.bubble-user { animation: bubble-in 0.62s var(--spring-soft) both; transform-origin: 100% 100%; }
+@keyframes bubble-in { from { opacity: 0; transform: translateY(12px) scale(0.86); } to { opacity: 1; transform: none; } }
+.ai-card { animation: card-in 0.8s var(--ease-out) both; transform-origin: 0 0; }
+@keyframes card-in { from { opacity: 0; transform: translateY(16px) scale(0.985); } to { opacity: 1; transform: none; } }
+.ai-card.is-typing { animation-duration: 0.45s; }
+.typing i { width: 6px; height: 6px; background: var(--primary); animation: type-wave 1.15s ease-in-out infinite; }
+.typing i:nth-child(2) { animation-delay: 0.14s; }
+.typing i:nth-child(3) { animation-delay: 0.28s; }
+@keyframes type-wave {
+  0%, 60%, 100% { opacity: 0.3; transform: translateY(0); }
+  30% { opacity: 1; transform: translateY(-5px); }
+}
+.w-in { display: inline-block; animation: w-in 0.55s var(--ease-out) both; }
+@keyframes w-in { from { opacity: 0; transform: translateY(6px); filter: blur(3px); } to { opacity: 1; transform: none; filter: none; } }
+.ai-tips li, .ai-card-body > .notice, .ai-source, .ai-card-body > .row-wrap, .ai-meta { animation: rise 0.8s var(--ease-out) both; animation-delay: 0.42s; }
+.ai-tips li:nth-child(2) { animation-delay: 0.5s; }
+.ai-tips li:nth-child(3) { animation-delay: 0.58s; }
+.ai-tips li:nth-child(4) { animation-delay: 0.66s; }
+.ai-tips li:nth-child(n + 5) { animation-delay: 0.74s; }
+.ai-source { animation-delay: 0.7s; }
+.ai-card-body > .row-wrap { animation-delay: 0.78s; }
+.ai-meta { animation-delay: 0.86s; }
+.confidence-bar i { transform-origin: left; animation: grow-x 1.1s var(--ease-out) 0.95s both; }
+
+/* ---------- черновик заявки ---------- */
+.draft .card-pad > * { animation: rise 0.8s var(--ease-out) both; }
+.draft .card-pad > *:nth-child(1) { animation-delay: 0.08s; }
+.draft .card-pad > *:nth-child(2) { animation-delay: 0.14s; }
+.draft .card-pad > *:nth-child(3) { animation-delay: 0.2s; }
+.draft .card-pad > *:nth-child(4) { animation-delay: 0.26s; }
+.draft .card-pad > *:nth-child(5) { animation-delay: 0.32s; }
+.draft .card-pad > *:nth-child(6) { animation-delay: 0.38s; }
+.draft .card-pad > *:nth-child(n + 7) { animation-delay: 0.44s; }
+.draft.no-enter .card-pad > * { animation: none; }
+.cat-option { transition: border-color 0.2s, background 0.2s, color 0.2s, box-shadow 0.3s, translate 0.3s var(--ease-out), scale 0.2s var(--ease-out); }
+.cat-option:hover { translate: 0 -1px; }
+.cat-option:active { scale: 0.98; }
+.cat-option .icon { transition: transform 0.5s var(--spring), color 0.2s; }
+.cat-option[aria-checked="true"] .icon { transform: scale(1.18); }
+.dup-box { animation: rise 0.7s var(--ease-out) both; }
+
+/* ---------- заявка принята ---------- */
+.done-card > * { animation: rise 0.95s var(--ease-out) both; }
+.done-card > .ignite { animation: none; }
+.done-card > *:nth-child(2) { animation-delay: 0.22s; }
+.done-card > *:nth-child(3) { animation-delay: 0.3s; }
+.done-card > *:nth-child(4) { animation-delay: 0.38s; }
+.done-card > *:nth-child(5) { animation-delay: 0.46s; }
+.done-card > *:nth-child(6) { animation-delay: 0.54s; }
+.done-card > *:nth-child(7) { animation-delay: 0.62s; }
+.done-card > *:nth-child(8) { animation-delay: 0.7s; }
+.done-card > *:nth-child(n + 9) { animation-delay: 0.78s; }
+.ticket-number, .code-box .grow { font-variant-numeric: tabular-nums; }
+
+/* ---------- статусы ---------- */
+.chip { transition: background 0.3s, color 0.3s; }
+.chip .dot { position: relative; }
+.st-in_progress .dot::after, .st-new .dot::after, .pr-critical .dot::after {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: 50%;
+  border: 1px solid currentColor;
+  animation: dot-ping 2.2s var(--ease-out) infinite;
+}
+@keyframes dot-ping { from { opacity: 0.85; transform: scale(1); } to { opacity: 0; transform: scale(3); } }
+.timeline li { animation: rise 0.8s var(--ease-out) both; }
+.timeline li:nth-child(1) { animation-delay: 0.1s; }
+.timeline li:nth-child(2) { animation-delay: 0.18s; }
+.timeline li:nth-child(3) { animation-delay: 0.26s; }
+.timeline li:nth-child(n + 4) { animation-delay: 0.34s; }
+.track-quiet .timeline li { animation: none; }
+.timeline li.hl::before { animation: dot-call 2.4s ease-in-out infinite; }
+@keyframes dot-call {
+  0%, 100% { box-shadow: 0 0 0 3px var(--primary-soft); }
+  50% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--primary) 8%, transparent); }
+}
+.status-flash { animation: status-flash 1.8s var(--ease-out); }
+@keyframes status-flash {
+  0% { box-shadow: 0 0 0 0 var(--primary); }
+  100% { box-shadow: 0 0 0 26px transparent; }
+}
+.star { transition: color 0.2s, transform 0.4s var(--spring); }
+.star:hover { transform: scale(1.18) rotate(-6deg); }
+.star.on .icon { animation: star-on 0.5s var(--spring) both; }
+@keyframes star-on { from { transform: scale(0.6); } }
+
+/* ---------- окна и подсказки ---------- */
+.overlay { animation: overlay-in 0.32s ease-out both; }
+@keyframes overlay-in { from { opacity: 0; backdrop-filter: blur(0); } }
+.modal { animation: modal-in 0.62s var(--spring-soft) both; }
+@keyframes modal-in { from { opacity: 0; transform: translateY(18px) scale(0.955); } to { opacity: 1; transform: none; } }
+.overlay.is-leaving { animation: overlay-out 0.24s ease-in both; pointer-events: none; }
+.overlay.is-leaving .modal { animation: modal-out 0.24s var(--ease-in) both; }
+@keyframes overlay-out { to { opacity: 0; } }
+@keyframes modal-out { to { opacity: 0; transform: translateY(10px) scale(0.975); } }
+.toast { animation: toast-enter 0.62s var(--spring-soft) both; }
+@keyframes toast-enter { from { opacity: 0; transform: translateY(18px) scale(0.94); } to { opacity: 1; transform: none; } }
+.toast.is-leaving { animation: toast-out 0.28s var(--ease-in) both; }
+@keyframes toast-out { to { opacity: 0; transform: translateY(10px) scale(0.97); } }
+.lightbox { animation: overlay-in 0.28s ease-out both; }
+.lightbox img { animation: modal-in 0.6s var(--spring-soft) both; }
+.lightbox.is-leaving { animation: overlay-out 0.22s ease-in both; }
+.loc-item { transition: background 0.18s, padding-left 0.3s var(--ease-out); }
+.loc-item:hover { padding-left: 14px; }
+.notice { animation: fade-in 0.5s ease both; }
+.skeleton { animation: shimmer 1.8s ease-in-out infinite, fade-in 0.5s ease 0.18s both; }
+.empty { animation: rise 0.8s var(--ease-out) both; }
+a { transition: color 0.2s; }
+
+/* ---------- панель ---------- */
+.nav { position: relative; }
+.nav a { position: relative; z-index: 1; transition: color 0.25s, padding-left 0.35s var(--ease-out); }
+.nav a:hover { background: transparent; padding-left: 16px; }
+.nav a.active { background: transparent; box-shadow: none; }
+.nav a .icon { transition: color 0.25s, transform 0.5s var(--spring); }
+.nav a:hover .icon { transform: scale(1.12); }
+.nav-ind {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 38px;
+  border-radius: 10px;
+  background: var(--primary-soft);
+  box-shadow: inset 2px 0 0 var(--primary);
+  transition: transform 0.55s var(--spring-soft), height 0.3s, opacity 0.3s;
+  pointer-events: none;
+}
+.badge { transition: background 0.3s, color 0.3s; }
+.badge-pop { animation: badge-pop 0.6s var(--spring) both; }
+@keyframes badge-pop { from { transform: scale(0.4); } }
+.me { transition: background 0.25s; }
+.content.is-leaving { animation: content-out 0.16s var(--ease-in) both; }
+@keyframes content-out { to { opacity: 0; transform: translateY(-6px); } }
+.tab { transition: background 0.25s, color 0.25s, border-color 0.25s, scale 0.2s var(--ease-out); }
+.tab:active { scale: 0.96; }
+.tab .badge { transition: background 0.25s, color 0.25s; }
+.segmented button { transition: background 0.28s, color 0.25s, box-shadow 0.28s, scale 0.2s var(--ease-out); }
+.segmented button:active { scale: 0.96; }
+
+.table tbody tr { transition: background 0.2s; }
+.table tr.clickable td { transition: background 0.2s; }
+.table tr.clickable td:first-child { transition: background 0.2s, padding-left 0.35s var(--ease-out); }
+.table tr.clickable:hover td:first-child { padding-left: 20px; }
+.table.enter tbody tr { animation: row-in 0.72s var(--ease-out) both; animation-delay: calc(var(--i, 0) * 34ms); }
+.table.enter-quick tbody tr { animation: row-in 0.42s var(--ease-out) both; animation-delay: calc(var(--i, 0) * 14ms); }
+@keyframes row-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+.ticket-card { transition: background 0.2s; }
+
+.drawer-overlay { animation: overlay-in 0.3s ease-out both; }
+.drawer { animation: drawer-in 0.72s var(--ease-out) both; }
+@keyframes drawer-in { from { transform: translateX(64px); opacity: 0; } to { transform: none; opacity: 1; } }
+.drawer-wrap.is-leaving .drawer-overlay { animation: overlay-out 0.26s ease-in both; }
+.drawer-wrap.is-leaving .drawer { animation: drawer-out 0.28s var(--ease-in) both; }
+@keyframes drawer-out { to { transform: translateX(50px); opacity: 0; } }
+.drawer-body > * { animation: rise 0.75s var(--ease-out) both; }
+.drawer-body > *:nth-child(2) { animation-delay: 0.05s; }
+.drawer-body > *:nth-child(3) { animation-delay: 0.1s; }
+.drawer-body > *:nth-child(4) { animation-delay: 0.15s; }
+.drawer-body > *:nth-child(5) { animation-delay: 0.2s; }
+.drawer-body > *:nth-child(n + 6) { animation-delay: 0.25s; }
+.drawer.quiet .drawer-body > * { animation: none; }
+
+.col { animation: rise 0.85s var(--ease-out) both; animation-delay: calc(var(--i, 0) * 60ms); transition: background 0.25s, box-shadow 0.25s; }
+.board.quiet .col { animation: none; }
+.col.drop { box-shadow: inset 0 0 0 1px var(--primary), 0 0 30px -10px var(--primary); }
+.kcard { transition: transform 0.35s var(--ease-out), box-shadow 0.35s var(--ease-out), border-color 0.3s, opacity 0.2s; }
+.kcard:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
+.kcard.dragging { opacity: 0.55; transform: rotate(2deg) scale(1.02); }
+.kcard.just-moved { animation: moved 1.1s var(--ease-out); }
+@keyframes moved { from { box-shadow: 0 0 0 0 var(--primary); } to { box-shadow: 0 0 0 16px transparent; } }
+
+.kpi { transition: transform 0.4s var(--ease-out), border-color 0.35s, box-shadow 0.35s; }
+.kpi:hover { transform: translateY(-2px); }
+.kpi-value { font-weight: 600; letter-spacing: -0.025em; font-variant-numeric: tabular-nums; }
+.hbar-track i { transform-origin: left; animation: grow-x 1.15s var(--ease-out) both; animation-delay: calc(var(--i, 0) * 50ms + 120ms); }
+.hbar { transition: opacity 0.2s; }
+.chart .bar { transform-box: fill-box; transform-origin: 50% 100%; animation: bar-up 0.95s var(--ease-out) both; animation-delay: calc(var(--i, 0) * 18ms + 120ms); }
+@keyframes bar-up { from { transform: scaleY(0); opacity: 0.4; } to { transform: none; opacity: 1; } }
+.chart .gridline { animation: fade-in 1s ease both; }
+.chart-tip { animation: fade-in 0.16s ease both; }
+
+.login-card.shake { animation: shake 0.5s var(--ease-io); }
+@keyframes shake {
+  20% { transform: translateX(-7px); }
+  40% { transform: translateX(6px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(2px); }
+}
+
+/* карточки чуть прозрачны: фон живёт и под ними */
+.card, .place-pill, .composer { background-color: color-mix(in srgb, var(--surface) 90%, transparent); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

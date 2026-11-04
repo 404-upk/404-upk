@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="ru" data-no-intro>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Конфиденциальность · УПК · 404</title>
+  <meta name="description" content="Какие данные собирает цифровой помощник колледжа, зачем они нужны, сколько хранятся и кто их видит.">
+  <meta name="theme-color" content="#0c1222">
+  <link rel="canonical" href="%PUBLIC_URL%/privacy">
+  <link rel="icon" href="/static/img/icon.svg" type="image/svg+xml">
+  <link rel="preload" href="/static/fonts/inter-400-cyr.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/static/fonts/inter-600-cyr.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/static/css/fonts.css">
+  <link rel="stylesheet" href="/static/css/app.css">
+  <link rel="stylesheet" href="/static/css/ambient.css">
+  <link rel="stylesheet" href="/static/css/campus.css">
+  <link rel="stylesheet" href="/static/css/motion.css">
+  <script src="/static/js/boot.js"></script>
+  <script type="module" src="/static/js/page.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#app">Перейти к содержанию</a>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="/" aria-label="404 · УПК, на главную">
+        <span class="lockup" role="img" aria-label="404"></span>
+        <span class="brand-sep" aria-hidden="true"></span>
+        <span>УПК<small>Цифровой помощник колледжа</small></span>
+      </a>
+      <span class="grow"></span>
+      <a class="btn btn-soft btn-sm" href="/">Новая заявка</a>
+      <button class="btn btn-ghost btn-icon btn-sm" id="theme" type="button"></button>
+    </div>
+  </header>
+  <main class="page prose" id="app" tabindex="-1">
+    <p class="eyebrow">Данные и приватность</p>
+    <h1>Конфиденциальность</h1>
+    <p class="muted">Система нужна, чтобы проблемы в помещениях колледжа быстрее решались. Для этого мы собираем только то, без чего заявку не выполнить. Регистрироваться не нужно.</p>
+
+    <h2>Какие данные собираются</h2>
+    <ul>
+      <li><strong>Обращение:</strong> текст, помещение и фото, если вы его приложили. Из фото удаляются геометка и другие сведения об устройстве.</li>
+      <li><strong>Контакт:</strong> только если вы сами его указали. Поле необязательное.</li>
+      <li><strong>Код отслеживания:</strong> в базе лежит только его хеш, сам код знаете вы.</li>
+      <li><strong>Telegram:</strong> номер чата, только если вы сами включили уведомления.</li>
+      <li><strong>Технические данные:</strong> IP-адрес используется для защиты от злоупотреблений и не хранится вместе с заявкой.</li>
+    </ul>
+
+    <h2>Кто это видит</h2>
+    <p>Заявку видят сотрудники УПК и назначенный исполнитель. Присоединившиеся к заявке видят только статус, без описания и фото. Внутренние комментарии заявителям не показываются.</p>
+
+    <h2>ИИ-помощник</h2>
+    <p>Текст обращения может передаваться языковой модели, чтобы подсказать решение. Перед этим из него автоматически убираются телефоны, почта, номера карт и пароли. ИИ не закрывает заявки и ничего не решает сам.</p>
+
+    <h2>Сколько хранятся данные</h2>
+    <p>Тексты обращений к ИИ удаляются через 90 дней, остаётся только обезличенная статистика. Контакт и номер чата Telegram удаляются через 90 дней после закрытия заявки. В браузере хранятся тема оформления и номера ваших заявок, чтобы вернуться к ним позже.</p>
+
+    <h2>Что не собирается</h2>
+    <p>Нет рекламы, сторонней аналитики и сторонних cookie. Единственная cookie нужна сотрудникам для входа в панель.</p>
+
+    <h2>Как удалить данные</h2>
+    <p>Чтобы исправить или удалить свои данные, обратитесь в учебно-производственный комбинат колледжа и назовите номер заявки.</p>
+    <p class="muted small">Пожалуйста, не указывайте в обращении пароли и личные данные. При пожаре или угрозе жизни звоните 112.</p>
+  </main>
+  <footer class="footer">
+    <span><a href="/">На главную</a></span>
+    <span class="lockup" role="img" aria-label="Команда 404"></span>
+  </footer>
+</body>
+</html>

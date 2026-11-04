@@ -1,0 +1,304 @@
+/* ===== Индикаторы состояния и карта помещений ===== */
+
+/* метка над заголовком */
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+.eyebrow .spark { width: 10px; height: 10px; color: var(--primary); }
+
+.spark { display: block; flex: none; overflow: visible; }
+.spark path { fill: currentColor; }
+
+/* индикатор помещения */
+.node-glyph {
+  --c: var(--node);
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  flex: none;
+  border-radius: 50%;
+  color: var(--c);
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--c) 22%, transparent), transparent 75%);
+  transition: color 0.5s, background 0.5s;
+}
+.node-glyph .spark { width: 16px; height: 16px; filter: drop-shadow(0 0 6px color-mix(in srgb, var(--c) 70%, transparent)); transition: transform 0.6s var(--spring); }
+.node-glyph.is-open { --c: var(--primary); }
+.node-glyph.is-open .spark { animation: node-breathe 2.8s ease-in-out infinite; }
+.node-glyph.is-urgent { --c: var(--red); }
+.node-glyph.is-urgent .spark { animation: node-alert 1.5s ease-in-out infinite; }
+.node-glyph.is-none { --c: var(--faint); }
+.node-glyph.is-none .spark { opacity: 0.5; filter: none; }
+@keyframes node-breathe {
+  0%, 100% { opacity: 1; transform: scale(1) rotate(0deg); }
+  50% { opacity: 0.45; transform: scale(0.8) rotate(45deg); }
+}
+@keyframes node-alert {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.65; transform: scale(1.35); }
+}
+
+/* сводка по колледжу */
+.campus-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 14px 6px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface) 82%, transparent);
+  font-size: 13px;
+  color: var(--muted);
+}
+.campus-badge b { color: var(--text); font-weight: 600; }
+.campus-badge .node-glyph { width: 24px; height: 24px; }
+.campus-badge .node-glyph .spark { width: 12px; height: 12px; }
+
+.campus-panel { padding: 20px; display: flex; flex-direction: column; gap: 16px; overflow: hidden; }
+.campus-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }
+.campus-state { font-size: 26px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.1; }
+.campus-index { font-size: 13px; color: var(--muted); }
+.campus-index b { color: var(--text); font-variant-numeric: tabular-nums; }
+.campus-meter { position: relative; height: 4px; border-radius: 2px; background: var(--surface-3); overflow: hidden; }
+.campus-meter i {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--primary) 55%, transparent), var(--primary));
+  transform-origin: left;
+  position: relative;
+}
+.campus-panel.enter .campus-meter i { animation: grow-x 1.5s var(--ease-out) both; animation-delay: calc(var(--enter, 0ms) + 620ms); }
+html:not(.is-revealed) .campus-panel.enter .campus-meter i { animation-play-state: paused; }
+.campus-meter i::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent 40%, rgba(255, 255, 255, 0.55) 50%, transparent 60%);
+  background-size: 240% 100%;
+  animation: meter-run 3.6s ease-in-out infinite;
+}
+@keyframes meter-run { from { background-position: 130% 0; } to { background-position: -60% 0; } }
+.campus-tabs { display: flex; flex-wrap: wrap; gap: 6px; }
+.campus-tabs button {
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 10px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: color 0.2s, border-color 0.2s, background 0.2s, scale 0.2s var(--ease-out);
+}
+.campus-tabs button:hover { color: var(--text); border-color: var(--border-strong); }
+.campus-tabs button:active { scale: 0.96; }
+.campus-tabs button[aria-pressed="true"] { color: var(--text); border-color: var(--border-strong); background: var(--surface-3); }
+.campus-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--faint); }
+.campus-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.campus-legend .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--node); box-shadow: 0 0 6px var(--node); }
+.campus-legend .dot.open { background: var(--primary); box-shadow: 0 0 6px var(--primary); }
+.campus-legend .dot.urgent { background: var(--red); box-shadow: 0 0 6px var(--red); }
+.campus-legend .dot.chronic { background: transparent; box-shadow: none; border: 1px dashed var(--faint); width: 9px; height: 9px; }
+.campus-note { font-size: 13px; color: var(--muted); line-height: 1.45; }
+
+/* ---------- карта (SVG) ---------- */
+.campus-map { display: block; width: 100%; height: auto; overflow: visible; }
+.campus-map .cm-line { stroke: var(--text); stroke-opacity: 0.17; stroke-width: 1; fill: none; stroke-dasharray: 1; stroke-dashoffset: 0; transition: stroke-opacity 0.3s, stroke 0.3s; }
+.campus-map .cm-link { stroke-opacity: 0.09; }
+.campus-map .cm-signal { fill: var(--primary); filter: drop-shadow(0 0 3px var(--primary)); }
+.campus-map .cm-floor { fill: var(--faint); font-size: 10px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; }
+.campus-map .cm-node { --c: var(--node); outline: none; }
+.campus-map .cm-node.is-open { --c: var(--primary); }
+.campus-map .cm-node.is-urgent { --c: var(--red); }
+.campus-map .hit { fill: transparent; }
+.campus-map .cm-pop { transform-box: fill-box; transform-origin: center; transition: transform 0.45s var(--spring); }
+.campus-map .halo { fill: var(--c); opacity: 0.16; transform-box: fill-box; transform-origin: center; transition: opacity 0.3s; }
+.campus-map .core { fill: var(--c); }
+.campus-map .ring { fill: none; stroke: var(--faint); stroke-dasharray: 2 2.4; stroke-width: 1; transform-box: fill-box; transform-origin: center; animation: ring-turn 14s linear infinite; }
+.campus-map .label { fill: var(--muted); font-size: 10px; font-weight: 500; text-anchor: middle; transition: fill 0.2s; }
+.campus-map .cm-node.is-open .core { animation: map-breathe 2.8s ease-in-out infinite; }
+.campus-map .cm-node.is-open .halo { animation: map-halo 2.8s ease-in-out infinite; }
+.campus-map .cm-node.is-urgent .halo { animation: map-alert 1.5s ease-in-out infinite; }
+.campus-map .ring-here { fill: none; stroke: var(--text); stroke-width: 1; transform-box: fill-box; transform-origin: center; animation: here-ping 2.4s var(--ease-out) infinite; }
+@keyframes ring-turn { to { transform: rotate(360deg); } }
+@keyframes map-breathe { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+@keyframes map-halo { 0%, 100% { opacity: 0.24; } 50% { opacity: 0.07; } }
+@keyframes map-alert { 0%, 100% { opacity: 0.18; transform: scale(1); } 50% { opacity: 0.42; transform: scale(1.65); } }
+@keyframes here-ping { from { opacity: 0.85; transform: scale(0.55); } to { opacity: 0; transform: scale(2); } }
+
+.campus-map.is-interactive .cm-node { cursor: pointer; }
+.campus-map .cm-node:hover .cm-pop,
+.campus-map .cm-node:focus-visible .cm-pop { transform: scale(1.5); }
+.campus-map .cm-node:hover .halo,
+.campus-map .cm-node:focus-visible .halo { opacity: 0.34; animation: none; }
+.campus-map .cm-node:hover .label,
+.campus-map .cm-node:focus-visible .label { fill: var(--text); }
+.campus-map.has-hot .cm-line { stroke-opacity: 0.08; }
+.campus-map.has-hot .cm-line.is-hot { stroke: var(--primary); stroke-opacity: 0.75; }
+
+/* первый показ: линии прорисовываются, точки появляются слева направо */
+.campus-map.is-enter .cm-line { animation: map-draw 1.5s var(--ease-io) both; animation-delay: calc(var(--enter, 0ms) + 200ms + var(--i, 0) * 130ms); }
+.campus-map.is-enter .cm-pop { animation: map-pop 0.85s var(--spring) both; animation-delay: calc(var(--enter, 0ms) + 280ms + var(--i, 0) * 38ms); }
+.campus-map.is-enter .label,
+.campus-map.is-enter .cm-floor { animation: fade-in 0.8s ease both; animation-delay: calc(var(--enter, 0ms) + 700ms); }
+.campus-map.is-enter .cm-signal { animation: fade-in 1s ease both; animation-delay: calc(var(--enter, 0ms) + 1500ms); }
+html:not(.is-revealed) .campus-map.is-enter * { animation-play-state: paused; }
+@keyframes map-draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+@keyframes map-pop { from { opacity: 0; transform: scale(0); } to { opacity: 1; transform: scale(1); } }
+
+.cm-tip {
+  position: fixed;
+  z-index: 70;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 130px;
+  max-width: 260px;
+  padding: 9px 12px;
+  border-radius: 12px;
+  background: var(--surface-3);
+  border: 1px solid var(--border-strong);
+  box-shadow: var(--shadow-lg);
+  font-size: 13px;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(6px) scale(0.97);
+  transform-origin: 50% 100%;
+  transition: opacity 0.16s ease, transform 0.28s var(--ease-out);
+}
+.cm-tip.is-on { opacity: 1; transform: none; }
+.cm-tip-state { font-size: 12px; color: var(--muted); }
+.cm-tip-state.is-open { color: var(--primary); }
+.cm-tip-state.is-urgent { color: var(--red); }
+
+/* ---------- страница заявителя: две колонки на широком экране ---------- */
+.report-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 28px; }
+@media (min-width: 980px) {
+  .report-grid { grid-template-columns: minmax(0, 1fr) 340px; align-items: start; gap: 40px; }
+  .report-aside { position: sticky; top: 84px; }
+}
+.report-aside { display: flex; flex-direction: column; gap: 16px; }
+.hero-badge { margin-top: 18px; }
+.hero-badge:empty { display: none; }
+@media (min-width: 980px) { .hero-badge { display: none; } }
+
+/* помещение и уже известные заявки по нему */
+.place-pill .node-glyph { width: 38px; height: 38px; }
+.room-note {
+  position: relative;
+  margin: -4px 0 16px;
+  padding: 14px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface) 86%, transparent);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.room-note.is-open { border-color: color-mix(in srgb, var(--primary) 35%, var(--border)); }
+.room-note.is-urgent { border-color: color-mix(in srgb, var(--red) 40%, var(--border)); }
+.node-row {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  transition: background 0.2s, translate 0.3s var(--ease-out);
+}
+.node-row .grow { min-width: 200px; }
+.node-row .grow b { display: block; font-size: 14px; }
+.node-row .grow span { display: block; }
+button.node-row { border: 0; width: 100%; text-align: left; color: inherit; cursor: pointer; font: inherit; }
+button.node-row:hover { background: var(--surface-3); translate: 3px 0; }
+button.node-row .icon { transition: translate 0.3s var(--ease-out); }
+button.node-row:hover .icon { translate: 3px 0; }
+
+/* ---------- заявка принята ---------- */
+.done-card { max-width: 640px; margin: 0 auto; }
+.ignite { position: relative; width: 96px; height: 96px; display: grid; place-items: center; color: var(--node); }
+.ignite::before {
+  content: "";
+  position: absolute;
+  inset: -40%;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, var(--glow), transparent 70%);
+  animation: ignite-glow 2.4s var(--ease-out) both;
+}
+.ignite .spark { width: 46px; height: 46px; filter: drop-shadow(0 0 14px color-mix(in srgb, var(--node) 60%, transparent)); animation: ignite 1.2s var(--ease-out) both; }
+.ignite .ray {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 1px;
+  height: 150%;
+  background: linear-gradient(transparent, color-mix(in srgb, var(--node) 55%, transparent), transparent);
+  transform: translate(-50%, -50%) rotate(var(--r));
+  animation: ray 1.5s var(--ease-out) 0.15s both;
+}
+@keyframes ignite { from { opacity: 0; transform: scale(0.15) rotate(-90deg); } 62% { opacity: 1; transform: scale(1.14) rotate(6deg); } to { transform: scale(1) rotate(0); } }
+@keyframes ignite-glow { from { opacity: 0; transform: scale(0.35); } 40% { opacity: 1; } to { opacity: 0.72; transform: scale(1); } }
+@keyframes ray {
+  from { opacity: 0; transform: translate(-50%, -50%) rotate(var(--r)) scaleY(0); }
+  45% { opacity: 1; }
+  to { opacity: 0.2; transform: translate(-50%, -50%) rotate(var(--r)) scaleY(1); }
+}
+
+/* ---------- ход заявки ---------- */
+.track-path { position: relative; display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; margin-top: 6px; }
+.track-path::before { content: ""; position: absolute; left: 10%; right: 10%; top: 15px; height: 1px; background: var(--border-strong); }
+.track-fill {
+  position: absolute;
+  left: 10%;
+  top: 15px;
+  height: 1px;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--primary) 40%, transparent), var(--primary));
+  transform-origin: left;
+  box-shadow: 0 0 10px var(--primary);
+}
+.track-enter .track-fill { animation: grow-x 1.3s var(--ease-io) 0.45s both; }
+.tp-step { position: relative; display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; min-width: 0; }
+.tp-node {
+  width: 31px;
+  height: 31px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  color: var(--faint);
+  transition: background 0.5s, color 0.5s, border-color 0.5s, box-shadow 0.6s;
+}
+.tp-node .spark { width: 13px; height: 13px; }
+.tp-step span { font-size: 11.5px; font-weight: 600; line-height: 1.25; color: var(--faint); transition: color 0.4s; }
+.tp-step.done .tp-node { color: var(--text); border-color: color-mix(in srgb, var(--primary) 55%, var(--border)); background: color-mix(in srgb, var(--primary) 14%, var(--surface)); }
+.tp-step.done span { color: var(--muted); }
+.tp-step.current .tp-node { color: var(--on-primary); background: var(--primary); border-color: var(--primary); animation: node-call 2.6s ease-in-out infinite; }
+.tp-step.current .tp-node .spark { animation: node-breathe 2.8s ease-in-out infinite; }
+.tp-step.current span { color: var(--text); }
+.tp-step.final.done .tp-node { color: var(--on-primary); background: var(--node); border-color: var(--node); box-shadow: 0 0 0 6px color-mix(in srgb, var(--node) 14%, transparent), 0 0 26px color-mix(in srgb, var(--node) 60%, transparent); }
+.track-enter .tp-step { animation: step-in 0.8s var(--spring) both; animation-delay: calc(var(--enter, 0ms) + 0.28s + var(--i) * 0.17s); }
+html:not(.is-revealed) .track-enter .tp-step, html:not(.is-revealed) .track-enter .track-fill { animation-play-state: paused; }
+@keyframes step-in { from { opacity: 0; transform: translateY(8px) scale(0.72); } to { opacity: 1; transform: none; } }
+@keyframes node-call {
+  0%, 100% { box-shadow: 0 0 0 5px var(--primary-soft), 0 0 22px color-mix(in srgb, var(--primary) 70%, transparent); }
+  50% { box-shadow: 0 0 0 9px color-mix(in srgb, var(--primary) 8%, transparent), 0 0 34px var(--primary); }
+}
+.track-caption { font-size: 13px; color: var(--muted); }
+@media (max-width: 560px) { .tp-step span { display: none; } }
+
+/* ---------- панель: карта помещений ---------- */
+.campus-card { padding: 18px 20px 22px; }
+.campus-card .campus-map { max-height: 70vh; }
+.campus-kpi { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }

@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="ru" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>QR-коды для печати · УПК</title>
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="/static/img/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/static/css/fonts.css">
+  <link rel="stylesheet" href="/static/css/app.css">
+  <link rel="stylesheet" href="/static/css/admin.css">
+  <script type="module" src="/static/js/qr-print.js"></script>
+</head>
+<body style="background:#fff">
+  <div class="no-print page" style="max-width:1000px">
+    <div class="row between" style="flex-wrap:wrap;gap:12px">
+      <div><h1>QR-коды для печати</h1>
+        <p class="muted small">Отметьте помещения, нажмите «Печать» и сохраните в PDF или распечатайте. Наклейте код на видное место у входа.</p></div>
+      <div class="row">
+        <button class="btn" id="all">Выбрать все</button>
+        <button class="btn btn-primary" id="print">Печать</button>
+      </div>
+    </div>
+    <div class="row-wrap" id="picker" style="margin-top:14px"></div>
+  </div>
+  <div class="print-sheet" id="sheet"></div>
+</body>
+</html>
