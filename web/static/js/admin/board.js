@@ -42,11 +42,12 @@ function askNote(status) {
 }
 
 export async function render({ el, setHead }) {
-  setHead(`<span class="small muted hide-mobile">${icon("info", "icon-sm")} Перетащите карточку в другую колонку, чтобы сменить статус</span>`);
+  setHead(`<span class="small muted hide-mobile">${icon("info", "icon-sm")} Перетащите карточку в другую колонку или нажмите Shift и стрелку влево или вправо</span>`);
   let tickets = [];
   let dragged = null;
   let shown = false;
   let movedId = null;
+  let focusAfter = null;
 
   async function load() {
     const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
@@ -60,28 +61,52 @@ export async function render({ el, setHead }) {
 
   function card(t) {
     return `
-      <article class="kcard ${t.priority === "critical" ? "crit" : ""} ${t.id === movedId ? "just-moved" : ""}" draggable="true" data-id="${t.id}">
+      <div class="kcard ${t.priority === "critical" ? "crit" : ""} ${t.id === movedId ? "just-moved" : ""}" draggable="true" data-id="${t.id}" tabindex="0" role="button" aria-label="${esc(t.public_number)}: ${esc(t.title)}. Enter открывает, Shift и стрелка влево или вправо меняет статус">
         <div class="row between"><span class="t-num">${esc(t.public_number)}</span>${t.priority !== "normal" ? priorityChip(t.priority, t.priority_label) : ""}</div>
         <div class="kcard-title">${esc(t.title)}</div>
         <div class="kcard-meta">${icon("pin", "icon-sm")}${esc(t.place)}</div>
         <div class="row between">${assigneeCell(t.assignee)}<span class="tiny faint">${relTime(t.created_at)}</span></div>
-      </article>`;
+      </div>`;
   }
 
   function draw() {
     // колонки появляются каскадом только при первом показе
     el.innerHTML = `<div class="board ${shown ? "quiet" : ""}">${COLUMNS.map(([status, label], i) => {
       const items = tickets.filter((t) => t.status === status);
-      return `<section class="col" data-status="${status}" style="--i:${i}">
-        <div class="col-head"><span style="width:9px;height:9px;border-radius:50%;background:${STATUS_COLOR[status]}"></span>${label}<span class="badge">${items.length}</span></div>
+      return `<section class="col" data-status="${status}" style="--i:${i}" role="region" aria-label="${esc(label)}: ${items.length}">
+        <div class="col-head"><span class="col-dot" aria-hidden="true" style="background:${STATUS_COLOR[status]}"></span>${label}<span class="badge">${items.length}</span></div>
         ${items.map(card).join("") || `<div class="small faint center" style="padding:16px 0">Пусто</div>`}
       </section>`;
     }).join("")}</div>`;
     shown = true;
+    const focusId = movedId ?? focusAfter;
+    focusAfter = null;
     movedId = null;
+    if (focusId != null) el.querySelector(`.kcard[data-id="${focusId}"]`)?.focus();
 
     el.querySelectorAll(".kcard").forEach((c) => {
       c.addEventListener("click", () => (location.hash = `#/tickets/${c.dataset.id}`));
+      c.addEventListener("keydown", (e) => {
+        if (e.target !== c) return;
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          location.hash = `#/tickets/${c.dataset.id}`;
+        } else if (e.shiftKey && (e.key === "ArrowLeft" || e.key === "ArrowRight")) {
+          // то же, что перетаскивание, но с клавиатуры: на соседнюю колонку
+          e.preventDefault();
+          const t = tickets.find((x) => String(x.id) === c.dataset.id);
+          const at = COLUMNS.findIndex(([status]) => status === t?.status);
+          const next = COLUMNS[at + (e.key === "ArrowLeft" ? -1 : 1)];
+          if (t && next) {
+            focusAfter = t.id;
+            move(t, next[0]).finally(() => (focusAfter = null));
+          }
+        } else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+          e.preventDefault();
+          const list = [...c.parentElement.querySelectorAll(".kcard")];
+          list[list.indexOf(c) + (e.key === "ArrowDown" ? 1 : -1)]?.focus();
+        }
+      });
       c.addEventListener("dragstart", (e) => {
         dragged = tickets.find((t) => String(t.id) === c.dataset.id);
         c.classList.add("dragging");

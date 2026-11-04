@@ -71,7 +71,7 @@ export async function render({ el, setHead }) {
         <span class="small muted">QR-код ведёт на форму обращения с уже подставленным помещением. В коде только идентификатор места, без личных данных.</span>
       </div>
       <section class="card table-card"><div class="table-wrap" style="display:block"><table class="table">
-        <thead><tr><th>QR</th><th>Помещение</th><th>Тип</th><th>Заявок</th><th>Ссылка</th><th></th></tr></thead>
+        <thead><tr><th>QR</th><th>Помещение</th><th>Тип</th><th>Заявок</th><th>Ссылка</th><th><span class="sr-only">Действия</span></th></tr></thead>
         <tbody>${rows
           .map(
             (l) => `<tr style="${l.is_active ? "" : "opacity:.5"}">
@@ -81,10 +81,10 @@ export async function render({ el, setHead }) {
               <td>${l.tickets ? `<a href="#/tickets?status=&location=${l.id}">${l.tickets}</a>` : `<span class="faint">0</span>`}</td>
               <td><button class="btn btn-ghost btn-sm mono" data-copy="${esc(l.url)}" title="Скопировать ссылку">${icon("copy", "icon-sm")} /r/${esc(l.qr_key)}</button></td>
               <td class="nowrap">
-                <a class="btn btn-ghost btn-icon btn-sm" href="/api/manage/locations/${l.id}/qr.png" title="Скачать PNG">${icon("download", "icon-sm")}</a>
-                <a class="btn btn-ghost btn-icon btn-sm" href="/r/${esc(l.qr_key)}" target="_blank" rel="noopener" title="Открыть форму">${icon("external", "icon-sm")}</a>
-                <button class="btn btn-ghost btn-icon btn-sm" data-edit="${l.id}" title="Изменить">${icon("edit", "icon-sm")}</button>
-                <button class="btn btn-ghost btn-icon btn-sm" data-regen="${l.id}" title="Выпустить новый QR-код">${icon("refresh", "icon-sm")}</button>
+                <a class="btn btn-ghost btn-icon btn-sm" href="/api/manage/locations/${l.id}/qr.png" title="Скачать PNG" aria-label="Скачать PNG">${icon("download", "icon-sm")}</a>
+                <a class="btn btn-ghost btn-icon btn-sm" href="/r/${esc(l.qr_key)}" target="_blank" rel="noopener" title="Открыть форму" aria-label="Открыть форму">${icon("external", "icon-sm")}</a>
+                <button class="btn btn-ghost btn-icon btn-sm" data-edit="${l.id}" title="Изменить" aria-label="Изменить">${icon("edit", "icon-sm")}</button>
+                <button class="btn btn-ghost btn-icon btn-sm" data-regen="${l.id}" title="Выпустить новый QR-код" aria-label="Выпустить новый QR-код">${icon("refresh", "icon-sm")}</button>
               </td></tr>`,
           )
           .join("")}</tbody></table></div>
