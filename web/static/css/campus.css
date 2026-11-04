@@ -302,3 +302,147 @@ html:not(.is-revealed) .track-enter .tp-step, html:not(.is-revealed) .track-ente
 .campus-card { padding: 18px 20px 22px; }
 .campus-card .campus-map { max-height: 70vh; }
 .campus-kpi { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+
+/* ===== План этажей: кабинеты-двери, лестницы по бокам ===== */
+.plan {
+  display: grid;
+  grid-template-columns: 22px 12px minmax(0, 1fr) 12px;
+  grid-template-rows: repeat(3, auto);
+  column-gap: 5px;
+  row-gap: 10px;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.pl-floor { display: contents; }
+.pl-floor[data-floor="3"] > * { grid-row: 1; }
+.pl-floor[data-floor="2"] > * { grid-row: 2; }
+.pl-floor[data-floor="1"] > * { grid-row: 3; }
+.pl-label { grid-column: 1; align-self: center; font-size: 10px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--faint); white-space: nowrap; transition: color 0.3s; }
+.pl-slab {
+  grid-column: 3;
+  position: relative;
+  padding: 5px 5px 4px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--surface-2) 70%, transparent), color-mix(in srgb, var(--surface) 55%, transparent));
+  transition: opacity 0.35s, border-color 0.35s;
+}
+/* перекрытие этажа: тонкая светлая линия по низу */
+.pl-slab::after { content: ""; position: absolute; left: 10px; right: 10px; bottom: -1px; height: 1px; background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--text) 22%, transparent), transparent); }
+.pl-stairs { grid-row: 1 / -1; width: 12px; height: 100%; overflow: visible; }
+.pl-stairs-left { grid-column: 2; }
+.pl-stairs-right { grid-column: 4; }
+.pl-stairs path { fill: none; stroke: var(--text); stroke-width: 1; }
+.pl-flight { stroke-opacity: 0.26; }
+.pl-landing { stroke-opacity: 0.32; }
+.pl-rail { stroke-opacity: 0.1; }
+
+.pl-row { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 2px; }
+.pl-corridor { height: 1px; margin: 3px 2px; background-image: linear-gradient(90deg, color-mix(in srgb, var(--text) 16%, transparent) 50%, transparent 0); background-size: 6px 1px; }
+
+.pl-room {
+  --c: var(--node);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  padding: 2px 0 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  cursor: pointer;
+  transition: background 0.25s;
+}
+.pl-room.w2 { grid-column: span 2; }
+.pl-room.w3 { grid-column: span 3; }
+.pl-room.is-open { --c: var(--primary); }
+.pl-room.is-urgent { --c: var(--red); }
+.pl-room:hover, .pl-room.is-open-door { background: color-mix(in srgb, var(--text) 5%, transparent); }
+.pl-room:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
+.pl-room.is-here { box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--primary) 80%, transparent); }
+
+.pl-num { font-size: 8.5px; line-height: 1; font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: 0.02em; color: var(--faint); transition: color 0.25s; }
+.pl-room.is-open .pl-num, .pl-room.is-urgent .pl-num, .pl-room.is-open-door .pl-num { color: var(--text); }
+
+/* дверной проём: за дверью свет и значок типа кабинета */
+.pl-frame { position: relative; width: min(16px, 70%); height: 21px; perspective: 70px; }
+.pl-room.w2 .pl-frame, .pl-room.w3 .pl-frame { width: 26px; }
+.pl-inside {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 2px 2px 0 0;
+  background: radial-gradient(130% 100% at 50% 100%, color-mix(in srgb, var(--c) 70%, transparent), color-mix(in srgb, var(--c) 22%, var(--bg)) 75%);
+  overflow: hidden;
+}
+.pl-inside svg { width: 11px; height: 11px; fill: none; stroke: color-mix(in srgb, var(--c) 25%, #fff); stroke-width: 2.2; filter: drop-shadow(0 0 3px var(--c)); stroke-linecap: round; stroke-linejoin: round; opacity: 0; transform: scale(0.6); transition: opacity 0.3s 0.1s, transform 0.45s var(--ease-out) 0.1s; }
+.pl-door {
+  position: absolute;
+  inset: 0;
+  border: 1px solid color-mix(in srgb, var(--text) 20%, transparent);
+  border-bottom: 0;
+  border-radius: 2px 2px 0 0;
+  background: linear-gradient(180deg, var(--surface-3), color-mix(in srgb, var(--surface-3) 70%, var(--surface)));
+  transform-origin: 0 50%;
+  transition: transform 0.6s var(--ease-out), box-shadow 0.6s, background 0.6s;
+}
+.pl-handle { position: absolute; right: 2.5px; top: 52%; width: 1.5px; height: 3px; border-radius: 1px; background: color-mix(in srgb, var(--text) 45%, transparent); }
+/* полоска света из-под двери: видно, что внутри что-то происходит */
+.pl-frame::after { content: ""; position: absolute; left: -1px; right: -1px; bottom: -1px; height: 1.5px; border-radius: 1px; background: color-mix(in srgb, var(--text) 18%, transparent); }
+.pl-room.is-open .pl-frame::after, .pl-room.is-urgent .pl-frame::after { background: var(--c); box-shadow: 0 0 5px var(--c), 0 0 10px color-mix(in srgb, var(--c) 60%, transparent); }
+/* лампа над дверью */
+.pl-lamp { position: absolute; left: 50%; top: -4px; width: 4px; height: 2px; margin-left: -2px; border-radius: 1px; background: color-mix(in srgb, var(--text) 14%, transparent); }
+.pl-room.is-open .pl-lamp, .pl-room.is-urgent .pl-lamp { background: var(--c); box-shadow: 0 0 6px var(--c); }
+.pl-room.is-urgent .pl-lamp, .pl-room.is-urgent .pl-frame::after { animation: pl-alert 1.6s ease-in-out infinite; }
+@keyframes pl-alert { 50% { opacity: 0.35; } }
+
+/* дверь открывается */
+.pl-room:hover .pl-door, .pl-room.is-open-door .pl-door {
+  transform: rotateY(-64deg);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--surface-3) 80%, var(--text)), var(--surface-3));
+  box-shadow: 2px 0 6px rgba(0, 0, 0, 0.35);
+}
+/* свет из открытой двери ложится на пол коридора */
+.pl-frame::before { content: ""; position: absolute; left: -40%; right: -40%; bottom: -7px; height: 8px; border-radius: 50%; background: radial-gradient(closest-side, color-mix(in srgb, var(--c) 55%, transparent), transparent); opacity: 0; transition: opacity 0.4s; pointer-events: none; }
+.pl-room:hover .pl-frame::before, .pl-room.is-open-door .pl-frame::before { opacity: 1; }
+.pl-room:hover, .pl-room.is-open-door { z-index: 1; }
+.pl-room:hover .pl-inside svg, .pl-room.is-open-door .pl-inside svg { opacity: 1; transform: none; }
+
+/* открыта одна дверь: остальные этажи отходят на второй план */
+.plan.has-open .pl-floor:not(.is-hot) .pl-slab { opacity: 0.55; }
+.pl-floor.is-hot .pl-label { color: var(--text); }
+.pl-floor.is-hot .pl-slab { border-color: var(--border-strong); }
+
+/* первое появление: этажи снизу вверх, двери по очереди */
+.plan.is-enter .pl-slab { animation: pl-slab-in 0.7s var(--ease-out) both; }
+.plan.is-enter .pl-floor[data-floor="1"] .pl-slab { animation-delay: 420ms; }
+.plan.is-enter .pl-floor[data-floor="2"] .pl-slab { animation-delay: 540ms; }
+.plan.is-enter .pl-floor[data-floor="3"] .pl-slab { animation-delay: 660ms; }
+.plan.is-enter .pl-room { animation: pl-room-in 0.5s var(--ease-out) both; animation-delay: calc(700ms + var(--i, 0) * 12ms); }
+.plan.is-enter .pl-stairs path { stroke-dasharray: 400; animation: pl-draw 1.4s var(--ease-out) 500ms both; }
+html:not(.is-revealed) .plan.is-enter * { animation-play-state: paused; }
+@keyframes pl-slab-in { from { opacity: 0; transform: translateY(8px); } }
+@keyframes pl-room-in { from { opacity: 0; transform: translateY(3px); } }
+@keyframes pl-draw { from { stroke-dashoffset: 400; } }
+
+/* строка под планом: какой кабинет открыт */
+.pl-info { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 58px; font-size: 13px; line-height: 1.35; }
+.pl-info-type { font-size: 12px; color: var(--muted); }
+.pl-info b { font-weight: 600; color: var(--text); }
+.pl-hint { color: var(--faint); font-size: 12px; }
+.pl-info-state { display: flex; align-items: center; gap: 6px; margin-top: 2px; font-size: 12px; color: var(--muted); }
+.pl-info-state i { width: 6px; height: 6px; border-radius: 50%; background: var(--node); box-shadow: 0 0 5px var(--node); }
+.pl-info-state.is-open i { background: var(--primary); box-shadow: 0 0 5px var(--primary); }
+.pl-info-state.is-urgent i { background: var(--red); box-shadow: 0 0 5px var(--red); }
+.pl-info .pl-pick { flex: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .pl-door { transition: opacity 0.2s; }
+  .pl-room:hover .pl-door, .pl-room.is-open-door .pl-door { transform: none; opacity: 0.12; box-shadow: none; }
+  .pl-room.is-urgent .pl-lamp, .pl-room.is-urgent .pl-frame::after { animation: none; }
+}

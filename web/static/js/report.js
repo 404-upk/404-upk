@@ -18,7 +18,8 @@ import {
 } from "./core.js";
 import { markSvg } from "./brand.js";
 import { ambient, startAmbient } from "./ambient.js";
-import { bindCampusMap, campusBadge, campusMapSvg, nodeGlyph, spark } from "./campus.js";
+import { campusBadge, nodeGlyph, spark } from "./campus.js";
+import { bindPlan, planHtml, planStates } from "./plan.js";
 import { collapseOut, countUp, expandIn, initMotion, leave, rise, scramble, splitWords, textIn } from "./motion.js";
 
 const EXAMPLES = [
@@ -51,7 +52,6 @@ const state = {
   locations: null,
   sending: false,
   campus: null,
-  campusBuilding: null,
   campusEntered: false,
   roomStatus: null,
   draftFresh: false,
@@ -124,10 +124,8 @@ function renderCampus() {
   const first = !state.campusEntered;
   state.campusEntered = true;
   if (badge) badge.innerHTML = campusBadge(campus);
-  const current =
-    buildings.find((b) => b.building === state.campusBuilding) ||
-    buildings.find((b) => b.building === state.location?.building) ||
-    buildings[0];
+  const states = planStates(campus);
+  const here = state.location?.id ?? null;
   aside.innerHTML = `
     <section class="card campus-panel ${first ? "enter" : ""}">
       <div class="eyebrow">${spark()} Состояние колледжа</div>
@@ -138,36 +136,39 @@ function renderCampus() {
         </div>
         <div class="campus-index"><b data-count>${campus.index}&nbsp;%</b></div>
       </div>
-      <div class="campus-meter" aria-hidden="true"><i style="width:${campus.index}%"></i></div>
-      ${
-        buildings.length > 1
-          ? `<div class="campus-tabs">${buildings
-              .map((b) => `<button type="button" aria-pressed="${b.building === current.building}" data-b="${esc(b.building)}">${esc(b.building)}</button>`)
-              .join("")}</div>`
-          : ""
-      }
-      <div id="campus-map">${campusMapSvg(current.rooms, { width: 300, rowHeight: 50, here: state.location?.id ?? null, enter: first })}</div>
+      <div class="campus-meter" aria-hidden="true"><i></i></div>
+      <div id="campus-map">${planHtml(states, { here, enter: first })}</div>
       <div class="campus-legend">
         <span><i class="dot"></i>без заявок</span>
         <span><i class="dot open"></i>есть заявка</span>
         <span><i class="dot urgent"></i>срочно</span>
       </div>
-      ${state.location ? `<p class="campus-note">Кольцом отмечено выбранное помещение.</p>` : ""}
+      ${state.location ? `<p class="campus-note">Рамкой отмечено выбранное помещение.</p>` : ""}
     </section>`;
-  bindCampusMap(aside);
+  aside.querySelector(".campus-meter i").style.width = `${campus.index}%`;
+  bindPlan(aside, states, { here, onPick: pickFromPlan });
   if (first) {
     rise(aside, ".campus-panel", { delay: 340, dur: 1100 });
     aside.querySelectorAll("[data-count]").forEach((n) => countUp(n, { delay: 620 }));
   }
-  aside.querySelectorAll("[data-b]").forEach((b) =>
-    b.addEventListener("click", () => {
-      state.campusBuilding = b.dataset.b;
-      aside.querySelectorAll("[data-b]").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
-      const next = buildings.find((x) => x.building === b.dataset.b);
-      $("#campus-map").innerHTML = campusMapSvg(next.rooms, { width: 300, rowHeight: 50, here: state.location?.id ?? null, enter: true });
-      bindCampusMap(aside);
-    }),
-  );
+}
+
+/** Заявитель нажал «Это здесь» на плане: помещение становится местом обращения */
+async function pickFromPlan(id) {
+  if (!state.locations) {
+    try {
+      state.locations = await api("/api/locations");
+    } catch (err) {
+      toast(err.message, "error");
+      return;
+    }
+  }
+  const loc = state.locations.find((l) => l.id === id);
+  if (!loc) return;
+  setLocation(loc, false);
+  state.suggestedLocation = null;
+  renderPlace();
+  $("#message")?.focus();
 }
 
 async function loadRoomStatus() {
@@ -281,7 +282,6 @@ function setLocation(loc, fromQr) {
   state.fromQr = fromQr;
   state.locationNote = "";
   state.qrError = null;
-  state.campusBuilding = loc?.building || state.campusBuilding;
   loadRoomStatus();
   renderCampus();
   if (state.draft) {
