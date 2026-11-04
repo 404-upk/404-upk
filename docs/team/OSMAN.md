@@ -9,16 +9,34 @@
 
 ## Запуск за пять минут
 
-Нужен Python 3.12 или новее и Git. Сборки нет: поменял файл, обновил страницу.
+**Проще всего, в браузере:** [открыть в Codespaces](https://codespaces.new/404-upk/404-upk?quickstart=1). Устанавливать ничего не нужно, `.venv` там не создаём. Сайт запускается сам,
+адрес открывается на вкладке **Ports**, порт 8000. Если сайт не запустился: `sh .devcontainer/start.sh`.
+
+**На своём компьютере:** нужен Python 3.12 или новее и Git. Сборки нет: поменял файл, обновил страницу.
 
 ```bash
 git clone https://github.com/404-upk/404-upk.git
 cd 404-upk
+```
+
+**Windows (PowerShell или Git Bash):**
+
+```bash
 python -m venv .venv
-.venv/Scripts/pip install -r requirements-dev.txt      # Linux и macOS: .venv/bin/pip
+.venv/Scripts/pip install -r requirements-dev.txt
 cp .env.example .env
 .venv/Scripts/python -m uvicorn app.main:app --reload --port 8000
 ```
+
+**Linux и macOS:**
+
+```bash
+python3 -m venv .venv
+.venv/bin/pip install -r requirements-dev.txt
+cp .env.example .env
+.venv/bin/python -m uvicorn app.main:app --reload --port 8000
+```
+
 
 - http://localhost:8000: страница заявителя
 - http://localhost:8000/r/r214qa9f: то же, но как после QR-кода кабинета 214
@@ -158,7 +176,7 @@ web/
 - [ ] в консоли нет ошибок, CSP ничего не блокирует
 - [ ] данные выводятся через `esc()`
 - [ ] Lighthouse не просел
-- [ ] `python -m pytest` зелёный
+- [ ] `python -m pytest` зелёный (`python` для своей системы: `.venv/Scripts/python`, `.venv/bin/python`, а в Codespaces просто `python`)
 
 ## Как работаем
 
