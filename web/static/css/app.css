@@ -217,7 +217,8 @@ button, input, select, textarea {
 .btn-lg { min-height: 50px; padding: 0 22px; font-size: 16px; border-radius: var(--radius); }
 .btn-sm { min-height: 32px; padding: 0 11px; font-size: 13px; border-radius: var(--radius-xs); }
 .btn-block { width: 100%; }
-.btn-icon { width: 40px; padding: 0; }
+/* кнопка-значок не сжимается в тесном ряду: на телефоне она иначе становилась шириной в 2 px */
+.btn-icon { flex: none; width: 40px; padding: 0; }
 .btn-icon.btn-sm { width: 32px; }
 
 .spinner {
@@ -912,6 +913,8 @@ h2.h3 { font-size: 16px; font-weight: 600; letter-spacing: normal; }
 .u-mv-6-14 { margin: 6px 0 14px !important; }
 .u-mv-n4-14 { margin: -4px 0 14px !important; }
 .u-mr-auto { margin-right: auto !important; }
+.u-ml-auto { margin-left: auto !important; }
+.u-flex-none { flex: none !important; }
 .u-py16 { padding: 16px 0 !important; }
 .u-block { display: block !important; }
 .u-wrap { flex-wrap: wrap !important; }

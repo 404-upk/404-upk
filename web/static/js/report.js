@@ -1011,7 +1011,8 @@ function renderExtras() {
           </section>`
         : ""
     }`;
-  rise(box, ".example", { step: 42, delay: 460, dur: 800 });
+  // «Мои заявки» появляются вместе с примерами, а не сразу
+  rise(box, ".example, .my-tickets", { step: 42, delay: 460, dur: 800 });
   box.querySelectorAll(".example").forEach((b) =>
     b.addEventListener("click", () => {
       const area = $("#message");

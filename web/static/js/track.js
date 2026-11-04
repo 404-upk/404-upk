@@ -41,6 +41,8 @@ function codeFromPath() {
 
 // ---------- ввод кода ----------
 
+let lookupShown = false;
+
 function renderLookup(error = "") {
   const mine = myTickets.list();
   app.innerHTML = `
@@ -72,6 +74,12 @@ function renderLookup(error = "") {
           </section>`
         : ""
     }`;
+  // первый показ после заставки: заголовок по словам, остальное поднимается по очереди, как на главной
+  if (!lookupShown) {
+    lookupShown = true;
+    splitWords(app.querySelector(".hero h1"), { delay: 60 });
+    rise(app, ".hero p, #lookup, .my-tickets", { step: 90, delay: 160 });
+  }
   const input = $("#code");
   input.addEventListener("input", () => {
     const raw = input.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 16);

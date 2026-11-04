@@ -514,7 +514,9 @@ html:not(.is-revealed) .plan.is-enter * { animation-play-state: paused; }
 .fv-room:focus-visible { outline: 2px solid var(--primary); outline-offset: -3px; z-index: 1; }
 .fv-room.is-here::after { content: ""; position: absolute; inset: 4px; border: 1.5px solid var(--primary); border-radius: 6px; pointer-events: none; }
 .fv-num { font-size: 20px; font-weight: 700; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; line-height: 1; }
-.fv-type { display: flex; align-items: flex-start; gap: 6px; font-size: 11px; line-height: 1.25; color: var(--muted); }
+/* значок над подписью: длинное «Компьютерный» помещается в узкую клетку и не выходит за неё */
+.fv-type { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; min-width: 0; max-width: 100%; font-size: 11px; line-height: 1.25; color: var(--muted); }
+.fv-type span { min-width: 0; max-width: 100%; overflow-wrap: anywhere; hyphens: auto; }
 .fv-type svg { flex: none; width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .fv-room.is-on .fv-type { color: var(--text); }
 .fv-state { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: var(--muted); margin-top: auto; }

@@ -3,7 +3,7 @@
 // Нажатие на кабинет открывает дверь и показывает сведения: тип, состояние, открытые заявки.
 
 import { api, esc, h, icon, leaveAndRemove } from "./core.js";
-import { FLOORS, LOBBY, STATE_TEXT, TYPES, TYPE_ICON, floorRooms, roomTitle, stateOf } from "./plan.js";
+import { FLOORS, LOBBY, STATE_TEXT, TYPES, TYPE_ICON, floorRooms, roomNames, stateOf } from "./plan.js";
 
 const SHORT = { clear: "без заявок", open: "заявка", urgent: "срочно" };
 const FOCUSABLE = 'button:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])';
@@ -39,9 +39,9 @@ function stairs(to) {
 function roomButton(cell, side, col, states, here, mside = side === "a" ? "l" : "r") {
   const info = stateOf(states, cell.n);
   const isHere = here != null && info.id === here;
-  const name = roomTitle(cell);
+  const { title: name, sub } = roomNames(cell);
   return `<button type="button" class="fv-room side-${side} m-${mside} is-${esc(info.state)} w${cell.w}${cell.type === "lobby" ? " is-lobby" : ""}${isHere ? " is-here" : ""}" data-n="${esc(cell.n)}" data-col="${col}" data-w="${cell.w}"
-      aria-label="${esc(`${name}, ${TYPES[cell.type].toLowerCase()}: ${STATE_TEXT[info.state].toLowerCase()}`)}">
+      aria-label="${esc(`${name}, ${sub.toLowerCase()}: ${STATE_TEXT[info.state].toLowerCase()}`)}">
     <span class="fv-num">${cell.type === "lobby" ? "Главный холл" : esc(cell.n)}</span>
     ${cell.type === "lobby" || cell.type === "seminar" ? "" : `<span class="fv-type"><svg viewBox="0 0 24 24" aria-hidden="true">${TYPE_ICON[cell.type]}</svg><span>${esc(TYPES[cell.type])}</span></span>`}
     ${info.state === "clear" ? "" : `<span class="fv-state"><i></i>${SHORT[info.state]}</span>`}
@@ -142,8 +142,8 @@ export function openFloor(floorNo, { states, here = null, room = null, onPick } 
       <div class="fv-detail-main">
         <div class="fv-detail-icon is-${esc(data.state)}"><svg viewBox="0 0 24 24" aria-hidden="true">${TYPE_ICON[cell.type]}</svg></div>
         <div class="fv-detail-text">
-          <b>${esc(roomTitle(cell))}</b>
-          <div class="muted small">${esc(TYPES[cell.type])} · ${current} этаж</div>
+          <b>${esc(roomNames(cell).title)}</b>
+          <div class="muted small">${esc(roomNames(cell).sub)} · ${current} этаж</div>
           <div class="pl-info-state is-${esc(data.state)}"><i></i>${esc(STATE_TEXT[data.state])}${data.chronic ? ", проблемы повторяются" : ""}</div>
         </div>
         ${canPick ? `<button type="button" class="btn btn-primary btn-sm fv-pick">Это здесь</button>` : ""}
