@@ -14,7 +14,7 @@ echo Помощник работает через GigaChat, для этого н
 set "GKEY="
 set /p "GKEY=Вставьте ключ и нажмите Enter (пусто: запустить в демо-режиме без GigaChat): "
 if not defined GKEY goto run
-.venv\Scripts\python -c "import os, pathlib, re; p = pathlib.Path('.env'); s = p.read_text(encoding='utf-8'); p.write_text(re.sub(r'(?m)^GIGACHAT_AUTH_KEY=.*$', 'GIGACHAT_AUTH_KEY=' + os.environ['GKEY'].strip(), s), encoding='utf-8')"
+.venv\Scripts\python -c "import os, pathlib, re; k = re.sub(r'^GIGACHAT_AUTH_KEY\s*=\s*', '', os.environ['GKEY'].strip()).strip(chr(34) + chr(39) + ' '); p = pathlib.Path('.env'); s = p.read_text(encoding='utf-8'); p.write_text(re.sub(r'(?m)^GIGACHAT_AUTH_KEY=.*$', lambda m: 'GIGACHAT_AUTH_KEY=' + k, s), encoding='utf-8')"
 echo Ключ сохранён в .env на этом компьютере, в репозиторий он не попадёт.
 :run
 echo Открывайте http://localhost:8000  (панель: http://localhost:8000/admin)
