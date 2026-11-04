@@ -3,6 +3,7 @@ import { ctx } from "./ctx.js";
 
 const GUARDS = {
   danger: "фильтр опасности",
+  threat: "угроза жизни",
   diy: "запрет самостоятельного ремонта",
   secret: "защита закрытых данных",
   danger_model: "ИИ распознал опасность",
