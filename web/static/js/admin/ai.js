@@ -31,8 +31,8 @@ export async function render({ el, setHead }) {
   setHead("");
   el.innerHTML = `
     <section class="card card-pad stack">
-      <div class="row between" style="flex-wrap:wrap;gap:12px">
-        <div class="stack-sm" style="max-width:640px">
+      <div class="u-wrap u-gap12 row between">
+        <div class="u-maxw640 stack-sm">
           <h2>Экзамен для ИИ</h2>
           <p class="muted small">Прогоняем помощника по сценариям из приложения А технического задания: типовые вопросы, неисправности,
             опасные ситуации, просьбы о паролях и вопросы без ответа. Проверяем тип ответа, категорию, ссылку на базу знаний
@@ -69,22 +69,22 @@ export async function render({ el, setHead }) {
     try {
       const r = await api(`/api/manage/ai/selftest?engine=${engine}`, { method: "POST" });
       box.innerHTML = `
-        <div class="score" style="margin:6px 0 14px">${ring(r.passed, r.total)}
-          <div><b style="font-size:18px">${r.passed === r.total ? "Все сценарии пройдены" : `Пройдено ${r.passed} из ${r.total}`}</b>
+        <div class="u-mv-6-14 score">${ring(r.passed, r.total)}
+          <div><b class="u-fs18">${r.passed === r.total ? "Все сценарии пройдены" : `Пройдено ${r.passed} из ${r.total}`}</b>
           <div class="small muted">Движок: ${esc(r.engine)}</div></div></div>
-        <div class="table-wrap" style="display:block"><table class="table ai-result">
+        <div class="u-block table-wrap"><table class="table ai-result">
           <thead><tr><th><span class="sr-only">Результат</span></th><th>Сообщение</th><th>Что ожидаем</th><th>Что ответил ИИ</th><th>мс</th></tr></thead>
           <tbody>${r.results
             .map(
               (x) => `<tr>
                 <td class="${x.passed ? "pass" : "fail"}">${icon(x.passed ? "checkCircle" : "alert")}</td>
-                <td style="min-width:180px"><b>${esc(x.text)}</b></td>
-                <td class="small" style="min-width:160px">${esc(x.goal)}<div class="faint">${esc(x.expected.join(" или "))}</div></td>
-                <td class="small" style="min-width:280px"><span class="chip ${x.passed ? "st-resolved" : "pr-critical"}">${esc(x.kind_label)}</span>
+                <td class="u-minw180"><b>${esc(x.text)}</b></td>
+                <td class="u-minw160 small">${esc(x.goal)}<div class="faint">${esc(x.expected.join(" или "))}</div></td>
+                <td class="u-minw280 small"><span class="chip ${x.passed ? "st-resolved" : "pr-critical"}">${esc(x.kind_label)}</span>
                   ${x.guard ? `<span class="chip st-review">${icon("shield", "icon-sm")} ${esc(guard(x.guard))}</span>` : ""}
-                  <div style="margin-top:6px">${esc(x.answer.length > 220 ? x.answer.slice(0, 220) + "…" : x.answer)}</div>
-                  ${x.sources.length ? `<div class="faint" style="margin-top:4px">${icon("book", "icon-sm")} ${esc(x.sources.join("; "))}</div>` : ""}
-                  ${x.problems.length ? `<div class="fail" style="margin-top:4px">${esc(x.problems.join("; "))}</div>` : ""}
+                  <div class="u-mt6">${esc(x.answer.length > 220 ? x.answer.slice(0, 220) + "…" : x.answer)}</div>
+                  ${x.sources.length ? `<div class="u-mt4 faint">${icon("book", "icon-sm")} ${esc(x.sources.join("; "))}</div>` : ""}
+                  ${x.problems.length ? `<div class="u-mt4 fail">${esc(x.problems.join("; "))}</div>` : ""}
                 </td>
                 <td class="small faint">${x.ms}</td></tr>`,
             )
@@ -100,7 +100,7 @@ export async function render({ el, setHead }) {
     const text = el.querySelector("#pg-text").value.trim();
     if (!text) return;
     const out = el.querySelector("#pg-out");
-    out.innerHTML = `<div class="skeleton" style="height:90px"></div>`;
+    out.innerHTML = `<div class="sk-h90 skeleton"></div>`;
     try {
       const r = await api("/api/assistant", { method: "POST", body: { message: text } });
       out.innerHTML = `

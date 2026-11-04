@@ -29,7 +29,7 @@ class HideTrackingCodes(logging.Filter):
 logging.getLogger("uvicorn.access").addFilter(HideTrackingCodes())
 
 CSP = (
-    "default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; "
+    "default-src 'self'; img-src 'self' data: blob:; style-src 'self'; "
     "script-src 'self'; connect-src 'self'; object-src 'none'; frame-ancestors 'none'; "
     "base-uri 'self'; form-action 'self'" + ("; upgrade-insecure-requests" if settings.is_https else "")
 )

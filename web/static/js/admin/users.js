@@ -7,7 +7,7 @@ function userForm(u = {}) {
   return `
     <div class="field"><label for="u-name">Имя и фамилия</label><input class="input" id="u-name" maxlength="120" value="${esc(u.name || "")}"></div>
     <div class="field"><label for="u-pos">Должность</label><input class="input" id="u-pos" maxlength="120" value="${esc(u.position || "")}" placeholder="Например: электрик"></div>
-    <div class="grid-2" style="gap:12px">
+    <div class="u-gap12 grid-2">
       <div class="field"><label for="u-login">Логин</label><input class="input" id="u-login" maxlength="60" value="${esc(u.login || "")}" ${u.id ? "disabled" : ""} autocapitalize="none"></div>
       <div class="field"><label for="u-role">Роль</label><select class="select" id="u-role">${Object.entries(ROLES)
         .map(([k, v]) => `<option value="${k}" ${u.role === k ? "selected" : ""}>${v}</option>`)
@@ -71,7 +71,7 @@ export async function render({ el, setHead }) {
     [users, categories] = await Promise.all([api("/api/manage/users"), api("/api/manage/categories")]);
     const executors = users.filter((u) => u.is_active);
     el.innerHTML = `
-      <section class="card table-card"><div class="table-wrap" style="display:block"><table class="table">
+      <section class="card table-card"><div class="u-block table-wrap"><table class="table">
         <thead><tr><th>Сотрудник</th><th>Логин</th><th>Роль</th><th>Telegram</th><th>Статус</th><th><span class="sr-only">Действия</span></th></tr></thead>
         <tbody>${users
           .map(
@@ -79,7 +79,7 @@ export async function render({ el, setHead }) {
               <td><span class="row"><span class="avatar avatar-sm">${esc(initials(u.name))}</span><span><div class="t-title">${esc(u.name)}</div><div class="t-sub">${esc(u.position || "")}</div></span></span></td>
               <td class="mono small">${esc(u.login)}</td>
               <td>${esc(u.role_label)}</td>
-              <td>${u.telegram_linked ? `<span class="tag" style="color:var(--green)">${icon("telegram", "icon-sm")} подключён</span>` : `<span class="faint small">нет</span>`}</td>
+              <td>${u.telegram_linked ? `<span class="u-green tag">${icon("telegram", "icon-sm")} подключён</span>` : `<span class="faint small">нет</span>`}</td>
               <td>${u.is_active ? `<span class="chip st-resolved">активен</span>` : `<span class="chip st-rejected">отключён</span>`}</td>
               <td><button class="btn btn-ghost btn-icon btn-sm" data-edit="${u.id}" title="Изменить" aria-label="Изменить">${icon("edit", "icon-sm")}</button></td>
             </tr>`,
@@ -89,17 +89,17 @@ export async function render({ el, setHead }) {
       <section class="card">
         <div class="card-head"><div><h2 class="h3">Маршрутизация по категориям</h2>
           <div class="small muted">Кого система предложит исполнителем для новой заявки и какой приоритет поставит по умолчанию</div></div></div>
-        <div class="table-wrap" style="display:block"><table class="table">
+        <div class="u-block table-wrap"><table class="table">
           <thead><tr><th>Категория</th><th>Исполнитель по умолчанию</th><th>Приоритет по умолчанию</th></tr></thead>
           <tbody>${categories
             .map(
               (c) => `<tr>
                 <td><span class="cat-cell">${icon(c.icon, "icon-sm")}${esc(c.name)}</span></td>
-                <td><select class="select select-sm" data-cat-assignee="${c.id}" style="max-width:280px" aria-label="Исполнитель по умолчанию: ${esc(c.name)}">
+                <td><select class="u-maxw280 select select-sm" data-cat-assignee="${c.id}" aria-label="Исполнитель по умолчанию: ${esc(c.name)}">
                   <option value="">Не назначать</option>
                   ${executors.map((u) => `<option value="${u.id}" ${c.default_assignee?.id === u.id ? "selected" : ""}>${esc(u.name)}${u.position ? `, ${esc(u.position)}` : ""}</option>`).join("")}
                 </select></td>
-                <td><select class="select select-sm" data-cat-priority="${c.id}" style="max-width:180px" aria-label="Приоритет по умолчанию: ${esc(c.name)}">
+                <td><select class="u-maxw180 select select-sm" data-cat-priority="${c.id}" aria-label="Приоритет по умолчанию: ${esc(c.name)}">
                   ${ctx.meta.priorities.map((p) => `<option value="${p.value}" ${c.default_priority === p.value ? "selected" : ""}>${esc(p.label)}</option>`).join("")}
                 </select></td></tr>`,
             )

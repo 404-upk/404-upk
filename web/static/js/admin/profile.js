@@ -5,8 +5,8 @@ export async function render({ el }) {
   const me = await api("/api/auth/me");
   ctx.user = { ...ctx.user, ...me };
   el.innerHTML = `
-    <section class="card card-pad stack" style="max-width:640px">
-      <div class="row"><span class="avatar" style="width:54px;height:54px;font-size:18px">${esc(initials(me.name))}</span>
+    <section class="u-maxw640 card card-pad stack">
+      <div class="row"><span class="u-avatar-lg avatar">${esc(initials(me.name))}</span>
         <div><h2>${esc(me.name)}</h2><div class="muted">${esc(me.position || "")}${me.position ? " · " : ""}${esc(me.role_label)} · логин <span class="mono">${esc(me.login)}</span></div></div></div>
       <hr class="sep">
       <div class="stack-sm">
@@ -17,7 +17,7 @@ export async function render({ el }) {
             : me.telegram_linked
               ? `<div class="notice notice-ok">${icon("telegram")}<div class="small">Telegram подключён. Сюда приходят новые заявки и назначения, а заявку можно взять кнопкой прямо из чата.</div></div>`
               : `<p class="small muted">Подключите Telegram, чтобы получать новые заявки и брать их в работу одной кнопкой.</p>
-                 <button class="btn btn-primary" id="tg" style="align-self:flex-start">${icon("telegram")} Подключить Telegram</button>`
+                 <button class="u-self-start btn btn-primary" id="tg">${icon("telegram")} Подключить Telegram</button>`
         }
       </div>
     </section>`;

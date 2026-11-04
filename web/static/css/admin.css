@@ -347,7 +347,7 @@
 }
 
 /* Доска: доступность с клавиатуры */
-.col-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; }
+.col-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: var(--st, var(--gray)); }
 .kcard:focus-visible { outline: none; border-color: var(--primary); box-shadow: var(--ring); }
 
 /* Заголовок заявки в списке: ссылка, чтобы открыть заявку с клавиатуры */

@@ -1,6 +1,5 @@
 import { $, api, esc, h, icon, plural, relTime, toast } from "../core.js";
 import { countUp, onView, rise } from "../motion.js";
-import { STATUS_COLOR } from "./tickets.js";
 
 function kpi(label, value, sub = "", ic = "") {
   return `<div class="card kpi">
@@ -10,7 +9,7 @@ function kpi(label, value, sub = "", ic = "") {
   </div>`;
 }
 
-function hbars(items, { name, value, sub, href, color, iconOf } = {}) {
+function hbars(items, { name, value, sub, href, colorClass, iconOf } = {}) {
   if (!items.length) return `<div class="small muted">Данных пока нет</div>`;
   const max = Math.max(...items.map(value), 1);
   return `<div class="hbars">${items
@@ -18,8 +17,8 @@ function hbars(items, { name, value, sub, href, color, iconOf } = {}) {
       const v = value(it);
       const label = `<span class="hbar-name" title="${esc(name(it))}">${iconOf ? icon(iconOf(it), "icon-sm") : ""}${esc(name(it))}</span>`;
       return `<div class="hbar">
-        ${href ? `<a href="${href(it)}" class="hbar-name" style="color:inherit">${iconOf ? icon(iconOf(it), "icon-sm") : ""}${esc(name(it))}</a>` : label}
-        <span class="hbar-track" title="${esc(sub ? sub(it) : String(v))}"><i style="--i:${idx};width:${(v / max) * 100}%;${color ? `background:${color(it)}` : ""}"></i></span>
+        ${href ? `<a href="${href(it)}" class="u-inherit hbar-name">${iconOf ? icon(iconOf(it), "icon-sm") : ""}${esc(name(it))}</a>` : label}
+        <span class="hbar-track" title="${esc(sub ? sub(it) : String(v))}"><i class="${colorClass ? esc(colorClass(it)) : ""}" data-css-i="${idx}" data-css-pct="${(v / max) * 100}"></i></span>
         <span class="hbar-val">${v}</span>
       </div>`;
     })
@@ -44,7 +43,7 @@ function dailyChart(days) {
     const y0 = y(v);
     const hgt = pad.t + ih - y0;
     const r = Math.min(4, hgt, bw / 2);
-    return `<path class="bar" style="--i:${i}" fill="${color}" d="M${x},${pad.t + ih} V${y0 + r} Q${x},${y0} ${x + r},${y0} H${x + bw - r} Q${x + bw},${y0} ${x + bw},${y0 + r} V${pad.t + ih} Z"/>`;
+    return `<path class="bar" data-css-i="${i}" fill="${color}" d="M${x},${pad.t + ih} V${y0 + r} Q${x},${y0} ${x + r},${y0} H${x + bw - r} Q${x + bw},${y0} ${x + bw},${y0 + r} V${pad.t + ih} Z"/>`;
   };
 
   let grid = "";
@@ -83,7 +82,7 @@ function bindTooltip(svgWrap, days) {
       tip = h(`<div class="chart-tip"></div>`);
       document.body.append(tip);
     }
-    tip.innerHTML = `<b>${dd}.${m}.${yy}</b><br><span style="color:var(--chart-1)">■</span> поступило: ${d.created}<br><span style="color:var(--chart-2)">■</span> закрыто: ${d.closed}`;
+    tip.innerHTML = `<b>${dd}.${m}.${yy}</b><br><span class="u-chart1">■</span> поступило: ${d.created}<br><span class="u-chart2">■</span> закрыто: ${d.closed}`;
     tip.style.left = `${Math.min(e.clientX + 14, innerWidth - 170)}px`;
     tip.style.top = `${e.clientY + 14}px`;
   });
@@ -127,7 +126,7 @@ export async function render({ el, setHead }) {
 
       <section class="card">
         <div class="card-head"><h2 class="h3">Поступило и закрыто по дням</h2>
-          <div class="legend"><span><i style="background:var(--chart-1)"></i>поступило</span><span><i style="background:var(--chart-2)"></i>закрыто</span></div></div>
+          <div class="legend"><span><i class="u-bg-chart1"></i>поступило</span><span><i class="u-bg-chart2"></i>закрыто</span></div></div>
         <div class="card-body chart" id="daily">${dailyChart(s.daily)}</div>
       </section>
 
@@ -143,7 +142,7 @@ export async function render({ el, setHead }) {
           <div class="card-body">${hbars(s.by_status, {
             name: (x) => x.label,
             value: (x) => x.count,
-            color: (x) => STATUS_COLOR[x.status],
+            colorClass: (x) => `st-c-${x.status}`,
             href: (x) => `#/tickets?status=${x.status}`,
           })}</div></section>
       </div>
@@ -161,7 +160,7 @@ export async function render({ el, setHead }) {
             s.repeated.length
               ? s.repeated
                   .map(
-                    (r) => `<a class="notice notice-warn" href="#/tickets?status=&location=${r.location_id}" style="color:inherit;text-decoration:none">${icon("refresh")}
+                    (r) => `<a class="u-plain-link notice notice-warn" href="#/tickets?status=&location=${r.location_id}">${icon("refresh")}
                       <div class="grow"><b>${esc(r.place)}</b><div class="small">${esc(r.category)}: ${r.count} ${plural(r.count, "заявка", "заявки", "заявок")}, последняя ${relTime(r.last)}</div></div></a>`,
                   )
                   .join("")
@@ -171,7 +170,7 @@ export async function render({ el, setHead }) {
 
       <section class="card"><div class="card-head"><h2 class="h3">Работа ИИ-помощника</h2>
           <span class="small muted">${ai.avg_latency_ms != null ? `среднее время ответа ${ai.avg_latency_ms} мс` : ""}</span></div>
-        <div class="card-body grid-2" style="gap:24px">
+        <div class="u-gap24 card-body grid-2">
           <div>${hbars(ai.by_kind, { name: (k) => k.label, value: (k) => k.count })}</div>
           <div class="stack-sm small">
             <div class="row between"><span class="muted">Обращений к помощнику</span><b>${ai.total}</b></div>

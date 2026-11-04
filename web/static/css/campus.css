@@ -247,6 +247,10 @@ button.node-row:hover .icon { translate: 3px 0; }
   transform: translate(-50%, -50%) rotate(var(--r));
   animation: ray 1.5s var(--ease-out) 0.15s both;
 }
+.ignite .ray:nth-of-type(1) { --r: 0deg; }
+.ignite .ray:nth-of-type(2) { --r: 45deg; }
+.ignite .ray:nth-of-type(3) { --r: 90deg; }
+.ignite .ray:nth-of-type(4) { --r: 135deg; }
 @keyframes ignite { from { opacity: 0; transform: scale(0.15) rotate(-90deg); } 62% { opacity: 1; transform: scale(1.14) rotate(6deg); } to { transform: scale(1) rotate(0); } }
 @keyframes ignite-glow { from { opacity: 0; transform: scale(0.35); } 40% { opacity: 1; } to { opacity: 0.72; transform: scale(1); } }
 @keyframes ray {

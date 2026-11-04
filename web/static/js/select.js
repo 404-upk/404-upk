@@ -30,6 +30,7 @@ function enhance(select) {
   wrap.className = "ui-select";
   // ширина и ограничения, заданные самому select, переходят на обёртку
   wrap.style.cssText = select.style.cssText;
+  select.classList.forEach((c) => c.startsWith("u-") && wrap.classList.add(c));
   const button = document.createElement("button");
   button.type = "button";
   button.className = `ui-select-btn ${select.className}`;

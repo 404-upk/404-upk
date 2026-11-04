@@ -70,7 +70,7 @@ export function campusMapSvg(rooms, { width = 320, rowHeight = 64, labels = fals
     });
     if (pts.length > 1) {
       const d = pts.map((p, i) => `${i ? "L" : "M"}${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join("");
-      lines.push(`<path class="cm-line" data-floor="${floor}" pathLength="1" d="${d}" style="--i:${row}"/>`);
+      lines.push(`<path class="cm-line" data-floor="${floor}" pathLength="1" d="${d}" data-css-i="${row}"/>`);
       if (!REDUCED) {
         const dur = (7 + hash(floor + 11) * 6).toFixed(1);
         const begin = (hash(floor + 3) * -9).toFixed(1);
@@ -86,7 +86,7 @@ export function campusMapSvg(rooms, { width = 320, rowHeight = 64, labels = fals
     };
     const a = pos.get(mid(floors[i - 1]).id);
     const b = pos.get(mid(floors[i]).id);
-    lines.push(`<path class="cm-line cm-link" pathLength="1" d="M${a[0].toFixed(1)} ${a[1].toFixed(1)}L${b[0].toFixed(1)} ${b[1].toFixed(1)}" style="--i:${floors.length + i}"/>`);
+    lines.push(`<path class="cm-line cm-link" pathLength="1" d="M${a[0].toFixed(1)} ${a[1].toFixed(1)}L${b[0].toFixed(1)} ${b[1].toFixed(1)}" data-css-i="${floors.length + i}"/>`);
   }
 
   const floorLabels = floors
@@ -102,7 +102,7 @@ export function campusMapSvg(rooms, { width = 320, rowHeight = 64, labels = fals
       const name = `${r.title}: ${NODE_TEXT[r.state] || ""}${r.chronic ? ", проблемы повторяются" : ""}`;
       return `<g class="cm-node is-${esc(r.state)} ${here === r.id ? "is-here" : ""}" data-id="${r.id}" data-floor="${r.floor ?? -999}" data-title="${esc(r.title)}" data-state="${esc(r.state)}" data-chronic="${r.chronic ? 1 : ""}" transform="translate(${x.toFixed(1)} ${y.toFixed(1)})"${interactive ? ' tabindex="0" role="button"' : ' role="img"'} aria-label="${esc(name)}">
         <circle class="hit" r="${Math.max(10, size * 4)}"/>
-        <g class="cm-pop" style="--i:${order.indexOf(r)}">
+        <g class="cm-pop" data-css-i="${order.indexOf(r)}">
           <circle class="halo" r="${(size * 3.4).toFixed(1)}"/>
           ${r.chronic ? `<circle class="ring" r="${(size * 2.3).toFixed(1)}"/>` : ""}
           ${here === r.id ? `<circle class="ring-here" r="${(size * 2.6).toFixed(1)}"/>` : ""}
