@@ -61,12 +61,12 @@ export async function render({ el, setHead }) {
 
   function card(t) {
     return `
-      <article class="kcard ${t.priority === "critical" ? "crit" : ""} ${t.id === movedId ? "just-moved" : ""}" draggable="true" data-id="${t.id}" tabindex="0" role="button" aria-label="${esc(t.public_number)}: ${esc(t.title)}. Enter открывает, Shift и стрелка влево или вправо меняет статус">
+      <div class="kcard ${t.priority === "critical" ? "crit" : ""} ${t.id === movedId ? "just-moved" : ""}" draggable="true" data-id="${t.id}" tabindex="0" role="button" aria-label="${esc(t.public_number)}: ${esc(t.title)}. Enter открывает, Shift и стрелка влево или вправо меняет статус">
         <div class="row between"><span class="t-num">${esc(t.public_number)}</span>${t.priority !== "normal" ? priorityChip(t.priority, t.priority_label) : ""}</div>
         <div class="kcard-title">${esc(t.title)}</div>
         <div class="kcard-meta">${icon("pin", "icon-sm")}${esc(t.place)}</div>
         <div class="row between">${assigneeCell(t.assignee)}<span class="tiny faint">${relTime(t.created_at)}</span></div>
-      </article>`;
+      </div>`;
   }
 
   function draw() {

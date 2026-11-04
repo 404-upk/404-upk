@@ -76,7 +76,7 @@ export async function render({ el, setHead }) {
       ${
         attention.length
           ? `<section class="card card-pad stack" id="attention">
-              <h3>Требуют внимания</h3>
+              <h2 class="h3">Требуют внимания</h2>
               <div class="stack-sm">${attention
                 .map(
                   (s) => `<button type="button" class="node-row" data-id="${s.id}">

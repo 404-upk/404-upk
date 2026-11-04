@@ -73,7 +73,7 @@ export async function render({ el, setHead }) {
           <div><b style="font-size:18px">${r.passed === r.total ? "Все сценарии пройдены" : `Пройдено ${r.passed} из ${r.total}`}</b>
           <div class="small muted">Движок: ${esc(r.engine)}</div></div></div>
         <div class="table-wrap" style="display:block"><table class="table ai-result">
-          <thead><tr><th></th><th>Сообщение</th><th>Что ожидаем</th><th>Что ответил ИИ</th><th>мс</th></tr></thead>
+          <thead><tr><th><span class="sr-only">Результат</span></th><th>Сообщение</th><th>Что ожидаем</th><th>Что ответил ИИ</th><th>мс</th></tr></thead>
           <tbody>${r.results
             .map(
               (x) => `<tr>
