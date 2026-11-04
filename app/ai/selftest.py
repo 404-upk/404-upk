@@ -107,7 +107,7 @@ async def run_selftest(db: Session, use_llm: bool = True) -> dict:
     results = []
     for case in CASES:
         started = time.perf_counter()
-        reply = await analyze(db, case["text"], use_llm=use_llm)
+        reply = await analyze(db, case["text"], use_llm=use_llm, use_cache=False)
         problems = _check(case, reply)
         data = reply.to_dict()
         results.append(

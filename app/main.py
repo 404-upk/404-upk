@@ -10,6 +10,7 @@ from sqlalchemy import func, select, text
 from sqlalchemy.exc import SQLAlchemyError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from .ai import resilience
 from .ai.gigachat import client as gigachat
 from .config import WEB_DIR, settings
 from .db import SessionLocal, init_db
@@ -96,7 +97,8 @@ def health():
     body = {
         "status": "ok" if database else "degraded",
         "database": database,
-        "ai": "gigachat" if gigachat.enabled else "demo",
+        # degraded: GigaChat несколько раз подряд не ответил, и помощник временно отвечает по правилам
+        "ai": ("degraded" if resilience.breaker.is_open else "gigachat") if gigachat.enabled else "demo",
         "telegram": bot.enabled,
     }
     return JSONResponse(body, status_code=200 if database else 503)
