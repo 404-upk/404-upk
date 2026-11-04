@@ -65,7 +65,10 @@ export const FLOORS = [
 export const LOBBY = { n: "холл", type: "lobby", w: 1 };
 
 const RANK = { clear: 0, open: 1, urgent: 2 };
-const HOVER = matchMedia("(hover: hover)").matches;
+// мышь или касание проверяется каждый раз: режим может смениться без перезагрузки (DevTools, планшет с мышью)
+const HOVER_MQ = matchMedia("(hover: hover)");
+const canHover = () => HOVER_MQ.matches;
+const hintText = () => (canHover() ? "Наведите на кабинет, нажмите на этаж, чтобы открыть его план" : "Нажмите на этаж, чтобы открыть его план");
 export const STATE_TEXT = { clear: "Открытых заявок нет", open: "Есть открытая заявка", urgent: "Есть срочная заявка" };
 
 export function roomTitle(cell) {
@@ -303,7 +306,7 @@ export function planHtml(states, { here = null, enter = false } = {}) {
       ${floors}
     </svg>
   </div>
-  <div class="pl-info" aria-live="polite"><span class="pl-hint">${HOVER ? "Наведите на кабинет, нажмите на этаж, чтобы открыть его план" : "Нажмите на этаж, чтобы открыть его план"}</span></div>`;
+  <div class="pl-info" aria-live="polite"><span class="pl-hint">${hintText()}</span></div>`;
 }
 
 /**
@@ -390,9 +393,10 @@ const TUTORIAL = [
   },
   {
     title: "Откройте этаж",
-    text: HOVER
-      ? "Нажмите на этаж: откроется план с крупными кабинетами. Там видны заявки и кнопка «Это здесь», чтобы выбрать кабинет для обращения."
-      : "Коснитесь этажа: откроется план с крупными кабинетами. Там видны заявки и кнопка «Это здесь», чтобы выбрать кабинет для обращения.",
+    text: (hover) =>
+      hover
+        ? "Нажмите на этаж: откроется план с крупными кабинетами. Там видны заявки и кнопка «Это здесь», чтобы выбрать кабинет для обращения."
+        : "Коснитесь этажа: откроется план с крупными кабинетами. Там видны заявки и кнопка «Это здесь», чтобы выбрать кабинет для обращения.",
     show: "floor",
   },
 ];
@@ -407,7 +411,8 @@ function bindTutorial(root, svg, { onOpenFloor, light }) {
   const plan = root.querySelector(".plan");
   const aside = panel?.closest(".report-aside") || panel?.parentElement;
   if (!help || !panel || !plan) return;
-  const steps = TUTORIAL.filter((s) => HOVER || !s.mouseOnly);
+  let steps = [];
+  const pickSteps = () => TUTORIAL.filter((s) => canHover() || !s.mouseOnly);
   let box = null;
   let backdrop = null;
   let step = 0;
@@ -440,9 +445,9 @@ function bindTutorial(root, svg, { onOpenFloor, light }) {
     const r = el.getBoundingClientRect();
     const base = plan.getBoundingClientRect();
     cursor = document.createElement("span");
-    cursor.className = HOVER ? "tut-cursor" : "tut-cursor is-finger";
+    cursor.className = canHover() ? "tut-cursor" : "tut-cursor is-finger";
     cursor.setAttribute("aria-hidden", "true");
-    if (!HOVER) cursor.innerHTML = `${FINGER}<i class="tut-ring"></i>`;
+    if (!canHover()) cursor.innerHTML = `${FINGER}<i class="tut-ring"></i>`;
     plan.append(cursor);
     const x = r.left - base.left + Math.min(r.width / 2, 120);
     const y = r.top - base.top + r.height * 0.55;
@@ -486,7 +491,7 @@ function bindTutorial(root, svg, { onOpenFloor, light }) {
       </div>
       <div class="tut-body${dir ? (dir > 0 ? " from-right" : " from-left") : ""}">
         <b class="tut-title">${esc(s.title)}</b>
-        <p class="tut-text">${esc(s.text)}</p>
+        <p class="tut-text">${esc(typeof s.text === "function" ? s.text(canHover()) : s.text)}</p>
       </div>
       <div class="tut-foot">
         <span class="tut-dots" aria-hidden="true">${steps.map((_, i) => `<i class="${i === step ? "is-on" : ""}"></i>`).join("")}</span>
@@ -508,6 +513,7 @@ function bindTutorial(root, svg, { onOpenFloor, light }) {
 
   const open = () => {
     step = 0;
+    steps = pickSteps();
     // фон страницы затемняется и размывается, блок остаётся над ним
     backdrop = document.createElement("div");
     backdrop.className = "tut-backdrop";
@@ -587,6 +593,20 @@ function bindTutorial(root, svg, { onOpenFloor, light }) {
   }
 
   help.addEventListener("click", () => (box ? close() : open()));
+  // режим сменился, пока подсказка открыта: шаги и указатель перестраиваются на месте
+  const onMode = () => {
+    // блок перерисовали: старый обработчик больше не нужен
+    if (!help.isConnected) return HOVER_MQ.removeEventListener("change", onMode);
+    const hint = root.querySelector(".pl-hint");
+    if (hint) hint.textContent = hintText();
+    if (!box) return;
+    const current = steps[step]?.show;
+    steps = pickSteps();
+    const same = steps.findIndex((s) => s.show === current);
+    step = same >= 0 ? same : Math.min(step, steps.length - 1);
+    showStep();
+  };
+  HOVER_MQ.addEventListener("change", onMode);
   // нажатие на этаж во время подсказки сначала закрывает её
   svg.addEventListener("click", () => box && close(false), true);
 }
