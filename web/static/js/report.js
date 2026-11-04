@@ -20,6 +20,7 @@ import { markSvg } from "./brand.js";
 import { ambient, startAmbient } from "./ambient.js";
 import { campusBadge, nodeGlyph, spark } from "./campus.js";
 import { bindPlan, planHtml, planStates } from "./plan.js";
+import { openFloor } from "./floor-view.js";
 import { collapseOut, countUp, expandIn, initMotion, leave, rise, scramble, splitWords, textIn } from "./motion.js";
 
 const EXAMPLES = [
@@ -146,7 +147,9 @@ function renderCampus() {
       ${state.location ? `<p class="campus-note">Рамкой отмечено выбранное помещение.</p>` : ""}
     </section>`;
   aside.querySelector(".campus-meter i").style.width = `${campus.index}%`;
-  bindPlan(aside, states, { here, onPick: pickFromPlan });
+  bindPlan(aside, states, {
+    onOpenFloor: (floor, room) => openFloor(floor, { states, here, room, onPick: pickFromPlan }),
+  });
   if (first) {
     rise(aside, ".campus-panel", { delay: 340, dur: 1100 });
     aside.querySelectorAll("[data-count]").forEach((n) => countUp(n, { delay: 620 }));
