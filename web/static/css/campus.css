@@ -302,3 +302,419 @@ html:not(.is-revealed) .track-enter .tp-step, html:not(.is-revealed) .track-ente
 .campus-card { padding: 18px 20px 22px; }
 .campus-card .campus-map { max-height: 70vh; }
 .campus-kpi { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+
+/* ===== Схема колледжа: здание в разрезе ===== */
+.plan { position: relative; margin: 0 -4px; }
+.pf { display: block; width: 100%; height: auto; overflow: visible; user-select: none; -webkit-tap-highlight-color: transparent; }
+.pf text { font-family: inherit; }
+
+/* контуры здания: мягкие заливки вместо множества линий */
+.pf-body { fill: color-mix(in srgb, var(--surface-2) 55%, transparent); stroke: var(--text); stroke-opacity: 0.22; stroke-width: 1.2; }
+.pf-well { fill: color-mix(in srgb, var(--text) 3%, transparent); }
+.pf-cornice { fill: none; stroke: var(--text); stroke-opacity: 0.3; stroke-width: 2; stroke-linecap: round; }
+.pf-attic { fill: color-mix(in srgb, var(--surface-2) 75%, transparent); stroke: var(--text); stroke-opacity: 0.22; stroke-width: 1.2; stroke-linejoin: round; }
+/* эмблема университета контуром */
+.pf-emblem-disc { fill: color-mix(in srgb, var(--primary) 12%, var(--surface)); stroke: var(--primary); stroke-width: 1; }
+.pf-emblem-ring { fill: none; stroke: var(--primary); stroke-opacity: 0.7; stroke-width: 0.7; }
+.pf-emblem-text { fill: none; stroke: var(--primary); stroke-opacity: 0.5; stroke-width: 1.4; stroke-dasharray: 1.3 1.1; }
+.pf-emblem-line { fill: none; stroke: var(--text); stroke-opacity: 0.85; stroke-width: 0.75; stroke-linecap: round; stroke-linejoin: round; }
+.pf-handrail { fill: none; stroke: var(--text); stroke-opacity: 0.28; stroke-width: 0.8; stroke-linecap: round; }
+.pf-stair-front { fill: color-mix(in srgb, var(--text) 6%, transparent); }
+.pf-treads { stroke: var(--text); stroke-opacity: 0.32; stroke-width: 0.9; stroke-linecap: round; }
+.pf-slab { stroke: var(--text); stroke-opacity: 0.18; stroke-width: 1.5; stroke-linecap: round; }
+.pf-ground { fill: none; stroke: var(--text); stroke-opacity: 0.22; stroke-width: 1.2; stroke-linecap: round; }
+.pf-entry { font-size: 8.5px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; fill: var(--muted); text-anchor: middle; }
+.pf-label { font-size: 9.5px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; fill: var(--muted); transition: fill 0.3s; }
+
+/* лестницы в разрезе: ступени, косоур, площадки, перила */
+.pf-steps { fill: color-mix(in srgb, var(--text) 7%, transparent); stroke: var(--text); stroke-opacity: 0.3; stroke-width: 0.8; stroke-linejoin: round; }
+.pf-landing { stroke: var(--text); stroke-opacity: 0.3; stroke-width: 1.6; stroke-linecap: round; }
+.pf-rail { fill: none; stroke: var(--text); stroke-opacity: 0.3; stroke-width: 0.8; }
+
+/* этаж: подсветка при наведении, фокус с клавиатуры */
+.pf-floor { cursor: pointer; outline: none; }
+.pf-floor-bg { fill: transparent; stroke: transparent; stroke-width: 1.2; transition: fill 0.35s, stroke 0.35s; }
+/* этаж под курсором: мягкая заливка основным цветом и рамка, подпись этажа загорается */
+.pf-floor.is-hot .pf-floor-bg { fill: color-mix(in srgb, var(--primary) 10%, transparent); stroke: color-mix(in srgb, var(--primary) 55%, transparent); }
+.pf-floor:focus-visible .pf-floor-bg { stroke: var(--primary); stroke-width: 1.6; }
+.pf-floor.is-hot .pf-label { fill: var(--primary); }
+.pf.has-hot .pf-floor:not(.is-hot) .pf-room { opacity: 0.55; }
+
+/* кабинет: номер, дверь, лампа над дверью, свет из-под двери */
+.pf-room { --c: var(--node); transition: opacity 0.3s; }
+.pf-room.is-open { --c: var(--primary); }
+.pf-room.is-urgent { --c: var(--red); }
+.pf-hit { fill: transparent; transition: fill 0.25s; }
+.pf-room.is-here .pf-hit { stroke: var(--primary); stroke-width: 1.2; }
+.pf-num { font-size: 8.5px; font-weight: 600; font-variant-numeric: tabular-nums; fill: var(--faint); text-anchor: middle; transition: fill 0.25s; }
+.pf-room.is-open .pf-num, .pf-room.is-urgent .pf-num { fill: var(--text); }
+.pfg-clear stop:first-child { stop-color: color-mix(in srgb, var(--node) 70%, transparent); }
+.pfg-open stop:first-child { stop-color: var(--primary); }
+.pfg-urgent stop:first-child { stop-color: var(--red); }
+.pfg-clear stop:last-child, .pfg-open stop:last-child, .pfg-urgent stop:last-child { stop-color: var(--bg); }
+.pf-icon { fill: none; stroke: #fff; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; opacity: 0; transition: opacity 0.3s 0.12s; overflow: visible; }
+.pf-door {
+  fill: var(--surface-3);
+  stroke: var(--text); stroke-opacity: 0.28; stroke-width: 0.8;
+  transform-box: fill-box; transform-origin: 0 50%;
+  transition: transform 0.6s var(--ease-out), fill 0.6s;
+}
+.pf-door-r { transform-origin: 100% 50%; }
+.pf-lamp { fill: color-mix(in srgb, var(--text) 16%, transparent); }
+.pf-sill { stroke: color-mix(in srgb, var(--text) 22%, transparent); stroke-width: 1.4; stroke-linecap: round; }
+.pf-room.is-open .pf-lamp, .pf-room.is-urgent .pf-lamp { fill: var(--c); filter: drop-shadow(0 0 2.5px var(--c)); }
+.pf-room.is-open .pf-sill, .pf-room.is-urgent .pf-sill { stroke: var(--c); filter: drop-shadow(0 0 2px var(--c)); }
+.pf-room.is-urgent .pf-lamp, .pf-room.is-urgent .pf-sill { animation: pl-alert 1.6s ease-in-out infinite; }
+@keyframes pl-alert { 50% { opacity: 0.35; } }
+/* дверь открывается внутрь кабинета */
+.pf-room.is-demo .pf-door { transform: skewY(-14deg) scaleX(0.3); fill: color-mix(in srgb, var(--surface-3) 70%, var(--text)); }
+.pf-room.is-demo .pf-door-r { transform: skewY(14deg) scaleX(0.3); }
+.pf-room.is-demo .pf-icon { opacity: 1; }
+.pf-room.is-demo .pf-hit { fill: color-mix(in srgb, var(--text) 6%, transparent); }
+/* двери открываются при наведении только там, где есть мышь; на телефоне касание сразу открывает этаж */
+@media (hover: hover) {
+  .pf-room:hover .pf-hit { fill: color-mix(in srgb, var(--text) 6%, transparent); }
+  .pf-room:hover .pf-num { fill: var(--text); }
+  .pf-room:hover .pf-door { transform: skewY(-14deg) scaleX(0.3); fill: color-mix(in srgb, var(--surface-3) 70%, var(--text)); }
+  .pf-room:hover .pf-door-r { transform: skewY(14deg) scaleX(0.3); }
+  .pf-room:hover .pf-icon { opacity: 1; }
+}
+/* на телефоне строки о кабинете под схемой нет: навести нельзя; этаж подсвечивается, пока палец на нём */
+@media (hover: none) {
+  #campus-map .pl-info { display: none; }
+  .pf-floor:active .pf-floor-bg { fill: color-mix(in srgb, var(--primary) 10%, transparent); stroke: color-mix(in srgb, var(--primary) 55%, transparent); }
+}
+
+/* первое появление: этажи снизу вверх */
+.plan.is-enter .pf-floor { animation: pl-slab-in 0.7s var(--ease-out) both; }
+.plan.is-enter .pf-floor[data-floor="1"] { animation-delay: 420ms; }
+.plan.is-enter .pf-floor[data-floor="2"] { animation-delay: 540ms; }
+.plan.is-enter .pf-floor[data-floor="3"] { animation-delay: 660ms; }
+.plan.is-enter .pf-stairs { animation: pl-fade 1.2s var(--ease-out) 600ms both; }
+html:not(.is-revealed) .plan.is-enter * { animation-play-state: paused; }
+@keyframes pl-slab-in { from { opacity: 0; transform: translateY(6px); } }
+@keyframes pl-fade { from { opacity: 0; } }
+
+/* строка под схемой */
+.pl-info { display: flex; align-items: center; min-height: 58px; font-size: 13px; line-height: 1.35; }
+.pl-info b { font-weight: 600; color: var(--text); }
+.pl-hint { color: var(--faint); font-size: 12px; }
+.pl-info-type { font-size: 12px; color: var(--muted); }
+.pl-info-state { display: flex; align-items: center; gap: 6px; margin-top: 2px; font-size: 12px; color: var(--muted); }
+.pl-info-state i { width: 6px; height: 6px; border-radius: 50%; background: var(--node); box-shadow: 0 0 5px var(--node); }
+.pl-info-state.is-open i { background: var(--primary); box-shadow: 0 0 5px var(--primary); }
+.pl-info-state.is-urgent i { background: var(--red); box-shadow: 0 0 5px var(--red); }
+
+/* блок шире на больших экранах: заходит в свободное место справа, левый край по сетке шапки */
+@media (min-width: 1280px) {
+  .report-grid { grid-template-columns: minmax(0, 1fr) 520px; margin-right: max(-240px, calc((1120px - 100vw) / 2 + 24px)); }
+}
+
+/* ===== План этажа во весь экран ===== */
+.fv-lock, .fv-lock body { overflow: hidden; }
+.fv-overlay {
+  position: fixed; inset: 0; z-index: 80;
+  display: grid; place-items: center;
+  padding: 24px;
+  background: color-mix(in srgb, var(--bg) 72%, transparent);
+  backdrop-filter: blur(10px) saturate(1.2);
+  animation: overlay-in 0.28s ease-out both;
+}
+.fv-overlay.is-leaving { animation: overlay-out 0.22s ease-in both; }
+.fv {
+  display: flex; flex-direction: column;
+  width: min(1180px, 100%); max-height: 100%;
+  border: 1px solid var(--border); border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  animation: modal-in 0.5s var(--spring-soft, var(--ease-out)) both;
+}
+.fv-head { display: flex; align-items: center; gap: 16px; padding: 18px 20px 14px; border-bottom: 1px solid var(--border); }
+.fv-titles { flex: 1; min-width: 0; }
+.fv-titles .eyebrow { color: var(--muted); }
+.fv-titles h2 { font-size: 26px; letter-spacing: -0.02em; margin-top: 4px; }
+.fv-sub { font-size: 13px; color: var(--muted); margin-top: 2px; }
+.fv-tabs { display: flex; gap: 6px; }
+.fv-tabs button { padding: 7px 12px; border: 1px solid var(--border); border-radius: 999px; background: transparent; color: var(--muted); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: color 0.2s, border-color 0.2s, background 0.2s; }
+.fv-tabs button:hover { color: var(--text); border-color: var(--border-strong); }
+.fv-tabs button[aria-pressed="true"] { color: var(--text); border-color: var(--border-strong); background: var(--surface-3); }
+.fv-body { flex: 1; min-height: 0; overflow: auto; padding: 22px 20px; overscroll-behavior: contain; }
+
+/* этаж сверху: внешние стены, лестницы, части с кабинетами */
+.fv-plan {
+  --wall: color-mix(in srgb, var(--text) 20%, transparent);
+  --row: 116px;
+  --corr: 46px;
+  display: flex;
+  min-width: 840px;
+  border: 1.5px solid color-mix(in srgb, var(--text) 32%, transparent);
+  border-radius: 10px;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--surface-2) 55%, transparent);
+}
+.fv-stair { position: relative; flex: none; width: 84px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 8px 4px; border-inline: 1px solid var(--wall); }
+.fv-stair:first-child { border-left: 0; }
+.fv-stair:last-child { border-right: 0; }
+.fs-svg { display: block; }
+.fs-h { width: 76px; height: calc(var(--row) * 2 + var(--corr) - 52px); }
+.fv-center .fs-h { height: calc(var(--row) * 2 + var(--corr) - 152px); }
+.fs-v { display: none; }
+.fs-well { fill: color-mix(in srgb, var(--text) 3%, transparent); stroke: none; }
+.fs-treads { stroke: var(--text); stroke-opacity: 0.18; stroke-width: 1; }
+.fs-mid, .fs-landing { stroke: var(--text); stroke-opacity: 0.26; stroke-width: 1.1; }
+.fs-arrow { fill: none; stroke: var(--primary); stroke-width: 1.4; stroke-linejoin: round; stroke-opacity: 0.85; }
+.fs-arrow-head { fill: none; stroke: var(--primary); stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; }
+.fs-arrow-start { fill: var(--primary); }
+.fv-stair-label { font-size: 11px; font-weight: 600; line-height: 1.25; text-align: center; color: var(--muted); }
+.fv-stair-label small { display: block; font-size: 10px; font-weight: 400; }
+
+.fv-part {
+  flex: 1 1 0;
+  display: grid;
+  grid-template-columns: repeat(var(--units, 4), minmax(76px, 1fr));
+  grid-template-rows: minmax(var(--row), 1fr) var(--corr) minmax(var(--row), 1fr);
+}
+.fv-corridor { grid-row: 2; grid-column: 1 / -1; display: grid; place-items: center; border-block: 1px solid var(--wall); background: color-mix(in srgb, var(--bg) 25%, transparent); }
+.fv-corridor span { font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+.fv-center { position: relative; flex: none; width: 116px; display: flex; flex-direction: column; border-inline: 1px solid var(--wall); }
+.fv-center .fv-stair { border: 0; flex: 1; width: auto; }
+.fv-center .fv-room { height: 96px; flex: none; border-top: 1px solid var(--wall); padding-top: 36px; }
+.fv-room.is-lobby .fv-num { font-size: 15px; }
+.fv-entry { position: absolute; left: 50%; bottom: -26px; transform: translateX(-50%); display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.fv-entry .icon { transform: rotate(-90deg); }
+
+/* кабинет в плане */
+.fv-room {
+  --c: var(--node);
+  --lx: 22px; --ly: 100%;
+  position: relative;
+  display: flex; flex-direction: column; align-items: flex-start; gap: 6px;
+  min-width: 0;
+  padding: 12px 10px 10px;
+  grid-column: var(--col) / span var(--w);
+  border: 0;
+  border-right: 1px solid var(--wall);
+  background: transparent;
+  color: var(--text);
+  font: inherit; text-align: left;
+  cursor: pointer;
+  transition: background 0.45s;
+}
+.fv-room.side-a { grid-row: 1; padding-bottom: 38px; }
+.fv-room.side-b { grid-row: 3; --ly: 0%; padding-top: 38px; }
+.fv-room.is-open { --c: var(--primary); }
+.fv-room.is-urgent { --c: var(--red); }
+.fv-room:hover, .fv-room.is-peek { background: color-mix(in srgb, var(--text) 4%, transparent); }
+.fv-room.is-on { background: radial-gradient(circle at var(--lx) var(--ly), color-mix(in srgb, var(--c) 34%, transparent), color-mix(in srgb, var(--c) 6%, transparent) 75%); }
+.fv-room:focus-visible { outline: 2px solid var(--primary); outline-offset: -3px; z-index: 1; }
+.fv-room.is-here::after { content: ""; position: absolute; inset: 4px; border: 1.5px solid var(--primary); border-radius: 6px; pointer-events: none; }
+.fv-num { font-size: 20px; font-weight: 700; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; line-height: 1; }
+.fv-type { display: flex; align-items: flex-start; gap: 6px; font-size: 11px; line-height: 1.25; color: var(--muted); }
+.fv-type svg { flex: none; width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.fv-room.is-on .fv-type { color: var(--text); }
+.fv-state { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: var(--muted); margin-top: auto; }
+.fv-state i { width: 6px; height: 6px; border-radius: 50%; background: color-mix(in srgb, var(--node) 70%, transparent); }
+.fv-room.is-open .fv-state, .fv-room.is-urgent .fv-state { color: var(--c); font-weight: 600; }
+.fv-room.is-open .fv-state i, .fv-room.is-urgent .fv-state i { background: var(--c); box-shadow: 0 0 6px var(--c); }
+.fv-room.is-urgent .fv-state i { animation: pl-alert 1.6s ease-in-out infinite; }
+
+/* дверь в стене коридора: проём, полотно и дуга открывания */
+.fv-door { position: absolute; width: 28px; height: 28px; pointer-events: none; }
+.fv-door i { position: absolute; display: block; }
+.fv-gap { background: var(--surface); }
+.fv-leaf { background: var(--text); opacity: 0.75; border-radius: 1px; transition: transform 0.6s var(--ease-out), background 0.4s; }
+.fv-arc { inset: 0; border: 1px dashed color-mix(in srgb, var(--c) 70%, var(--text)); opacity: 0; transition: opacity 0.35s; }
+.fv-room.is-on .fv-leaf, .fv-room.is-peek .fv-leaf { background: var(--c); opacity: 1; }
+.fv-room.is-on .fv-arc, .fv-room.is-peek .fv-arc { opacity: 0.8; }
+/* ряд a: дверь в нижней стене, открывается вверх */
+.fv-room.side-a .fv-door { left: 14px; bottom: 0; }
+.fv-room.side-a .fv-gap { left: 0; right: 0; bottom: -2px; height: 3px; }
+.fv-room.side-a .fv-leaf { left: 0; bottom: -1px; width: 100%; height: 2.5px; transform-origin: 0 50%; }
+.fv-room.side-a .fv-arc { border-bottom: 0; border-left: 0; border-top-right-radius: 100%; }
+.fv-room.side-a.is-on .fv-leaf, .fv-room.side-a.is-peek .fv-leaf { transform: rotate(-90deg); }
+/* ряд b: дверь в верхней стене, открывается вниз */
+.fv-room.side-b .fv-door { left: 14px; top: 0; }
+.fv-room.side-b .fv-gap { left: 0; right: 0; top: -2px; height: 3px; }
+.fv-room.side-b .fv-leaf { left: 0; top: -1px; width: 100%; height: 2.5px; transform-origin: 0 50%; }
+.fv-room.side-b .fv-arc { border-top: 0; border-left: 0; border-bottom-right-radius: 100%; }
+.fv-room.side-b.is-on .fv-leaf, .fv-room.side-b.is-peek .fv-leaf { transform: rotate(90deg); }
+
+/* сведения о выбранном кабинете */
+.fv-detail { border-top: 1px solid var(--border); padding: 14px 20px 16px; min-height: 76px; background: color-mix(in srgb, var(--surface-2) 60%, transparent); }
+.fv-hint { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; min-height: 46px; }
+.fv-detail-main { display: flex; align-items: center; gap: 14px; }
+.fv-detail-icon { --c: var(--node); flex: none; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 12px; background: radial-gradient(circle at 50% 100%, color-mix(in srgb, var(--c) 40%, transparent), color-mix(in srgb, var(--c) 8%, transparent)); border: 1px solid color-mix(in srgb, var(--c) 35%, var(--border)); }
+.fv-detail-icon.is-open { --c: var(--primary); }
+.fv-detail-icon.is-urgent { --c: var(--red); }
+.fv-detail-icon svg { width: 20px; height: 20px; fill: none; stroke: var(--text); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.fv-detail-text { flex: 1; min-width: 0; }
+.fv-detail-text b { font-size: 16px; }
+.fv-issues:not(:empty) { margin-top: 12px; }
+.fv-issues-skeleton { height: 34px; }
+.fv-issue-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.fv-issue-list li {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: baseline; gap: 4px 10px;
+  font-size: 13px; line-height: 1.4; padding: 8px 10px; border-radius: var(--radius-sm); background: var(--surface-3);
+}
+.fv-issue-title { min-width: 0; overflow-wrap: anywhere; }
+@media (max-width: 899px) {
+  /* на узком экране: номер и статус сверху, название целиком строкой ниже */
+  .fv-issue-list li { grid-template-columns: auto 1fr; }
+  .fv-issue-title { grid-column: 1 / -1; grid-row: 2; }
+  .fv-issue-list li > :last-child { justify-self: end; text-align: right; }
+  .fv-detail { max-height: 50vh; overflow-y: auto; }
+}
+
+/* телефон и узкий экран: коридор сверху вниз, кабинеты крупными плитками по сторонам */
+@media (max-width: 899px) {
+  .fv-overlay { padding: 0; }
+  .fv { width: 100%; height: 100%; border-radius: 0; border: 0; }
+  .fv-head { flex-wrap: wrap; padding: 14px 16px 12px; gap: 10px 12px; }
+  .fv-titles h2 { font-size: 22px; }
+  .fv-tabs { order: 3; width: 100%; }
+  .fv-tabs button { flex: 1; }
+  .fv-body { padding: 16px 16px 40px; }
+  .fv-plan { --row: auto; flex-direction: column; min-width: 0; }
+  .fv-stair { width: auto; height: auto; padding: 10px 8px 8px; border-inline: 0; border-block: 1px solid var(--wall); }
+  .fv-stair:first-child { border-top: 0; }
+  .fv-stair:last-child { border-bottom: 0; }
+  .fs-h { display: none; }
+  .fs-v { display: block; width: 272px; max-width: 100%; height: 84px; }
+  .fv-part { grid-template-columns: minmax(0, 1fr) 36px minmax(0, 1fr); grid-template-rows: repeat(var(--units, 4), minmax(68px, auto)); }
+  .fv-corridor { grid-row: 1 / -1; grid-column: 2; border-block: 0; border-inline: 1px solid var(--wall); }
+  .fv-corridor span { writing-mode: vertical-rl; }
+  .fv-room { grid-column: auto; grid-row: var(--col) / span var(--w); border-right: 0; border-bottom: 1px solid var(--wall); padding: 10px 12px; gap: 4px; }
+  .fv-room.m-l { grid-column: 1; grid-row: var(--col) / span var(--w); padding: 10px 40px 10px 12px; --lx: 100%; --ly: 22px; }
+  .fv-room.m-r { grid-column: 3; grid-row: var(--col) / span var(--w); justify-content: flex-start; padding: 10px 12px 10px 40px; --lx: 0%; --ly: 22px; }
+  .fv-room.m-r .fv-state { margin-top: auto; }
+  .fv-num { font-size: 18px; }
+  .fv-center { width: auto; border-inline: 0; border-block: 1px solid var(--wall); }
+  .fv-center .fv-stair { flex: none; }
+  .fv-center .fv-room { height: auto; min-height: 64px; border-top: 1px solid var(--wall); border-bottom: 0; padding: 36px 12px 10px; }
+  .fv-entry { position: static; transform: none; justify-content: center; padding: 8px 0; border-top: 1px dashed var(--wall); }
+  .fv-entry .icon { transform: rotate(90deg); }
+  /* ряд a слева: дверь в правой стене, открывается влево */
+  .fv-room.m-l .fv-door { left: auto; right: 0; bottom: auto; top: 12px; }
+  .fv-room.m-l .fv-gap { left: auto; right: -2px; top: 0; bottom: 0; width: 3px; height: auto; }
+  .fv-room.m-l .fv-leaf { left: auto; right: -1px; top: 0; bottom: auto; width: 2.5px; height: 100%; transform-origin: 50% 0; }
+  .fv-room.m-l .fv-arc { border: 1px dashed color-mix(in srgb, var(--c) 70%, var(--text)); border-top: 0; border-right: 0; border-radius: 0 0 0 100%; }
+  .fv-room.m-l.is-on .fv-leaf, .fv-room.m-l.is-peek .fv-leaf { transform: rotate(90deg); }
+  /* ряд b справа: дверь в левой стене, открывается вправо */
+  .fv-room.m-r .fv-door { left: 0; top: 12px; }
+  .fv-room.m-r .fv-gap { left: -2px; right: auto; top: 0; bottom: 0; width: 3px; height: auto; }
+  .fv-room.m-r .fv-leaf { left: -1px; top: 0; width: 2.5px; height: 100%; transform-origin: 50% 0; }
+  .fv-room.m-r .fv-arc { border: 1px dashed color-mix(in srgb, var(--c) 70%, var(--text)); border-top: 0; border-left: 0; border-radius: 0 0 100% 0; }
+  .fv-room.m-r.is-on .fv-leaf, .fv-room.m-r.is-peek .fv-leaf { transform: rotate(-90deg); }
+  .fv-center .fv-room.side-b .fv-door { left: 50%; top: 0; }
+  .fv-center .fv-room.side-b .fv-gap { left: 0; right: 0; top: -2px; width: auto; height: 3px; }
+  .fv-center .fv-room.side-b .fv-leaf { left: 0; top: -1px; width: 100%; height: 2.5px; transform-origin: 0 50%; }
+  .fv-center .fv-room.side-b .fv-arc { border: 1px dashed color-mix(in srgb, var(--c) 70%, var(--text)); border-top: 0; border-left: 0; border-radius: 0 0 100% 0; }
+  .fv-center .fv-room.side-b.is-on .fv-leaf { transform: rotate(90deg); }
+  .fv-detail { position: sticky; bottom: 0; padding: 12px 16px calc(14px + env(safe-area-inset-bottom)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pf-door, .fv-leaf { transition: opacity 0.2s; }
+  .pf-room:hover .pf-door, .pf-room:hover .pf-door-r, .pf-room.is-demo .pf-door, .pf-room.is-demo .pf-door-r { transform: none; opacity: 0.15; }
+  .pf-room.is-urgent .pf-lamp, .pf-room.is-urgent .pf-sill, .fv-room.is-urgent .fv-state i { animation: none; }
+  .fv, .fv-overlay { animation: none; }
+}
+
+/* ===== Кнопка «?» и обучение по схеме ===== */
+.campus-panel { position: relative; }
+.campus-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.pl-help {
+  flex: none; display: grid; place-items: center;
+  width: 30px; height: 30px; border-radius: 50%;
+  border: 1px solid var(--border-strong); background: var(--surface-2);
+  color: var(--muted); font: inherit; font-size: 14px; font-weight: 700; cursor: pointer;
+  transition: color 0.2s, border-color 0.2s, background 0.2s, transform 0.2s var(--ease-out);
+}
+.pl-help:hover, .pl-help[aria-expanded="true"] { color: var(--text); border-color: var(--primary); background: color-mix(in srgb, var(--primary) 14%, var(--surface-2)); }
+.pl-help:active { transform: scale(0.94); }
+.pl-help:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+
+.campus-panel.is-tut .pl-info, .campus-panel.is-tut .campus-legend { display: none; }
+.campus-panel.is-tut .campus-foot { justify-content: flex-end; margin-top: -8px; }
+.tut {
+  position: relative; z-index: 3;
+  padding: 14px 16px 14px;
+  border: 1px solid color-mix(in srgb, var(--primary) 40%, var(--border));
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--surface-2) 94%, var(--primary));
+  box-shadow: 0 16px 34px -20px rgba(0, 0, 0, 0.6);
+  animation: tut-in 0.5s var(--ease-out) 0.12s both;
+}
+.tut.is-leaving { animation: tut-out 0.18s ease-in both; }
+@keyframes tut-in { from { opacity: 0; transform: translateY(14px) scale(0.98); } }
+@keyframes tut-out { to { opacity: 0; transform: translateY(8px) scale(0.98); } }
+.tut-head { display: flex; align-items: center; justify-content: space-between; margin: -4px -6px 2px 0; }
+.tut-count { font-size: 11px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--primary); }
+.tut-title { display: block; font-size: 16px; font-weight: 600; }
+.tut-text { margin-top: 4px; font-size: 13.5px; line-height: 1.45; color: var(--muted); }
+.tut-body.from-right { animation: tut-slide-r 0.42s var(--ease-out) both; }
+.tut-body.from-left { animation: tut-slide-l 0.42s var(--ease-out) both; }
+@keyframes tut-slide-r { from { opacity: 0; transform: translateX(18px); } }
+@keyframes tut-slide-l { from { opacity: 0; transform: translateX(-18px); } }
+.tut-foot { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
+.tut-dots { display: flex; gap: 5px; margin-right: auto; }
+.tut-dots i { width: 6px; height: 6px; border-radius: 3px; background: var(--border-strong); transition: width 0.35s var(--ease-out), background 0.35s; }
+.tut-dots i.is-on { width: 18px; background: var(--primary); }
+
+/* фокус на блоке: остальная страница затемнена и размыта */
+.tut-backdrop {
+  position: fixed; inset: 0; z-index: 85;
+  background: color-mix(in srgb, var(--bg) 58%, transparent);
+  backdrop-filter: blur(7px) saturate(1.1);
+  -webkit-backdrop-filter: blur(7px) saturate(1.1);
+  animation: tut-fade 0.45s ease-out both;
+  cursor: pointer;
+}
+.tut-backdrop.is-leaving { animation: tut-fade-out 0.3s ease-in both; }
+@keyframes tut-fade { from { opacity: 0; } }
+@keyframes tut-fade-out { to { opacity: 0; } }
+.report-aside.is-tut-host { z-index: 86; }
+/* пока открыта подсказка, слой страницы выше шапки: шапка тоже уходит под затемнение */
+main.is-tut-page { z-index: 70; }
+@media (max-width: 979px) { .report-aside.is-tut-host { position: relative; } }
+.campus-panel.is-tut { box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary) 45%, transparent), 0 30px 80px -30px color-mix(in srgb, var(--primary) 55%, transparent), var(--shadow); transition: box-shadow 0.5s var(--ease-out); }
+
+/* указатель, который показывает, куда навести или нажать */
+.tut-cursor { position: absolute; left: 0; top: 0; z-index: 2; width: 18px; height: 18px; margin: -2px 0 0 -2px; pointer-events: none; }
+.tut-cursor::before {
+  content: ""; position: absolute; inset: 0;
+  background: var(--text);
+  clip-path: polygon(0 0, 0 78%, 24% 60%, 40% 100%, 54% 94%, 38% 56%, 70% 56%);
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
+}
+.tut-cursor::after { content: ""; position: absolute; left: -9px; top: -9px; width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--primary); opacity: 0; }
+
+@keyframes tut-click { 0% { opacity: 0.9; transform: scale(0.4); } 100% { opacity: 0; transform: scale(1.8); } }
+
+/* на телефоне вместо курсора палец, который нажимает на этаж */
+.tut-cursor.is-finger { width: 30px; height: 30px; margin: -3px 0 0 -10px; }
+.tut-cursor.is-finger::before { display: none; }
+.tut-cursor.is-finger svg { position: relative; z-index: 1; width: 30px; height: 30px; fill: var(--surface); stroke: var(--text); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.45)); transform-origin: 30% 10%; }
+.tut-cursor.is-finger::after { display: none; }
+.tut-ring { position: absolute; left: 1px; top: -6px; width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--primary); background: color-mix(in srgb, var(--primary) 25%, transparent); opacity: 0; }
+.tut-cursor.is-finger.is-press svg { animation: tut-tap 1.4s var(--ease-out) infinite; }
+.tut-cursor.is-finger.is-press .tut-ring { animation: tut-ripple 1.4s var(--ease-out) infinite; }
+@keyframes tut-tap { 0%, 100% { transform: none; } 18% { transform: scale(0.86) translateY(2px); } 40% { transform: none; } }
+@keyframes tut-ripple { 0%, 12% { opacity: 0; transform: scale(0.3); } 22% { opacity: 1; } 100% { opacity: 0; transform: scale(2.4); } }
+.tut-cursor.is-press::after { animation: tut-click 1.4s var(--ease-out) infinite; }
+.tut-cursor.is-finger.is-press::after { animation: none; }
+
+/* что подсвечивается на каждом шаге */
+.pf.tut-floors .pf-floor-bg { animation: tut-floor 2.4s ease-in-out infinite; }
+.pf.tut-floors .pf-floor[data-floor="2"] .pf-floor-bg { animation-delay: 0.4s; }
+.pf.tut-floors .pf-floor[data-floor="3"] .pf-floor-bg { animation-delay: 0.8s; }
+@keyframes tut-floor { 0%, 100% { fill: transparent; stroke: transparent; } 35% { fill: color-mix(in srgb, var(--primary) 10%, transparent); stroke: color-mix(in srgb, var(--primary) 50%, transparent); } }
+.pf.tut-lamps .pf-room.is-clear { opacity: 0.4; }
+.pf.tut-lamps .pf-room:not(.is-clear) .pf-lamp, .pf.tut-lamps .pf-room:not(.is-clear) .pf-sill { animation: pl-alert 1.2s ease-in-out infinite; }
+.pf.tut-lamps .pf-room:not(.is-clear) .pf-num { fill: var(--c); }
+@media (prefers-reduced-motion: reduce) {
+  .pf.tut-floors .pf-floor-bg { animation: none; fill: color-mix(in srgb, var(--primary) 8%, transparent); }
+  .tut, .tut.is-leaving, .tut-body.from-right, .tut-body.from-left, .tut-backdrop, .tut-backdrop.is-leaving { animation: none; }
+  .tut-cursor.is-finger.is-press svg, .tut-cursor.is-finger.is-press .tut-ring, .tut-cursor.is-press::after { animation: none; }
+}

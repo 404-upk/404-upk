@@ -18,7 +18,9 @@ import {
 } from "./core.js";
 import { markSvg } from "./brand.js";
 import { ambient, startAmbient } from "./ambient.js";
-import { bindCampusMap, campusBadge, campusMapSvg, nodeGlyph, spark } from "./campus.js";
+import { campusBadge, nodeGlyph, spark } from "./campus.js";
+import { bindPlan, planHtml, planStates } from "./plan.js";
+import { openFloor } from "./floor-view.js";
 import { collapseOut, countUp, expandIn, initMotion, leave, rise, scramble, splitWords, textIn } from "./motion.js";
 
 const EXAMPLES = [
@@ -51,7 +53,6 @@ const state = {
   locations: null,
   sending: false,
   campus: null,
-  campusBuilding: null,
   campusEntered: false,
   roomStatus: null,
   draftFresh: false,
@@ -102,6 +103,11 @@ function renderShell() {
 
 // ---------- состояние колледжа и выбранного помещения ----------
 
+/** Этаж помещения без названия корпуса: корпус в колледже один */
+function floorText(loc) {
+  return loc.floor != null ? `${loc.floor} этаж` : loc.building;
+}
+
 async function loadCampus() {
   try {
     state.campus = await api("/api/campus");
@@ -124,10 +130,8 @@ function renderCampus() {
   const first = !state.campusEntered;
   state.campusEntered = true;
   if (badge) badge.innerHTML = campusBadge(campus);
-  const current =
-    buildings.find((b) => b.building === state.campusBuilding) ||
-    buildings.find((b) => b.building === state.location?.building) ||
-    buildings[0];
+  const states = planStates(campus);
+  const here = state.location?.id ?? null;
   aside.innerHTML = `
     <section class="card campus-panel ${first ? "enter" : ""}">
       <div class="eyebrow">${spark()} Состояние колледжа</div>
@@ -138,36 +142,44 @@ function renderCampus() {
         </div>
         <div class="campus-index"><b data-count>${campus.index}&nbsp;%</b></div>
       </div>
-      <div class="campus-meter" aria-hidden="true"><i style="width:${campus.index}%"></i></div>
-      ${
-        buildings.length > 1
-          ? `<div class="campus-tabs">${buildings
-              .map((b) => `<button type="button" aria-pressed="${b.building === current.building}" data-b="${esc(b.building)}">${esc(b.building)}</button>`)
-              .join("")}</div>`
-          : ""
-      }
-      <div id="campus-map">${campusMapSvg(current.rooms, { width: 300, rowHeight: 50, here: state.location?.id ?? null, enter: first })}</div>
-      <div class="campus-legend">
-        <span><i class="dot"></i>без заявок</span>
-        <span><i class="dot open"></i>есть заявка</span>
-        <span><i class="dot urgent"></i>срочно</span>
+      <div class="campus-meter" aria-hidden="true"><i></i></div>
+      <div id="campus-map">${planHtml(states, { here, enter: first })}</div>
+      <div class="campus-foot">
+        <div class="campus-legend">
+          <span><i class="dot"></i>без заявок</span>
+          <span><i class="dot open"></i>есть заявка</span>
+          <span><i class="dot urgent"></i>срочно</span>
+        </div>
+        <button type="button" class="pl-help" aria-label="Как пользоваться схемой" aria-expanded="false">?</button>
       </div>
-      ${state.location ? `<p class="campus-note">Кольцом отмечено выбранное помещение.</p>` : ""}
+      ${state.location ? `<p class="campus-note">Рамкой отмечено выбранное помещение.</p>` : ""}
     </section>`;
-  bindCampusMap(aside);
+  aside.querySelector(".campus-meter i").style.width = `${campus.index}%`;
+  bindPlan(aside, states, {
+    onOpenFloor: (floor, room) => openFloor(floor, { states, here, room, onPick: pickFromPlan }),
+  });
   if (first) {
     rise(aside, ".campus-panel", { delay: 340, dur: 1100 });
     aside.querySelectorAll("[data-count]").forEach((n) => countUp(n, { delay: 620 }));
   }
-  aside.querySelectorAll("[data-b]").forEach((b) =>
-    b.addEventListener("click", () => {
-      state.campusBuilding = b.dataset.b;
-      aside.querySelectorAll("[data-b]").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
-      const next = buildings.find((x) => x.building === b.dataset.b);
-      $("#campus-map").innerHTML = campusMapSvg(next.rooms, { width: 300, rowHeight: 50, here: state.location?.id ?? null, enter: true });
-      bindCampusMap(aside);
-    }),
-  );
+}
+
+/** Заявитель нажал «Это здесь» на плане: помещение становится местом обращения */
+async function pickFromPlan(id) {
+  if (!state.locations) {
+    try {
+      state.locations = await api("/api/locations");
+    } catch (err) {
+      toast(err.message, "error");
+      return;
+    }
+  }
+  const loc = state.locations.find((l) => l.id === id);
+  if (!loc) return;
+  setLocation(loc, false);
+  state.suggestedLocation = null;
+  renderPlace();
+  $("#message")?.focus();
 }
 
 async function loadRoomStatus() {
@@ -238,7 +250,7 @@ function renderPlace() {
     html = `
       <div class="place-pill">
         ${nodeGlyph(room?.state || "none")}
-        <div class="place-text"><b>${esc(loc.title)}</b><span>${esc(loc.building)}${loc.floor != null ? `, ${loc.floor} этаж` : ""}${state.fromQr ? " · по QR-коду" : ""}${statusLine}</span></div>
+        <div class="place-text"><b>${esc(loc.title)}</b><span>${esc(floorText(loc))}${state.fromQr ? " · по QR-коду" : ""}${statusLine}</span></div>
         <button class="btn btn-ghost btn-sm" data-pick>Изменить</button>
       </div>`;
   } else if (state.locationNote) {
@@ -281,7 +293,6 @@ function setLocation(loc, fromQr) {
   state.fromQr = fromQr;
   state.locationNote = "";
   state.qrError = null;
-  state.campusBuilding = loc?.building || state.campusBuilding;
   loadRoomStatus();
   renderCampus();
   if (state.draft) {
@@ -581,7 +592,7 @@ function renderDraft() {
   const loc = state.location;
   const placeField = loc
     ? `<div class="place-pill" style="margin:0"><span class="place-icon">${icon("pin")}</span>
-         <div class="place-text"><b>${esc(loc.title)}</b><span>${esc(loc.building)}${loc.floor != null ? `, ${loc.floor} этаж` : ""}</span></div>
+         <div class="place-text"><b>${esc(loc.title)}</b><span>${esc(floorText(loc))}</span></div>
          <button type="button" class="btn btn-ghost btn-sm" data-pick>Изменить</button></div>`
     : `<button type="button" class="btn btn-soft" data-pick>${icon("pin")} Выбрать помещение из списка</button>
        <input class="input" id="d-note" maxlength="160" placeholder="или напишите сами: корпус, этаж, кабинет" value="${esc(state.locationNote)}">`;
@@ -912,7 +923,7 @@ async function pickLocation() {
     let html = "";
     let group = "";
     for (const l of items) {
-      const g = `${l.building}${l.floor != null ? `, ${l.floor} этаж` : ""}`;
+      const g = floorText(l);
       if (g !== group) {
         html += `<div class="loc-group">${esc(g)}</div>`;
         group = g;
@@ -930,7 +941,7 @@ async function pickLocation() {
       <div class="loc-list" id="loc-list">${renderList("")}</div>
       <hr class="sep">
       <div class="field"><label for="loc-note">Нет в списке? Напишите сами</label>
-        <div class="row"><input class="input" id="loc-note" maxlength="160" placeholder="Корпус 2, 3 этаж, кабинет 318" value="${esc(state.locationNote)}">
+        <div class="row"><input class="input" id="loc-note" maxlength="160" placeholder="3 этаж, кабинет 318" value="${esc(state.locationNote)}">
         <button class="btn btn-primary" id="loc-note-ok">Готово</button></div></div>`,
     onMount(el, close) {
       const list = el.querySelector("#loc-list");
