@@ -8,8 +8,6 @@ WEB_DIR = BASE_DIR / "web"
 
 load_dotenv(BASE_DIR / ".env")
 
-DEFAULT_DEMO_PASSWORDS = {"upk-admin-2026", "upk-staff-2026", "upk-exec-2026"}
-
 
 def _env_bool(name: str, default: bool = False) -> bool:
     value = os.getenv(name)
@@ -103,9 +101,6 @@ class Settings:
             problems.append("SHOW_DEMO_LOGINS должен быть false: иначе пароли видны на странице входа")
         if self.seed_demo:
             problems.append("SEED_DEMO должен быть false: демо-заявки не нужны на настоящем сервере")
-        passwords = {self.demo_admin_password, self.demo_staff_password, self.demo_executor_password}
-        if passwords & DEFAULT_DEMO_PASSWORDS:
-            problems.append("задайте свои DEMO_ADMIN_PASSWORD, DEMO_STAFF_PASSWORD и DEMO_EXECUTOR_PASSWORD")
         if self.database_url.startswith("sqlite"):
             problems.append("DATABASE_URL должен указывать на PostgreSQL")
         if not self.gigachat_verify_ssl:
