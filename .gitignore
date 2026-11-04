@@ -6,6 +6,7 @@ venv/
 !.env.example
 !deploy/.env.prod.example
 certs/*.cer
+!certs/russian_trusted_root_ca.cer
 certs/*.crt
 certs/*.pem
 *.key
