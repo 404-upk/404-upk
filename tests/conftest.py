@@ -11,6 +11,7 @@ import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 
 from app import security  # noqa: E402
+from app.ai import resilience  # noqa: E402
 from app.config import settings  # noqa: E402
 from app.main import app  # noqa: E402
 
@@ -34,6 +35,8 @@ def _reset_limits():
         security.track_limiter,
     ):
         limiter.reset()
+    resilience.breaker.reset()
+    resilience.cache.clear()
 
 
 def login(client: TestClient, user: str = "upk") -> TestClient:
