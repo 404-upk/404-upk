@@ -8,16 +8,34 @@
 
 ## Запуск за пять минут
 
-Нужен Python 3.12 или новее и Git.
+**Проще всего, в браузере:** [открыть в Codespaces](https://codespaces.new/404-upk/404-upk?quickstart=1). Устанавливать ничего не нужно, `.venv` там не создаём. Сайт запускается сам,
+адрес открывается на вкладке **Ports**, порт 8000. Если сайт не запустился: `sh .devcontainer/start.sh`.
+
+**На своём компьютере:** нужен Python 3.12 или новее и Git.
 
 ```bash
 git clone https://github.com/404-upk/404-upk.git
 cd 404-upk
+```
+
+**Windows (PowerShell или Git Bash):**
+
+```bash
 python -m venv .venv
-.venv/Scripts/pip install -r requirements-dev.txt      # Linux и macOS: .venv/bin/pip
+.venv/Scripts/pip install -r requirements-dev.txt
 cp .env.example .env
 .venv/Scripts/python -m uvicorn app.main:app --reload --port 8000
 ```
+
+**Linux и macOS:**
+
+```bash
+python3 -m venv .venv
+.venv/bin/pip install -r requirements-dev.txt
+cp .env.example .env
+.venv/bin/python -m uvicorn app.main:app --reload --port 8000
+```
+
 
 - http://localhost:8000: страница заявителя
 - http://localhost:8000/admin: панель (логин `admin`, пароль `upk-admin-2026`)
@@ -26,10 +44,12 @@ cp .env.example .env
 Проверки перед каждым коммитом:
 
 ```bash
-.venv/Scripts/python -m ruff check . --fix
-.venv/Scripts/python -m ruff format .
-.venv/Scripts/python -m pytest
+python -m ruff check . --fix
+python -m ruff format .
+python -m pytest
 ```
+
+Здесь и дальше `python` значит: на Windows `.venv/Scripts/python`, на Linux и macOS `.venv/bin/python`, в Codespaces просто `python`.
 
 ## Стек и почему именно он
 
@@ -216,7 +236,7 @@ VPS в России, домен, `cp deploy/.env.prod.example .env`, запус�
 - **Ветки:** `main` всегда рабочая. Каждая задача в своей ветке `timur/название`, вливается через Pull Request, когда CI зелёный.
 - **Границы:** ты в `app/`, `tests/`, `deploy/`, `.github/`, Осман в `web/`. Новое поле в ответе API добавляй свободно, а удалить или
   переименовать поле можно только после разговора с Османом.
-- **Схема базы:** поменял модель, сразу делай миграцию: `alembic revision --autogenerate -m "что изменилось"`. Файл проверь глазами,
+- **Схема базы:** поменял модель, сразу делай миграцию: `python -m alembic revision --autogenerate -m "что изменилось"`. Файл проверь глазами,
   иначе упадёт `test_models_match_migrations`.
 - **Тесты:** новая логика приходит с тестом, исправленная ошибка тоже.
 - **Секреты:** только в `.env`, он не попадает в репозиторий. Случайно закоммитил ключ: сразу отзывай и выпускай новый,
