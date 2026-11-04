@@ -27,10 +27,11 @@ function stairSymbol(label, { vertical = false } = {}) {
   return svg;
 }
 
-function stairs(label) {
-  return `<div class="fv-stair" role="img" aria-label="${esc(label)}">
-    ${stairSymbol(label)}${stairSymbol(label, { vertical: true })}
-    <span class="fv-stair-label">${esc(label)}</span>
+/** Лестница в плане: подпись короткая, куда ведёт — второй строкой */
+function stairs(to) {
+  return `<div class="fv-stair" role="img" aria-label="${esc(`Лестница ${to}`)}">
+    ${stairSymbol()}${stairSymbol("", { vertical: true })}
+    <span class="fv-stair-label">Лестница<small>${esc(to)}</small></span>
   </div>`;
 }
 
@@ -41,8 +42,8 @@ function roomButton(cell, side, col, states, here) {
   return `<button type="button" class="fv-room side-${side} is-${esc(info.state)} w${cell.w}${cell.type === "lobby" ? " is-lobby" : ""}${isHere ? " is-here" : ""}" data-n="${esc(cell.n)}" data-col="${col}" data-w="${cell.w}"
       aria-label="${esc(`${name}, ${TYPES[cell.type].toLowerCase()}: ${STATE_TEXT[info.state].toLowerCase()}`)}">
     <span class="fv-num">${cell.type === "lobby" ? "Главный холл" : esc(cell.n)}</span>
-    ${cell.type === "lobby" ? "" : `<span class="fv-type"><svg viewBox="0 0 24 24" aria-hidden="true">${TYPE_ICON[cell.type]}</svg><span>${esc(TYPES[cell.type])}</span></span>`}
-    <span class="fv-state"><i></i>${SHORT[info.state]}</span>
+    ${cell.type === "lobby" || cell.type === "seminar" ? "" : `<span class="fv-type"><svg viewBox="0 0 24 24" aria-hidden="true">${TYPE_ICON[cell.type]}</svg><span>${esc(TYPES[cell.type])}</span></span>`}
+    ${info.state === "clear" ? "" : `<span class="fv-state"><i></i>${SHORT[info.state]}</span>`}
     <span class="fv-door" aria-hidden="true"><i class="fv-gap"></i><i class="fv-arc"></i><i class="fv-leaf"></i></span>
   </button>`;
 }
@@ -67,16 +68,16 @@ function partHtml(part, states, here) {
 }
 
 function planHtml(f, states, here) {
-  const side = f.floor === 3 ? "Лестница на 1 и 2 этаж" : f.floor === 2 ? "Лестница на 1 и 3 этаж" : "Лестница на 2 и 3 этаж";
+  const side = f.floor === 3 ? "на 1 и 2 этаж" : f.floor === 2 ? "на 1 и 3 этаж" : "на 2 и 3 этаж";
   let center = "";
   if (f.center === "entrance") {
     center = `<div class="fv-center">
-      ${stairs("Лестница на 2 этаж")}
+      ${stairs("на 2 этаж")}
       ${roomButton(LOBBY, "b", 1, states, here)}
       <div class="fv-entry" aria-hidden="true">${icon("arrowRight", "icon-sm")}Вход</div>
     </div>`;
   } else if (f.center === "arrive") {
-    center = `<div class="fv-center">${stairs("Лестница на 1 этаж")}</div>`;
+    center = `<div class="fv-center">${stairs("на 1 этаж")}</div>`;
   }
   const [first, second] = f.parts;
   return `<div class="fv-plan">

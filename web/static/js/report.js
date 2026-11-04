@@ -144,10 +144,13 @@ function renderCampus() {
       </div>
       <div class="campus-meter" aria-hidden="true"><i></i></div>
       <div id="campus-map">${planHtml(states, { here, enter: first })}</div>
-      <div class="campus-legend">
-        <span><i class="dot"></i>без заявок</span>
-        <span><i class="dot open"></i>есть заявка</span>
-        <span><i class="dot urgent"></i>срочно</span>
+      <div class="campus-foot">
+        <div class="campus-legend">
+          <span><i class="dot"></i>без заявок</span>
+          <span><i class="dot open"></i>есть заявка</span>
+          <span><i class="dot urgent"></i>срочно</span>
+        </div>
+        <button type="button" class="pl-help" aria-label="Как пользоваться схемой" aria-expanded="false">?</button>
       </div>
       ${state.location ? `<p class="campus-note">Рамкой отмечено выбранное помещение.</p>` : ""}
     </section>`;
