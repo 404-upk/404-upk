@@ -75,8 +75,10 @@ def base_url():
     log.close()
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="module")
 def browser():
+    # браузер закрывается после файла с браузерными тестами: Playwright держит свой цикл событий,
+    # и остальные тесты в том же прогоне (asyncio.run) не должны его застать
     with sync_api.sync_playwright() as p:
         b = p.chromium.launch()
         yield b
