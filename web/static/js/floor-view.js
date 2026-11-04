@@ -105,7 +105,7 @@ export function openFloor(floorNo, { states, here = null, room = null, onPick } 
             <div class="fv-sub"></div>
           </div>
           <div class="fv-tabs" role="group" aria-label="Этаж">
-            ${[3, 2, 1].map((n) => `<button type="button" data-floor="${n}">${n} этаж</button>`).join("")}
+            ${[1, 2, 3].map((n) => `<button type="button" data-floor="${n}">${n} этаж</button>`).join("")}
           </div>
           <button type="button" class="btn btn-ghost btn-icon fv-close" aria-label="Закрыть">${icon("x")}</button>
         </div>
