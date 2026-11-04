@@ -12,7 +12,7 @@
 Нужен Python 3.12 или новее и Git. Сборки нет: поменял файл, обновил страницу.
 
 ```bash
-git clone https://github.com/innnom/404-upk.git
+git clone https://github.com/404-upk/404-upk.git
 cd 404-upk
 python -m venv .venv
 .venv/Scripts/pip install -r requirements-dev.txt      # Linux и macOS: .venv/bin/pip
@@ -166,4 +166,4 @@ web/
 - **Границы:** ты в `web/`, Тимур в `app/`, `tests/`, `deploy/`, `.github/`. Нужно новое поле от сервера: скажи Тимуру. Поменять чужую
   часть можно, но покажи ему в Pull Request.
 - **Коммиты:** понятным языком о том, что изменилось: `Форма: сохраняется черновик при обрыве сети`.
-- **Смотри Тимуру файл** `docs/team/TIMUR.md`, чтобы видеть, что появится на сервере: потоковый ответ ИИ, например, потребует правок в `report.js`.
+- **Файл Тимура:** загляни в `docs/team/TIMUR.md`, чтобы видеть, что появится на сервере. Потоковый ответ ИИ, например, потребует правок в `report.js`.
