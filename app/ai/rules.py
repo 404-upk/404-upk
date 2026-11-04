@@ -145,6 +145,15 @@ def make_draft(text: str, category: str | None) -> tuple[str, str]:
 def safety_reply(flag: str, text: str) -> AssistantReply:
     category, _ = detect_category(text)
     title, description = make_draft(text, category)
+    if flag == safety.INJECTION:
+        return AssistantReply(
+            kind="unclear",
+            answer=safety.INJECTION_ANSWER,
+            clarify_question="Что именно случилось и где? Например: «В кабинете 214 не работает проектор».",
+            confidence=1.0,
+            engine="safety",
+            guard="injection",
+        )
     if flag == safety.THREAT:
         # при угрозе жизни главное звонить 112 и уходить, а не заполнять заявку
         return AssistantReply(
