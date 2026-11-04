@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Статус заявки · УПК · 404</title>
+  <meta name="theme-color" content="#0c1222">
+  <meta name="robots" content="noindex">
+  <meta name="description" content="Статус заявки в цифровом помощнике колледжа.">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" href="/static/img/icon.svg" type="image/svg+xml">
+  <link rel="preload" href="/static/fonts/inter-400-cyr.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/static/fonts/inter-600-cyr.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/static/css/fonts.css">
+  <link rel="stylesheet" href="/static/css/app.css">
+  <link rel="stylesheet" href="/static/css/ambient.css">
+  <link rel="stylesheet" href="/static/css/campus.css">
+  <link rel="stylesheet" href="/static/css/motion.css">
+  <link rel="modulepreload" href="/static/js/core.js">
+  <link rel="modulepreload" href="/static/js/brand.js">
+  <link rel="modulepreload" href="/static/js/ambient.js">
+  <link rel="modulepreload" href="/static/js/campus.js">
+  <link rel="modulepreload" href="/static/js/motion.js">
+  <script src="/static/js/boot.js"></script>
+  <script type="module" src="/static/js/intro.js"></script>
+  <script type="module" src="/static/js/track.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#app">Перейти к содержанию</a>
+  <div id="intro" aria-hidden="true"></div>
+
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="/" aria-label="404 · УПК, на главную">
+        <span class="lockup" role="img" aria-label="404"></span>
+        <span class="brand-sep" aria-hidden="true"></span>
+        <span>УПК<small>Цифровой помощник колледжа</small></span>
+      </a>
+      <span class="grow"></span>
+      <a class="btn btn-soft btn-sm" href="/">Новая заявка</a>
+      <button class="btn btn-ghost btn-icon btn-sm" id="theme" type="button"></button>
+    </div>
+  </header>
+  <main class="page" id="app" tabindex="-1">
+    <div class="stack">
+      <div class="skeleton" style="height:180px"></div>
+      <div class="skeleton" style="height:120px"></div>
+    </div>
+  </main>
+  <footer class="footer">
+    <span>Статус обновляется сам. Код отслеживания не передавайте посторонним. <a href="/privacy">Конфиденциальность</a></span>
+    <span class="lockup" role="img" aria-label="Команда 404"></span>
+  </footer>
+</body>
+</html>

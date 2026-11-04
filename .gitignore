@@ -1,0 +1,27 @@
+# окружение и секреты
+.venv/
+venv/
+.env
+.env.*
+!.env.example
+!deploy/.env.prod.example
+certs/*.cer
+certs/*.crt
+certs/*.pem
+*.key
+*.p12
+
+# данные: база и загруженные фото
+data/
+
+# служебное
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.claude/
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
