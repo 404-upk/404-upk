@@ -345,3 +345,12 @@
   .print-sheet { grid-template-columns: 1fr; }
   .hbar { grid-template-columns: 100px 1fr 34px; }
 }
+
+/* Доска: доступность с клавиатуры */
+.col-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; }
+.kcard:focus-visible { outline: none; border-color: var(--primary); box-shadow: var(--ring); }
+
+/* Заголовок заявки в списке: ссылка, чтобы открыть заявку с клавиатуры */
+.t-link { display: block; color: inherit; text-decoration: none; }
+.t-link:hover { color: var(--text); }
+.drawer:focus { outline: none; }

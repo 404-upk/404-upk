@@ -70,7 +70,7 @@ export async function render({ el, setHead }) {
           (a) => `
         <article class="card card-pad stack-sm" style="cursor:pointer;${a.is_active ? "" : "opacity:.55"}" data-id="${a.id}">
           <div class="row between"><span class="tag">${icon("book", "icon-sm")} ${esc(a.category || "Общее")}</span><span class="tiny faint">#${a.id}</span></div>
-          <h3>${esc(a.question)}</h3>
+          <h2 class="h3">${esc(a.question)}</h2>
           <p class="small muted" style="display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden">${esc(a.answer)}</p>
           <div class="tiny faint">${esc(a.source)} · обновлено ${fmtDate(a.updated_at, false)}${a.is_active ? "" : " · выключена"}</div>
         </article>`,
