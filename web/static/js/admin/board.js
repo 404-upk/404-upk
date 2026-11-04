@@ -151,12 +151,14 @@ export async function render({ el, setHead }) {
     } catch (err) {
       toast(err.message, "error");
     }
-    load();
+    load().catch(() => {});
   }
 
   await load();
-  const timer = setInterval(() => document.visibilityState === "visible" && !dragged && load(), 30000);
-  const onChanged = () => load();
+  // автообновление без сети тихо пропускается: на доске остаются последние данные
+  const quiet = () => load().catch(() => {});
+  const timer = setInterval(() => document.visibilityState === "visible" && !dragged && quiet(), 30000);
+  const onChanged = () => quiet();
   window.addEventListener("tickets:changed", onChanged);
   return {
     destroy() {
