@@ -40,21 +40,26 @@ from .seed_data import (
 )
 
 
-def seed_reference(db: Session) -> None:
-    if db.scalar(select(func.count(User.id))):
+def seed_reference(db: Session, demo_users: bool = True) -> None:
+    """Справочники и база знаний. Демо-аккаунты создаются только вне боевого режима: на сервере первого
+    администратора заводят командой python -m app.create_admin."""
+    if db.scalar(select(func.count(Category.id))):
         return
 
     users = {}
-    passwords = {
-        ROLE_ADMIN: settings.demo_admin_password,
-        ROLE_STAFF: settings.demo_staff_password,
-        ROLE_EXECUTOR: settings.demo_executor_password,
-    }
-    for login, name, position, role in USERS:
-        user = User(login=login, name=name, position=position, role=role, password_hash=hash_password(passwords[role]))
-        db.add(user)
-        users[login] = user
-    db.flush()
+    if demo_users:
+        passwords = {
+            ROLE_ADMIN: settings.demo_admin_password,
+            ROLE_STAFF: settings.demo_staff_password,
+            ROLE_EXECUTOR: settings.demo_executor_password,
+        }
+        for login, name, position, role in USERS:
+            user = User(
+                login=login, name=name, position=position, role=role, password_hash=hash_password(passwords[role])
+            )
+            db.add(user)
+            users[login] = user
+        db.flush()
 
     categories = {}
     for sort, (code, name, desc, icon, priority, assignee) in enumerate(CATEGORIES):
@@ -64,7 +69,7 @@ def seed_reference(db: Session) -> None:
             description=desc,
             icon=icon,
             default_priority=priority,
-            default_assignee_id=users[assignee].id if assignee else None,
+            default_assignee_id=users[assignee].id if assignee in users else None,
             sort=sort,
         )
         db.add(category)
@@ -222,9 +227,9 @@ def seed_demo_tickets(db: Session) -> None:
     db.commit()
 
 
-def seed(db: Session, demo_tickets: bool = True) -> None:
-    seed_reference(db)
-    if demo_tickets:
+def seed(db: Session, demo_tickets: bool = True, demo_users: bool = True) -> None:
+    seed_reference(db, demo_users)
+    if demo_tickets and demo_users:
         seed_demo_tickets(db)
 
 
@@ -239,8 +244,11 @@ def main() -> None:
         reset_db()
     init_db()
     with SessionLocal() as db:
-        seed(db, demo_tickets=not args.clean)
-    print("Готово. Логины: admin, upk, electric, it, service, cleaning")
+        seed(db, demo_tickets=not args.clean, demo_users=not settings.is_production)
+    if settings.is_production:
+        print("Готово. Первого администратора создайте командой: python -m app.create_admin")
+    else:
+        print("Готово. Логины: admin, upk, electric, it, service, cleaning")
 
 
 if __name__ == "__main__":

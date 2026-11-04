@@ -47,6 +47,11 @@ class RateIn(BaseModel):
     comment: str | None = Field(default=None, max_length=1000)
 
 
+class PasswordChangeIn(BaseModel):
+    current_password: str = Field(min_length=1, max_length=200)
+    new_password: str = Field(min_length=1, max_length=200)
+
+
 class UserIn(BaseModel):
     name: str = Field(min_length=2, max_length=120)
     position: str | None = Field(default=None, max_length=120)
