@@ -44,7 +44,9 @@ def upgrade() -> None:
         values = {"floor": floor, "room": room, "zone_name": zone, "kind": kind, "is_active": True}
         current = by_key.get(key) or (by_room.get((building, room)) if room else None)
         if current:
-            conn.execute(sa.update(locations).where(locations.c.id == current["id"]).values(building=building, **values))
+            conn.execute(
+                sa.update(locations).where(locations.c.id == current["id"]).values(building=building, **values)
+            )
         else:
             conn.execute(sa.insert(locations).values(building=building, qr_key=key, **values))
 
