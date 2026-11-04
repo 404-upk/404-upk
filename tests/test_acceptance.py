@@ -307,3 +307,18 @@ def test_category_ties_prefer_the_risky_one(client):
     assert reply["category"] == "electricity"
     reply = _ask(client, "Сломалась ручка окна в кабинете 305")
     assert reply["category"] == "furniture"
+
+
+def test_official_instructions_answer_with_source(client):
+    cases = {
+        "Принтер не печатает, что делать?": "Принтер не печатает: первичная проверка",
+        "Можно ли установить игру на компьютер в классе?": "Правила использования компьютеров колледжа",
+        "Как сообщить о неисправности?": "Что делать при неисправности оборудования",
+        "Как подключить ноутбук к проектору?": "Как подключить ноутбук или компьютер к проектору",
+    }
+    for text, title in cases.items():
+        reply = _ask(client, text)
+        assert reply["kind"] == "question", text
+        assert reply["sources"][0]["title"] == title, text
+        assert reply["sources"][0]["source"] == "Инструкции УПК", text
+        assert not safety.is_unsafe_advice(reply["answer"]), text
