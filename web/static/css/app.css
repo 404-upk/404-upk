@@ -831,3 +831,5 @@ main:focus { outline: none; }
 a:focus-visible, button:focus-visible, [tabindex]:focus-visible, summary:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 .btn:focus-visible { outline: none; }
 .lightbox-close { position: absolute; top: 16px; right: 16px; color: #fff; }
+/* Заголовок второго уровня, который выглядит как третий: порядок заголовков для экранных читалок без смены вида */
+h2.h3 { font-size: 16px; font-weight: 600; letter-spacing: normal; }
