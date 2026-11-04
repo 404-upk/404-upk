@@ -23,6 +23,8 @@ from .services.telegram import bot
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 log = logging.getLogger("upk")
 logging.getLogger("uvicorn.access").addFilter(HideTrackingCodes())
+# httpx пишет в журнал полный адрес запроса, а в адресе Telegram Bot API лежит токен бота
+logging.getLogger("httpx").setLevel(logging.WARNING)
 
 
 @asynccontextmanager
