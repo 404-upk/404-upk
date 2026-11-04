@@ -50,7 +50,7 @@ export async function render({ el, setHead }) {
     <section class="card card-pad stack">
       <h3>Песочница</h3>
       <p class="small muted">Напишите любое сообщение и посмотрите, как его поймёт помощник. Заявка при этом не создаётся.</p>
-      <div class="row"><input class="input" id="pg-text" maxlength="500" placeholder="Например: в 305 искрит удлинитель"><button class="btn" id="pg-run">${icon("send", "icon-sm")} Проверить</button></div>
+      <div class="row"><input class="input" id="pg-text" maxlength="500" placeholder="Например: в 305 искрит удлинитель"><button class="btn u-flex-none" id="pg-run">${icon("send", "icon-sm")} Проверить</button></div>
       <div id="pg-out" class="playground-out"></div>
     </section>`;
 

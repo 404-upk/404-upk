@@ -370,10 +370,11 @@ export async function render({ el, setHead, params, id }) {
 
     aside.innerHTML = `
       <div class="drawer-head">
-        <span class="t-num">${esc(t.public_number)}</span>
-        ${statusChip(t.status, t.status_label)}
-        ${priorityChip(t.priority, t.priority_label)}
-        <span class="grow"></span>
+        <div class="drawer-tags">
+          <span class="t-num">${esc(t.public_number)}</span>
+          ${statusChip(t.status, t.status_label)}
+          ${priorityChip(t.priority, t.priority_label)}
+        </div>
         <button class="btn btn-ghost btn-icon btn-sm" data-refresh title="Обновить" aria-label="Обновить">${icon("refresh")}</button>
         <button class="btn btn-ghost btn-icon btn-sm" data-close title="Закрыть" aria-label="Закрыть">${icon("x")}</button>
       </div>
@@ -439,12 +440,12 @@ export async function render({ el, setHead, params, id }) {
           ${comments}
           <div class="stack-sm">
             <textarea class="u-minh70 textarea" id="c-body" rows="2" maxlength="2000" placeholder="Написать комментарий"></textarea>
-            <div class="row between">
+            <div class="row between u-wrap u-gap8">
               <div class="segmented" id="c-vis">
                 <button type="button" aria-pressed="true" data-v="public">Видно заявителю</button>
                 <button type="button" aria-pressed="false" data-v="internal">${icon("lock", "icon-sm")} Внутренний</button>
               </div>
-              <button class="btn btn-primary btn-sm" id="c-send">${icon("send", "icon-sm")} Отправить</button>
+              <button class="btn btn-primary btn-sm u-flex-none u-ml-auto" id="c-send">${icon("send", "icon-sm")} Отправить</button>
             </div>
           </div>
         </section>
