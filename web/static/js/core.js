@@ -203,29 +203,78 @@ export function leaveAndRemove(el, after) {
 
 // ---------- модалки ----------
 
+const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
+const modalStack = [];
+let modalSeq = 0;
+
+function focusableIn(root) {
+  return [...root.querySelectorAll(FOCUSABLE)].filter((n) => n.offsetParent !== null || n === document.activeElement);
+}
+
+/** Одно общее нажатие клавиш для верхней модалки: Escape закрывает, Tab не выходит за её пределы */
+function onModalKey(e) {
+  const top = modalStack[modalStack.length - 1];
+  if (!top) return;
+  if (e.key === "Escape") {
+    e.preventDefault();
+    top.close();
+    return;
+  }
+  if (e.key !== "Tab") return;
+  const items = focusableIn(top.el);
+  if (!items.length) {
+    e.preventDefault();
+    return;
+  }
+  const first = items[0];
+  const last = items[items.length - 1];
+  if (!top.el.contains(document.activeElement)) {
+    e.preventDefault();
+    first.focus();
+  } else if (e.shiftKey && document.activeElement === first) {
+    e.preventDefault();
+    last.focus();
+  } else if (!e.shiftKey && document.activeElement === last) {
+    e.preventDefault();
+    first.focus();
+  }
+}
+
 export function openModal({ title, body, footer = "", wide = false, onMount }) {
+  const titleId = `modal-title-${++modalSeq}`;
+  const opener = document.activeElement;
   const overlay = h(`
-    <div class="overlay" role="dialog" aria-modal="true">
-      <div class="modal" style="${wide ? "width:min(760px,100%)" : ""}">
-        <div class="modal-head"><h2>${esc(title)}</h2>
+    <div class="overlay" role="dialog" aria-modal="true" aria-labelledby="${titleId}">
+      <div class="modal">
+        <div class="modal-head"><h2 id="${titleId}">${esc(title)}</h2>
           <button class="btn btn-ghost btn-icon btn-sm" data-close aria-label="Закрыть">${icon("x")}</button>
         </div>
         <div class="modal-body">${body}</div>
         ${footer ? `<div class="modal-foot">${footer}</div>` : ""}
       </div>
     </div>`);
+  if (wide) overlay.querySelector(".modal").style.width = "min(760px,100%)";
+  let closed = false;
+  const entry = { el: overlay, close: null };
   const close = () => {
+    if (closed) return;
+    closed = true;
+    const at = modalStack.indexOf(entry);
+    if (at >= 0) modalStack.splice(at, 1);
+    if (!modalStack.length) document.removeEventListener("keydown", onModalKey);
     leaveAndRemove(overlay);
-    document.removeEventListener("keydown", onKey);
+    // фокус возвращается туда, откуда окно открыли
+    if (opener && opener.isConnected && typeof opener.focus === "function") opener.focus();
   };
-  const onKey = (e) => e.key === "Escape" && close();
+  entry.close = close;
   overlay.addEventListener("click", (e) => {
     if (e.target === overlay || e.target.closest("[data-close]")) close();
   });
-  document.addEventListener("keydown", onKey);
+  if (!modalStack.length) document.addEventListener("keydown", onModalKey);
+  modalStack.push(entry);
   document.body.append(overlay);
   onMount?.(overlay, close);
-  const first = overlay.querySelector("input, textarea, select");
+  const first = overlay.querySelector("input, textarea, select") || overlay.querySelector(".modal-foot .btn, [data-close]");
   first?.focus();
   return { el: overlay, close };
 }
@@ -256,9 +305,24 @@ export function confirmDialog(title, text, okLabel = "Подтвердить", d
 }
 
 export function lightbox(src) {
-  const el = h(`<div class="lightbox"><img src="${esc(src)}" alt="Фото"></div>`);
-  el.addEventListener("click", () => leaveAndRemove(el));
+  const opener = document.activeElement;
+  const el = h(`<div class="lightbox" role="dialog" aria-modal="true" aria-label="Фото"><button class="btn btn-ghost btn-icon lightbox-close" aria-label="Закрыть">${icon("x")}</button><img src="${esc(src)}" alt="Фото"></div>`);
+  const close = () => {
+    document.removeEventListener("keydown", onKey);
+    leaveAndRemove(el);
+    if (opener && opener.isConnected && typeof opener.focus === "function") opener.focus();
+  };
+  const onKey = (e) => {
+    if (e.key === "Escape") close();
+    else if (e.key === "Tab") {
+      e.preventDefault();
+      el.querySelector("button").focus();
+    }
+  };
+  el.addEventListener("click", close);
+  document.addEventListener("keydown", onKey);
   document.body.append(el);
+  el.querySelector("button").focus();
 }
 
 export function setBusy(button, busy, text) {
