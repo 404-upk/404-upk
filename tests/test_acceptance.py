@@ -322,3 +322,18 @@ def test_official_instructions_answer_with_source(client):
         assert reply["sources"][0]["title"] == title, text
         assert reply["sources"][0]["source"] == "Инструкции УПК", text
         assert not safety.is_unsafe_advice(reply["answer"]), text
+
+
+def test_threats_get_emergency_answer(client):
+    for text in [
+        "бомба в колледже",
+        "В коридоре оставили подозрительную сумку",
+        "у него нож, угрожает",
+        "Кто-то стреляет на первом этаже",
+    ]:
+        reply = _ask(client, text)
+        assert reply["kind"] == "danger", text
+        assert reply["guard"] == "threat", text
+        assert "112" in reply["answer"], text
+    for text in ["Сломались ножницы в кабинете 305", "Как подключить ноутбук к проектору?"]:
+        assert _ask(client, text)["guard"] != "threat", text
