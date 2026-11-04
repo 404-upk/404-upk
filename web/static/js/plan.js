@@ -56,8 +56,8 @@ export const FLOORS = [
     floor: 1,
     center: "entrance",
     parts: [
-      { a: [R(101, "canteen", 2), R(102, "gym", 2)], b: [R(103), R(104), R(105), R(106, "lecture")] },
-      { a: [R(107), R(108), R(109, "lecture", 2)], b: [R(110, "hall", 4)] },
+      { a: [R(102, "gym", 3), R(103)], b: [R(101, "canteen", 2), R(104), R(105)] },
+      { a: [R(107), R(109, "lecture"), R(110, "hall", 2)], b: [R(108, "seminar", 2), R(106, "lecture", 2)] },
     ],
   },
 ];
@@ -120,10 +120,10 @@ export function stateOf(states, n) {
 const W = 480;
 const X0 = 30; // левая стена здания
 const X1 = 476; // правая стена
-const SW = 40; // ширина боковой лестничной клетки
+const SW = 44; // ширина боковой лестничной клетки
 const CW = 52; // ширина средней лестничной клетки
 const CX = (X0 + X1) / 2;
-const TOP = 40; // верх 3 этажа
+const TOP = 54; // верх 3 этажа, выше аттик с эмблемой
 const FH = 96; // высота этажа
 const G = TOP + 3 * FH; // земля
 const H = G + 24;
@@ -133,13 +133,15 @@ const floorTop = (n) => TOP + (3 - n) * FH;
 const f1 = (n) => n.toFixed(1);
 
 /** Марш лестницы в разрезе: ступени от (xa, ya) до (xb, yb), снизу косоур */
-function flight(xa, ya, xb, yb, steps = 6) {
+function flight(xa, ya, xb, yb, steps = 6, withRail = false) {
   const dx = (xb - xa) / steps;
   const dy = (yb - ya) / steps;
   let d = `M${f1(xa)} ${f1(ya)}`;
   for (let i = 0; i < steps; i++) d += `v${f1(dy)}h${f1(dx)}`;
   const under = `L${f1(xb)} ${f1(yb + 5)}L${f1(xa + dx * 0.4)} ${f1(ya + 1.5)}Z`;
-  return `<path class="pf-steps" d="${d}${under}"/>`;
+  // перила идут параллельно маршу над ступенями
+  const hr = `M${f1(xa + dx * 0.5)} ${f1(ya - 9)}L${f1(xb - dx * 0.5)} ${f1(yb - 9 + dy * 0.5)}M${f1(xa + dx * 0.5)} ${f1(ya - 9)}v${f1(9 + dy * 0)}M${f1(xb - dx * 0.5)} ${f1(yb - 9 + dy * 0.5)}v${f1(9 - dy * 0.5)}`;
+  return `<path class="pf-steps" d="${d}${under}"/>${withRail ? `<path class="pf-handrail" d="${hr}"/>` : ""}`;
 }
 
 /** Лестничная клетка на высоту одного этажа: два марша с промежуточной площадкой */
@@ -152,6 +154,19 @@ function stairFloor(a, b, yb, yt, mirror = false) {
     <path class="pf-landing" d="M${f1(Rr - 7 * s)} ${f1(ym)}H${f1(Rr)}"/>
     ${flight(Rr - 6 * s, ym, L + 6 * s, yt)}
     <path class="pf-landing" d="M${f1(L)} ${f1(yt)}H${f1(L + 7 * s)}"/>`;
+}
+
+/** Эмблема университета контуром: кольцо с надписью, внутри здание с фронтоном и колоннами */
+function emblem(cx, cy, r) {
+  const k = r / 13;
+  const p = (x, y) => `${f1(cx + x * k)} ${f1(cy + y * k)}`;
+  const cols = [-4.2, -1.4, 1.4, 4.2].map((x) => `M${p(x, -0.6)}V${f1(cy + 3.6 * k)}`).join("");
+  return `<g class="pf-emblem" aria-hidden="true">
+    <circle class="pf-emblem-disc" cx="${cx}" cy="${cy}" r="${r}"/>
+    <circle class="pf-emblem-ring" cx="${cx}" cy="${cy}" r="${f1(r * 0.74)}"/>
+    <circle class="pf-emblem-text" cx="${cx}" cy="${cy}" r="${f1(r * 0.87)}"/>
+    <path class="pf-emblem-line" d="M${p(-6, -1.2)}L${p(0, -5.4)}L${p(6, -1.2)}ZM${p(-6.4, -0.6)}H${f1(cx + 6.4 * k)}${cols}M${p(-6, 3.9)}H${f1(cx + 6 * k)}M${p(-7, 5.4)}H${f1(cx + 7 * k)}"/>
+  </g>`;
 }
 
 function rail(a, b, y) {
@@ -222,7 +237,8 @@ export function planHtml(states, { here = null, enter = false } = {}) {
     if (f.center === "entrance") {
       const lobby = stateOf(states, LOBBY.n);
       const isHere = here != null && lobby.id === here;
-      center = `${stairFloor(CX - CW / 2, CX + CW / 2, G - 30, y0)}
+      center = `${flight(CX - CW / 2 + 5, G - 31, CX + CW / 2 - 4, y0, 10, true)}
+        <path class="pf-landing" d="M${f1(CX + CW / 2 - 5)} ${f1(y0)}H${f1(CX + CW / 2)}"/>
         <g class="pf-room pf-lobby is-${esc(lobby.state)}${isHere ? " is-here" : ""}" data-n="${LOBBY.n}">
           <rect class="pf-hit" x="${f1(CX - CW / 2 + 2)}" y="${f1(G - 32)}" width="${CW - 4}" height="32" rx="4"/>
           <rect class="pf-inside" x="${f1(CX - 11)}" y="${f1(G - 25)}" width="22" height="25" fill="url(#pfg-${esc(lobby.state)})"/>
@@ -246,15 +262,15 @@ export function planHtml(states, { here = null, enter = false } = {}) {
     .map((n) => `${stairFloor(X0, X0 + SW, floorTop(n) + FH, floorTop(n))}${stairFloor(X1 - SW, X1, floorTop(n) + FH, floorTop(n), true)}`)
     .join("");
   const facade = `
-    <rect class="pf-base" x="${X0}" y="${floorTop(1)}" width="${X1 - X0}" height="${FH}"/>
-    <path class="pf-attic" d="M${CX - 50} ${TOP - 3}V12H${CX + 50}V${TOP - 3}"/>
-    <path class="pf-cornice" d="M${CX - 55} 12H${CX + 55}M${CX - 52} 8.5H${CX + 52}"/>
-    <circle class="pf-emblem" cx="${CX}" cy="${(TOP + 9) / 2}" r="8"/>
-    <path class="pf-spark" transform="translate(${CX - 5} ${(TOP + 9) / 2 - 5}) scale(0.4167)" d="M12 0C12.9 7.6 16.4 11.1 24 12C16.4 12.9 12.9 16.4 12 24C11.1 16.4 7.6 12.9 0 12C7.6 11.1 11.1 7.6 12 0Z"/>
-    <path class="pf-cornice" d="M${X0 - 6} ${TOP - 3}H${X1 + 6}"/>
-    <path class="pf-pilaster" d="M${CX - 50} ${TOP}V${G}M${CX + 50} ${TOP}V${G}"/>
+    <path class="pf-attic" d="M${CX - 74} ${TOP - 5}L${CX - 52} ${TOP - 37}H${CX + 52}L${CX + 74} ${TOP - 5}Z"/>
+    <path class="pf-attic-inner" d="M${CX - 64} ${TOP - 9}L${CX - 47} ${TOP - 33}H${CX + 47}L${CX + 64} ${TOP - 9}Z"/>
+    <path class="pf-cornice" d="M${CX - 56} ${TOP - 37}H${CX + 56}M${CX - 53} ${TOP - 40}H${CX + 53}"/>
+    <path class="pf-cornice" d="M${CX - 86} ${TOP - 5}H${CX - 70}V${TOP - 9}H${CX - 66}M${CX + 86} ${TOP - 5}H${CX + 70}V${TOP - 9}H${CX + 66}"/>
+    ${emblem(CX, TOP - 20, 13)}
+    <path class="pf-cornice" d="M${X0 - 6} ${TOP - 3}H${X1 + 6}M${X0 - 3} ${TOP - 5.5}H${X1 + 3}"/>
+    <path class="pf-pilaster" d="M${CX - 52} ${TOP}V${G}M${CX + 52} ${TOP}V${G}"/>
     <path class="pf-inner" d="M${X0 + SW} ${TOP}V${G}M${X1 - SW} ${TOP}V${G}M${CX - CW / 2} ${floorTop(2)}V${G}M${CX + CW / 2} ${floorTop(2)}V${G}"/>
-    <path class="pf-slab" d="M${X0} ${floorTop(2)}H${X1}M${X0} ${floorTop(1)}H${f1(CX - CW / 2 + 6)}M${f1(CX + CW / 2 - 4)} ${floorTop(1)}H${X1}"/>
+    <path class="pf-slab" d="M${X0} ${floorTop(2)}H${X1}M${X0} ${floorTop(1)}H${f1(CX + 2)}M${f1(CX + CW / 2)} ${floorTop(1)}H${X1}"/>
     <rect class="pf-outline" x="${X0}" y="${TOP}" width="${X1 - X0}" height="${G - TOP}"/>
     <path class="pf-ground" d="M2 ${G}H${W - 2}M${CX - 18} ${G + 3}H${CX + 18}M${CX - 22} ${G + 6}H${CX + 22}"/>
     <text class="pf-entry" x="${CX}" y="${G + 18}">Вход</text>`;
@@ -291,6 +307,17 @@ export function bindPlan(root, states, { onOpenFloor } = {}) {
         <div class="pl-info-state is-${esc(data.state)}"><i></i>${esc(STATE_TEXT[data.state])}${data.chronic ? ", проблемы повторяются" : ""}</div>
       </div>`;
   };
+  const describeFloor = (n) => {
+    const f = FLOORS.find((x) => x.floor === n);
+    const rooms = floorRooms(f);
+    const open = rooms.filter((c) => stateOf(states, c.n).state !== "clear").length;
+    info.innerHTML = `
+      <div class="pl-info-text">
+        <b>${n} этаж</b>
+        <div class="pl-info-type">${open ? `Помещений с заявками: ${open}` : "Заявок нет"}</div>
+        <div class="pl-info-state is-open"><i></i>Нажмите, чтобы открыть план этажа</div>
+      </div>`;
+  };
   const light = (floorEl) => {
     svg.classList.toggle("has-hot", !!floorEl);
     svg.querySelectorAll(".pf-floor").forEach((f) => f.classList.toggle("is-hot", f === floorEl));
@@ -299,8 +326,10 @@ export function bindPlan(root, states, { onOpenFloor } = {}) {
   svg.addEventListener("pointerover", (e) => {
     if (e.pointerType !== "mouse") return;
     const room = e.target.closest(".pf-room");
-    light(e.target.closest(".pf-floor"));
+    const floor = e.target.closest(".pf-floor");
+    light(floor);
     if (room) describe(room.dataset.n);
+    else if (floor) describeFloor(Number(floor.dataset.floor));
   });
   svg.addEventListener("pointerleave", () => light(null));
   svg.addEventListener("click", (e) => {
