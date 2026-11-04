@@ -585,9 +585,9 @@ html:not(.is-revealed) .plan.is-enter * { animation-play-state: paused; }
   .fv-corridor { grid-row: 1 / -1; grid-column: 2; border-block: 0; border-inline: 1px solid var(--wall); }
   .fv-corridor span { writing-mode: vertical-rl; }
   .fv-room { grid-column: auto; grid-row: var(--col) / span var(--w); border-right: 0; border-bottom: 1px solid var(--wall); padding: 10px 12px; gap: 4px; }
-  .fv-room.side-a { grid-column: 1; grid-row: var(--col) / span var(--w); padding-bottom: 10px; padding-right: 40px; --lx: 100%; --ly: 22px; }
-  .fv-room.side-b { grid-column: 3; grid-row: var(--col) / span var(--w); justify-content: flex-start; padding-top: 10px; padding-left: 40px; --lx: 0%; --ly: 22px; }
-  .fv-room.side-b .fv-state { margin-top: auto; }
+  .fv-room.m-l { grid-column: 1; grid-row: var(--col) / span var(--w); padding: 10px 40px 10px 12px; --lx: 100%; --ly: 22px; }
+  .fv-room.m-r { grid-column: 3; grid-row: var(--col) / span var(--w); justify-content: flex-start; padding: 10px 12px 10px 40px; --lx: 0%; --ly: 22px; }
+  .fv-room.m-r .fv-state { margin-top: auto; }
   .fv-num { font-size: 18px; }
   .fv-center { width: auto; border-inline: 0; border-block: 1px solid var(--wall); }
   .fv-center .fv-stair { flex: none; }
@@ -595,17 +595,17 @@ html:not(.is-revealed) .plan.is-enter * { animation-play-state: paused; }
   .fv-entry { position: static; transform: none; justify-content: center; padding: 8px 0; border-top: 1px dashed var(--wall); }
   .fv-entry .icon { transform: rotate(90deg); }
   /* ряд a слева: дверь в правой стене, открывается влево */
-  .fv-room.side-a .fv-door { left: auto; right: 0; bottom: auto; top: 12px; }
-  .fv-room.side-a .fv-gap { left: auto; right: -2px; top: 0; bottom: 0; width: 3px; height: auto; }
-  .fv-room.side-a .fv-leaf { left: auto; right: -1px; top: 0; bottom: auto; width: 2.5px; height: 100%; transform-origin: 50% 0; }
-  .fv-room.side-a .fv-arc { border: 1px dashed color-mix(in srgb, var(--c) 70%, var(--text)); border-top: 0; border-right: 0; border-radius: 0 0 0 100%; }
-  .fv-room.side-a.is-on .fv-leaf, .fv-room.side-a.is-peek .fv-leaf { transform: rotate(90deg); }
+  .fv-room.m-l .fv-door { left: auto; right: 0; bottom: auto; top: 12px; }
+  .fv-room.m-l .fv-gap { left: auto; right: -2px; top: 0; bottom: 0; width: 3px; height: auto; }
+  .fv-room.m-l .fv-leaf { left: auto; right: -1px; top: 0; bottom: auto; width: 2.5px; height: 100%; transform-origin: 50% 0; }
+  .fv-room.m-l .fv-arc { border: 1px dashed color-mix(in srgb, var(--c) 70%, var(--text)); border-top: 0; border-right: 0; border-radius: 0 0 0 100%; }
+  .fv-room.m-l.is-on .fv-leaf, .fv-room.m-l.is-peek .fv-leaf { transform: rotate(90deg); }
   /* ряд b справа: дверь в левой стене, открывается вправо */
-  .fv-room.side-b .fv-door { left: 0; top: 12px; }
-  .fv-room.side-b .fv-gap { left: -2px; right: auto; top: 0; bottom: 0; width: 3px; height: auto; }
-  .fv-room.side-b .fv-leaf { left: -1px; top: 0; width: 2.5px; height: 100%; transform-origin: 50% 0; }
-  .fv-room.side-b .fv-arc { border: 1px dashed color-mix(in srgb, var(--c) 70%, var(--text)); border-top: 0; border-left: 0; border-radius: 0 0 100% 0; }
-  .fv-room.side-b.is-on .fv-leaf, .fv-room.side-b.is-peek .fv-leaf { transform: rotate(-90deg); }
+  .fv-room.m-r .fv-door { left: 0; top: 12px; }
+  .fv-room.m-r .fv-gap { left: -2px; right: auto; top: 0; bottom: 0; width: 3px; height: auto; }
+  .fv-room.m-r .fv-leaf { left: -1px; top: 0; width: 2.5px; height: 100%; transform-origin: 50% 0; }
+  .fv-room.m-r .fv-arc { border: 1px dashed color-mix(in srgb, var(--c) 70%, var(--text)); border-top: 0; border-left: 0; border-radius: 0 0 100% 0; }
+  .fv-room.m-r.is-on .fv-leaf, .fv-room.m-r.is-peek .fv-leaf { transform: rotate(-90deg); }
   .fv-center .fv-room.side-b .fv-door { left: 50%; top: 0; }
   .fv-center .fv-room.side-b .fv-gap { left: 0; right: 0; top: -2px; width: auto; height: 3px; }
   .fv-center .fv-room.side-b .fv-leaf { left: 0; top: -1px; width: 100%; height: 2.5px; transform-origin: 0 50%; }

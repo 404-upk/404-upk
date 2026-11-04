@@ -35,11 +35,12 @@ function stairs(to) {
   </div>`;
 }
 
-function roomButton(cell, side, col, states, here) {
+/** side — ряд на широком экране (a сверху, b снизу), mside — колонка на телефоне (l или r) */
+function roomButton(cell, side, col, states, here, mside = side === "a" ? "l" : "r") {
   const info = stateOf(states, cell.n);
   const isHere = here != null && info.id === here;
   const name = roomTitle(cell);
-  return `<button type="button" class="fv-room side-${side} is-${esc(info.state)} w${cell.w}${cell.type === "lobby" ? " is-lobby" : ""}${isHere ? " is-here" : ""}" data-n="${esc(cell.n)}" data-col="${col}" data-w="${cell.w}"
+  return `<button type="button" class="fv-room side-${side} m-${mside} is-${esc(info.state)} w${cell.w}${cell.type === "lobby" ? " is-lobby" : ""}${isHere ? " is-here" : ""}" data-n="${esc(cell.n)}" data-col="${col}" data-w="${cell.w}"
       aria-label="${esc(`${name}, ${TYPES[cell.type].toLowerCase()}: ${STATE_TEXT[info.state].toLowerCase()}`)}">
     <span class="fv-num">${cell.type === "lobby" ? "Главный холл" : esc(cell.n)}</span>
     ${cell.type === "lobby" || cell.type === "seminar" ? "" : `<span class="fv-type"><svg viewBox="0 0 24 24" aria-hidden="true">${TYPE_ICON[cell.type]}</svg><span>${esc(TYPES[cell.type])}</span></span>`}
@@ -54,7 +55,8 @@ function partHtml(part, states, here) {
     let col = 1;
     return cells
       .map((c) => {
-        const html = roomButton(c, side, col, states, here);
+        const mside = (side === "a") !== !!part.mobileSwap ? "l" : "r";
+        const html = roomButton(c, side, col, states, here, mside);
         col += c.w;
         return html;
       })

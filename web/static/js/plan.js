@@ -56,7 +56,8 @@ export const FLOORS = [
     floor: 1,
     center: "entrance",
     parts: [
-      { a: [R(102, "gym", 3), R(103)], b: [R(101, "canteen", 2), R(104), R(105)] },
+      // на телефоне ряды этой части меняются местами: столовая слева, спортзал справа
+      { a: [R(102, "gym", 3), R(103)], b: [R(101, "canteen", 2), R(104), R(105)], mobileSwap: true },
       { a: [R(107), R(109, "lecture"), R(110, "hall", 2)], b: [R(108, "seminar", 2), R(106, "lecture", 2)] },
     ],
   },
