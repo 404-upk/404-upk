@@ -132,7 +132,7 @@ function renderLayout() {
           ${group("Настройки", settings)}
         </nav>
         <div class="sidebar-foot">
-          <a class="btn btn-ghost btn-sm" href="/" target="_blank" rel="noopener" style="justify-content:flex-start">${icon("external", "icon-sm")} Страница заявителя</a>
+          <a class="u-justify-start btn btn-ghost btn-sm" href="/" target="_blank" rel="noopener">${icon("external", "icon-sm")} Страница заявителя</a>
           <a class="me" href="#/profile">
             <span class="avatar">${esc(initials(ctx.user.name))}</span>
             <span class="grow"><b>${esc(ctx.user.name)}</b><span>${esc(ctx.user.position || ctx.user.role_label)}</span></span>
@@ -219,7 +219,7 @@ async function route() {
     content.classList.remove("is-leaving");
     if (token !== routeToken) return;
   }
-  content.innerHTML = `<div class="stack"><div class="skeleton" style="height:44px"></div><div class="skeleton" style="height:320px"></div></div>`;
+  content.innerHTML = `<div class="stack"><div class="sk-h44 skeleton"></div><div class="sk-h320 skeleton"></div></div>`;
   window.scrollTo({ top: 0 });
   try {
     const mod = await PAGES[key].load();

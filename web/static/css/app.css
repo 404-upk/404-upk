@@ -9,7 +9,7 @@
   --border-strong: rgba(237, 240, 244, 0.17);
   --text: #edf0f4;
   --muted: rgba(237, 240, 244, 0.66);
-  --faint: rgba(237, 240, 244, 0.48);
+  --faint: rgba(237, 240, 244, 0.56);
 
   --primary: #6a86be;
   --primary-hover: #7c96cb;
@@ -59,7 +59,7 @@
   --border-strong: rgba(12, 18, 34, 0.18);
   --text: #0c1222;
   --muted: rgba(12, 18, 34, 0.64);
-  --faint: rgba(12, 18, 34, 0.5);
+  --faint: rgba(12, 18, 34, 0.62);
   --primary: #4c68a6;
   --primary-hover: #405a93;
   --primary-soft: rgba(106, 134, 190, 0.17);
@@ -68,7 +68,7 @@
   --green-soft: rgba(46, 125, 87, 0.11);
   --amber: #946713;
   --amber-soft: rgba(148, 103, 19, 0.11);
-  --orange: #b4552a;
+  --orange: #9a4520;
   --orange-soft: rgba(180, 85, 42, 0.11);
   --red: #c63a3f;
   --red-soft: rgba(198, 58, 63, 0.1);
@@ -79,7 +79,7 @@
   --gray: #5a6170;
   --gray-soft: rgba(12, 18, 34, 0.07);
   --glow: rgba(106, 134, 190, 0.22);
-  --node: #4c68a6;
+  --node: #8a93a6;
   --shadow-sm: 0 1px 2px rgba(12, 18, 34, 0.06);
   --shadow: 0 1px 2px rgba(12, 18, 34, 0.05), 0 8px 24px rgba(12, 18, 34, 0.07);
   --shadow-lg: 0 18px 50px rgba(12, 18, 34, 0.2);
@@ -217,7 +217,8 @@ button, input, select, textarea {
 .btn-lg { min-height: 50px; padding: 0 22px; font-size: 16px; border-radius: var(--radius); }
 .btn-sm { min-height: 32px; padding: 0 11px; font-size: 13px; border-radius: var(--radius-xs); }
 .btn-block { width: 100%; }
-.btn-icon { width: 40px; padding: 0; }
+/* кнопка-значок не сжимается в тесном ряду: на телефоне она иначе становилась шириной в 2 px */
+.btn-icon { flex: none; width: 40px; padding: 0; }
 .btn-icon.btn-sm { width: 32px; }
 
 .spinner {
@@ -817,7 +818,7 @@ body:has(> .page) > .footer { width: 100%; }
   padding: 10px 14px;
   border-radius: 10px;
   background: var(--primary);
-  color: #fff;
+  color: var(--on-primary);
   font-weight: 600;
   transition: top 0.15s ease;
 }
@@ -897,3 +898,95 @@ h2.h3 { font-size: 16px; font-weight: 600; letter-spacing: normal; }
 .error-block .btn { flex: none; }
 .error-block.is-compact { font-size: 13px; }
 @media (prefers-reduced-motion: reduce) { .net-banner, .net-banner.is-leaving { animation: none; } }
+
+/* ===== Служебные классы вместо встроенных стилей (CSP без unsafe-inline) =====
+   С !important, как были встроенные стили: они должны перекрывать правила компонентов из любых файлов. */
+.u-self-start { align-self: flex-start !important; }
+.u-m0 { margin: 0 !important; }
+.u-mt4 { margin-top: 4px !important; }
+.u-mt6 { margin-top: 6px !important; }
+.u-mt14 { margin-top: 14px !important; }
+.u-mb4 { margin-bottom: 4px !important; }
+.u-mb8 { margin-bottom: 8px !important; }
+.u-mb12 { margin-bottom: 12px !important; }
+.u-mv-10-22 { margin: 10px 0 22px !important; }
+.u-mv-6-14 { margin: 6px 0 14px !important; }
+.u-mv-n4-14 { margin: -4px 0 14px !important; }
+.u-mr-auto { margin-right: auto !important; }
+.u-ml-auto { margin-left: auto !important; }
+.u-flex-none { flex: none !important; }
+.u-py16 { padding: 16px 0 !important; }
+.u-block { display: block !important; }
+.u-wrap { flex-wrap: wrap !important; }
+.u-gap6 { gap: 6px !important; }
+.u-gap7 { gap: 7px !important; }
+.u-gap8 { gap: 8px !important; }
+.u-gap12 { gap: 12px !important; }
+.u-gap14 { gap: 14px !important; }
+.u-gap24 { gap: 24px !important; }
+.u-justify-start { justify-content: flex-start !important; }
+.u-justify-center { justify-content: center !important; }
+.u-wauto { width: auto !important; }
+.u-w100 { width: 100% !important; }
+.u-w70 { width: 70% !important; }
+.u-w360 { width: min(360px, 100%) !important; }
+.u-maxw180 { max-width: 180px !important; }
+.u-maxw280 { max-width: 280px !important; }
+.u-maxw420 { max-width: 420px !important; }
+.u-maxw440 { max-width: 440px !important; }
+.u-maxw640 { max-width: 640px !important; }
+.u-maxw1000 { max-width: 1000px !important; }
+.u-minw160 { min-width: 160px !important; }
+.u-minw180 { min-width: 180px !important; }
+.u-minw220 { min-width: 220px !important; }
+.u-minw280 { min-width: 280px !important; }
+.u-minh60 { min-height: 60px !important; }
+.u-minh64 { min-height: 64px !important; }
+.u-minh70 { min-height: 70px !important; }
+.u-sq28 { width: 28px !important; height: 28px !important; }
+.u-fs16 { font-size: 16px !important; }
+.u-fs18 { font-size: 18px !important; }
+.u-fw700 { font-weight: 700 !important; }
+.u-fw800 { font-weight: 800 !important; }
+.u-code-input { font-size: 18px !important; letter-spacing: 0.06em !important; }
+.u-clamp3 { display: -webkit-box !important; -webkit-line-clamp: 3 !important; -webkit-box-orient: vertical !important; overflow: hidden !important; }
+.u-cursor-default { cursor: default !important; }
+.u-inherit { color: inherit !important; }
+.u-plain-link { color: inherit !important; text-decoration: none !important; }
+.u-primary { color: var(--primary) !important; }
+.u-red { color: var(--red) !important; }
+.u-green { color: var(--green) !important; }
+.u-chart1 { color: var(--chart-1) !important; }
+.u-chart2 { color: var(--chart-2) !important; }
+.u-bg-chart1 { background: var(--chart-1) !important; }
+.u-bg-chart2 { background: var(--chart-2) !important; }
+.u-bg-white { background: #fff !important; }
+.u-border-warn { border-color: color-mix(in srgb, var(--orange) 40%, var(--border)) !important; }
+.u-offscreen { position: fixed !important; opacity: 0 !important; }
+.u-pill-check { padding: 6px 10px !important; border: 1px solid var(--border) !important; border-radius: 999px !important; }
+.u-print-url { font-size: 11px !important; color: #888 !important; }
+.u-avatar-lg { width: 54px !important; height: 54px !important; font-size: 18px !important; }
+.my-ticket-icon { width: 34px !important; height: 34px !important; border-radius: 10px !important; display: grid !important; place-items: center !important; background: var(--surface-3) !important; color: var(--muted) !important; }
+.sk-h40 { height: 40px !important; }
+.sk-h44 { height: 44px !important; }
+.sk-h58 { height: 58px !important; }
+.sk-h90 { height: 90px !important; }
+.sk-h120 { height: 120px !important; }
+.sk-h150 { height: 150px !important; }
+.sk-h180 { height: 180px !important; }
+.sk-h220 { height: 220px !important; }
+.sk-h320 { height: 320px !important; }
+.sk-h400 { height: 400px !important; }
+.is-inactive { opacity: 0.55 !important; }
+.is-clickable { cursor: pointer !important; }
+
+/* цвета статусов: точка у статуса, колонка доски, полоса в статистике */
+.st-c-new { --st: var(--sky); }
+.st-c-review { --st: var(--violet); }
+.st-c-assigned { --st: var(--primary); }
+.st-c-in_progress { --st: var(--amber); }
+.st-c-need_info { --st: var(--orange); }
+.st-c-resolved { --st: var(--green); }
+.st-c-rejected { --st: var(--gray); }
+.st-dot { display: inline-block; flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--st, var(--gray)); }
+.hbar-track i[class*="st-c-"] { background: var(--st); }

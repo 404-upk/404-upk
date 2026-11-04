@@ -14,16 +14,6 @@ const TABS = [
 ];
 const OPEN = ["new", "review", "assigned", "in_progress", "need_info"];
 
-export const STATUS_COLOR = {
-  new: "var(--sky)",
-  review: "var(--violet)",
-  assigned: "var(--primary)",
-  in_progress: "var(--amber)",
-  need_info: "var(--orange)",
-  resolved: "var(--green)",
-  rejected: "var(--gray)",
-};
-
 const NOTE_HINT = {
   resolved: "Что было сделано? Комментарий увидит заявитель",
   rejected: "Причина отклонения. Её увидит заявитель",
@@ -42,15 +32,15 @@ const AI_ENGINE = { gigachat: "GigaChat", fallback: "правила (демо)",
 
 export function assigneeCell(a) {
   if (!a) return `<span class="faint small">не назначен</span>`;
-  return `<span class="row" style="gap:7px"><span class="avatar avatar-sm">${esc(initials(a.name))}</span><span class="small">${esc(a.name)}</span></span>`;
+  return `<span class="u-gap7 row"><span class="avatar avatar-sm">${esc(initials(a.name))}</span><span class="small">${esc(a.name)}</span></span>`;
 }
 
 function badges(t) {
   const out = [];
-  if (t.ai_kind === "danger") out.push(`<span title="ИИ отметил опасность" style="color:var(--red)">${icon("flame", "icon-sm")}</span>`);
+  if (t.ai_kind === "danger") out.push(`<span class="u-red" title="ИИ отметил опасность">${icon("flame", "icon-sm")}</span>`);
   if (t.has_photo) out.push(`<span title="Есть фото" class="faint">${icon("image", "icon-sm")}</span>`);
   if (t.reports_count > 1) out.push(`<span class="badge" title="Сообщили ${t.reports_count} человека">${icon("users", "icon-sm")}&nbsp;${t.reports_count}</span>`);
-  return `<span class="row" style="gap:6px">${out.join("")}</span>`;
+  return `<span class="u-gap6 row">${out.join("")}</span>`;
 }
 
 export async function render({ el, setHead, params, id }) {
@@ -101,7 +91,7 @@ export async function render({ el, setHead, params, id }) {
     <div class="filters-more" id="more" hidden>
       <span class="small muted">Создана с</span><input class="input input-sm" type="date" id="f-from" aria-label="Создана с">
       <span class="small muted">по</span><input class="input input-sm" type="date" id="f-to" aria-label="Создана по">
-      <select class="select select-sm" id="f-sort" style="width:auto" aria-label="Сортировка">
+      <select class="u-wauto select select-sm" id="f-sort" aria-label="Сортировка">
         <option value="new">Сначала новые</option><option value="old">Сначала старые</option>
         <option value="priority">По приоритету</option><option value="updated">По последнему изменению</option>
       </select>
@@ -176,9 +166,9 @@ export async function render({ el, setHead, params, id }) {
     const rows = data.items
       .map(
         (t, i) => `
-        <tr class="clickable ${t.priority === "critical" && OPEN.includes(t.status) ? "crit" : ""} ${fresh(t) ? "fresh" : ""}" data-id="${t.id}" style="--i:${Math.min(i, 18)}">
+        <tr class="clickable ${t.priority === "critical" && OPEN.includes(t.status) ? "crit" : ""} ${fresh(t) ? "fresh" : ""}" data-id="${t.id}" data-css-i="${Math.min(i, 18)}">
           <td class="t-num">${esc(t.public_number)}</td>
-          <td style="min-width:220px"><a class="t-title t-link" href="#/tickets/${t.id}">${esc(t.title)}</a><div class="t-sub">${esc(t.place)}</div></td>
+          <td class="u-minw220"><a class="t-title t-link" href="#/tickets/${t.id}">${esc(t.title)}</a><div class="t-sub">${esc(t.place)}</div></td>
           <td><span class="cat-cell">${icon(t.category.icon, "icon-sm")}${esc(t.category.name)}</span></td>
           <td>${statusChip(t.status, t.status_label)}</td>
           <td>${priorityChip(t.priority, t.priority_label)}</td>
@@ -223,7 +213,7 @@ export async function render({ el, setHead, params, id }) {
   }
 
   async function load(silent = false) {
-    if (!silent) $("#list").innerHTML = `<div class="card-body"><div class="skeleton" style="height:220px"></div></div>`;
+    if (!silent) $("#list").innerHTML = `<div class="card-body"><div class="sk-h220 skeleton"></div></div>`;
     try {
       state.data = await api(`/api/staff/tickets?${query({ page: state.page, sort: state.sort, per_page: 25 })}`);
       if (state.seen === null) state.seen = new Set(state.data.items.map((t) => t.id));
@@ -312,7 +302,7 @@ export async function render({ el, setHead, params, id }) {
   async function openTicket(ticketId) {
     if (!drawer) {
       drawerOpener = `#/tickets/${ticketId}`;
-      drawer = h(`<div class="drawer-wrap"><div class="drawer-overlay"></div><div class="drawer" role="dialog" aria-modal="true" aria-label="Заявка" tabindex="-1"><div class="drawer-body"><div class="skeleton" style="height:400px"></div></div></div></div>`);
+      drawer = h(`<div class="drawer-wrap"><div class="drawer-overlay"></div><div class="drawer" role="dialog" aria-modal="true" aria-label="Заявка" tabindex="-1"><div class="drawer-body"><div class="sk-h400 skeleton"></div></div></div></div>`);
       drawer.querySelector(".drawer-overlay").addEventListener("click", () => (location.hash = "#/tickets"));
       document.body.append(drawer);
       document.addEventListener("keydown", onKey);
@@ -340,7 +330,7 @@ export async function render({ el, setHead, params, id }) {
     const statusButtons = t.transitions.length
       ? t.transitions
           .map(
-            (s) => `<button class="btn btn-sm" data-status="${s.value}"><span style="width:8px;height:8px;border-radius:50%;background:${STATUS_COLOR[s.value]}"></span>${esc(s.label)}</button>`,
+            (s) => `<button class="btn btn-sm" data-status="${s.value}"><span class="st-dot st-c-${esc(s.value)}" aria-hidden="true"></span>${esc(s.label)}</button>`,
           )
           .join("")
       : `<span class="small muted">Для этой заявки сейчас нет доступных переходов</span>`;
@@ -380,10 +370,11 @@ export async function render({ el, setHead, params, id }) {
 
     aside.innerHTML = `
       <div class="drawer-head">
-        <span class="t-num">${esc(t.public_number)}</span>
-        ${statusChip(t.status, t.status_label)}
-        ${priorityChip(t.priority, t.priority_label)}
-        <span class="grow"></span>
+        <div class="drawer-tags">
+          <span class="t-num">${esc(t.public_number)}</span>
+          ${statusChip(t.status, t.status_label)}
+          ${priorityChip(t.priority, t.priority_label)}
+        </div>
         <button class="btn btn-ghost btn-icon btn-sm" data-refresh title="Обновить" aria-label="Обновить">${icon("refresh")}</button>
         <button class="btn btn-ghost btn-icon btn-sm" data-close title="Закрыть" aria-label="Закрыть">${icon("x")}</button>
       </div>
@@ -399,7 +390,7 @@ export async function render({ el, setHead, params, id }) {
             : ""
         }
         <section class="card card-pad stack">
-          <dl class="kv" style="margin:0">
+          <dl class="u-m0 kv">
             <div><dt>Создана</dt><dd>${fmtDate(t.created_at)}</dd></div>
             <div><dt>Источник</dt><dd>${t.source === "qr" ? "QR-код" : "Вручную"}</dd></div>
             <div><dt>Сообщили</dt><dd>${t.reports_count} ${t.reports_count === 1 ? "человек" : "человека"}</dd></div>
@@ -407,7 +398,7 @@ export async function render({ el, setHead, params, id }) {
             <div><dt>Изменена</dt><dd>${relTime(t.updated_at)}</dd></div>
             <div><dt>Закрыта</dt><dd>${t.closed_at ? fmtDate(t.closed_at) : `<span class="faint">нет</span>`}</dd></div>
           </dl>
-          <div><div class="label" style="margin-bottom:4px">Описание</div><div class="pre">${esc(t.description)}</div></div>
+          <div><div class="u-mb4 label">Описание</div><div class="pre">${esc(t.description)}</div></div>
           ${
             t.attachments.length
               ? `<div class="row-wrap">${t.attachments.map((a) => `<button class="photo-thumb" data-photo="${esc(a.url)}"><img src="${esc(a.url)}" alt="Фото" loading="lazy"></button>`).join("")}</div>`
@@ -448,13 +439,13 @@ export async function render({ el, setHead, params, id }) {
           <h3>Комментарии</h3>
           ${comments}
           <div class="stack-sm">
-            <textarea class="textarea" id="c-body" rows="2" maxlength="2000" placeholder="Написать комментарий" style="min-height:70px"></textarea>
-            <div class="row between">
+            <textarea class="u-minh70 textarea" id="c-body" rows="2" maxlength="2000" placeholder="Написать комментарий"></textarea>
+            <div class="row between u-wrap u-gap8">
               <div class="segmented" id="c-vis">
                 <button type="button" aria-pressed="true" data-v="public">Видно заявителю</button>
                 <button type="button" aria-pressed="false" data-v="internal">${icon("lock", "icon-sm")} Внутренний</button>
               </div>
-              <button class="btn btn-primary btn-sm" id="c-send">${icon("send", "icon-sm")} Отправить</button>
+              <button class="btn btn-primary btn-sm u-flex-none u-ml-auto" id="c-send">${icon("send", "icon-sm")} Отправить</button>
             </div>
           </div>
         </section>
