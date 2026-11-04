@@ -41,6 +41,8 @@ function codeFromPath() {
 
 // ---------- ввод кода ----------
 
+let lookupShown = false;
+
 function renderLookup(error = "") {
   const mine = myTickets.list();
   app.innerHTML = `
@@ -51,8 +53,8 @@ function renderLookup(error = "") {
     <form class="card card-pad stack" id="lookup" novalidate>
       <div class="field">
         <label for="code">Код отслеживания</label>
-        <input class="input mono" id="code" autocomplete="off" autocapitalize="characters" spellcheck="false"
-          placeholder="XXXX-XXXX-XXXX-XXXX" maxlength="19" style="font-size:18px;letter-spacing:.06em">
+        <input class="u-code-input input mono" id="code" autocomplete="off" autocapitalize="characters" spellcheck="false"
+          placeholder="XXXX-XXXX-XXXX-XXXX" maxlength="19">
         ${error ? `<div class="error">${esc(error)}</div>` : `<div class="hint">16 символов: латинские буквы и цифры</div>`}
       </div>
       <button class="btn btn-primary btn-lg" type="submit">${icon("search")} Найти заявку</button>
@@ -60,7 +62,7 @@ function renderLookup(error = "") {
     ${
       mine.length
         ? `<section class="my-tickets">
-            <h3 style="margin-bottom:8px">Мои заявки на этом устройстве</h3>
+            <h3 class="u-mb8">Мои заявки на этом устройстве</h3>
             <div class="card">${mine
               .map(
                 (t) => `<a class="my-ticket" href="/t/${esc(t.code)}">
@@ -72,6 +74,12 @@ function renderLookup(error = "") {
           </section>`
         : ""
     }`;
+  // первый показ после заставки: заголовок по словам, остальное поднимается по очереди, как на главной
+  if (!lookupShown) {
+    lookupShown = true;
+    splitWords(app.querySelector(".hero h1"), { delay: 60 });
+    rise(app, ".hero p, #lookup, .my-tickets", { step: 90, delay: 160 });
+  }
   const input = $("#code");
   input.addEventListener("input", () => {
     const raw = input.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 16);
@@ -119,14 +127,14 @@ function stepper() {
       ? "Заявка отклонена: причина в истории ниже"
       : `Этап ${Math.min(current + 1, 5)} из 5`;
   return `<div class="track-path" aria-label="Ход выполнения">
-    <i class="track-fill" style="width:${fill}%"></i>
+    <i class="track-fill" data-css-pct="${fill}"></i>
     ${STEPS.map((s, i) => {
       let cls = "";
       if (resolved || i < current) cls = "done";
       else if (i === current) cls = "current";
       let label = s.label;
       if (i === 4 && data.status === "rejected") label = "Отклонена";
-      return `<div class="tp-step ${cls} ${i === 4 ? "final" : ""}" style="--i:${i}"><div class="tp-node">${spark()}</div><span>${label}</span></div>`;
+      return `<div class="tp-step ${cls} ${i === 4 ? "final" : ""}" data-css-i="${i}"><div class="tp-node">${spark()}</div><span>${label}</span></div>`;
     }).join("")}
   </div>
   <div class="track-caption">${caption}</div>`;
@@ -135,7 +143,7 @@ function stepper() {
 function statusBlock() {
   if (data.status === "need_info") {
     return `
-      <section class="card card-pad stack" style="border-color:color-mix(in srgb, var(--orange) 40%, var(--border))">
+      <section class="u-border-warn card card-pad stack">
         <div class="row">${icon("help")}<h3>Сотруднику нужно уточнение</h3></div>
         ${data.need_info_question ? `<div class="notice notice-warn">${icon("message")}<div class="pre">${esc(data.need_info_question)}</div></div>` : ""}
         ${replyForm("Ваш ответ")}
@@ -144,11 +152,11 @@ function statusBlock() {
   if (data.status === "resolved") {
     return `
       <section class="card card-pad stack">
-        <div class="notice notice-ok">${icon("checkCircle")}<div><b>Заявка решена.</b>${data.resolution ? `<div class="pre" style="margin-top:4px">${esc(data.resolution)}</div>` : ""}</div></div>
+        <div class="notice notice-ok">${icon("checkCircle")}<div><b>Заявка решена.</b>${data.resolution ? `<div class="u-mt4 pre">${esc(data.resolution)}</div>` : ""}</div></div>
         ${
           data.rating
             ? `<div class="row"><span class="muted">Ваша оценка:</span><span class="stars">${[1, 2, 3, 4, 5]
-                .map((n) => `<span class="star ${n <= data.rating ? "on" : ""}" style="cursor:default">${icon("star")}</span>`)
+                .map((n) => `<span class="star u-cursor-default ${n <= data.rating ? "on" : ""}">${icon("star")}</span>`)
                 .join("")}</span></div>`
             : data.can_rate
               ? `<div class="stack-sm">
@@ -156,16 +164,16 @@ function statusBlock() {
                   <div class="stars" id="stars">${[1, 2, 3, 4, 5]
                     .map((n) => `<button class="star" data-n="${n}" aria-label="${n} из 5">${icon("star")}</button>`)
                     .join("")}</div>
-                  <textarea class="textarea" id="rate-comment" rows="2" maxlength="1000" placeholder="Комментарий (необязательно)" style="min-height:64px"></textarea>
-                  <button class="btn btn-primary" id="rate-btn" disabled style="align-self:flex-start">Отправить оценку</button>
+                  <textarea class="u-minh64 textarea" id="rate-comment" rows="2" maxlength="1000" placeholder="Комментарий (необязательно)"></textarea>
+                  <button class="u-self-start btn btn-primary" id="rate-btn" disabled>Отправить оценку</button>
                 </div>`
               : ""
         }
       </section>`;
   }
   if (data.status === "rejected") {
-    return `<div class="notice">${icon("info")}<div><b>Заявка отклонена.</b>${data.resolution ? `<div class="pre" style="margin-top:4px">${esc(data.resolution)}</div>` : ""}
-      <div class="small muted" style="margin-top:6px">Если проблема осталась, оставьте новое обращение или подойдите к сотруднику УПК.</div></div></div>`;
+    return `<div class="notice">${icon("info")}<div><b>Заявка отклонена.</b>${data.resolution ? `<div class="u-mt4 pre">${esc(data.resolution)}</div>` : ""}
+      <div class="u-mt6 small muted">Если проблема осталась, оставьте новое обращение или подойдите к сотруднику УПК.</div></div></div>`;
   }
   return "";
 }
@@ -175,7 +183,7 @@ function replyForm(label) {
     <form class="stack-sm" id="reply-form">
       <label class="label" for="reply">${esc(label)}</label>
       <textarea class="textarea" id="reply" rows="3" maxlength="2000" placeholder="Напишите сообщение сотруднику"></textarea>
-      <button class="btn btn-primary" type="submit" id="reply-btn" style="align-self:flex-start">${icon("send")} Отправить</button>
+      <button class="u-self-start btn btn-primary" type="submit" id="reply-btn">${icon("send")} Отправить</button>
     </form>`;
 }
 
@@ -222,13 +230,13 @@ function render() {
       ${statusBlock()}
 
       <section class="card card-pad stack">
-        <dl class="info-grid" style="margin:0">
+        <dl class="u-m0 info-grid">
           <div><dt>Место</dt><dd>${esc(d.place)}</dd></div>
           <div><dt>Категория</dt><dd>${esc(d.category)}</dd></div>
           <div><dt>Создана</dt><dd>${fmtDate(d.created_at)}</dd></div>
           <div><dt>Сообщили</dt><dd>${d.reports_count} ${d.reports_count === 1 ? "человек" : "человека"}</dd></div>
         </dl>
-        ${d.description ? `<div><div class="label" style="margin-bottom:4px">Описание</div><div class="pre">${esc(d.description)}</div></div>` : ""}
+        ${d.description ? `<div><div class="u-mb4 label">Описание</div><div class="pre">${esc(d.description)}</div></div>` : ""}
         ${
           d.attachments.length
             ? `<div class="row-wrap">${d.attachments
@@ -251,7 +259,7 @@ function render() {
       </section>
 
       <section class="card card-pad stack">
-        <div class="row between"><div><div class="label">Код отслеживания</div><div class="mono" style="font-weight:700;font-size:16px">${esc(d.code)}</div></div>
+        <div class="row between"><div><div class="label">Код отслеживания</div><div class="u-fw700 u-fs16 mono">${esc(d.code)}</div></div>
           <button class="btn btn-sm" id="copy-code">${icon("copy", "icon-sm")} Копировать</button></div>
         ${
           d.telegram_url

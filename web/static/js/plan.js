@@ -72,10 +72,18 @@ const canHover = () => HOVER_MQ.matches;
 const hintText = () => (canHover() ? "Наведите на кабинет, нажмите на этаж, чтобы открыть его план" : "Нажмите на этаж, чтобы открыть его план");
 export const STATE_TEXT = { clear: "Открытых заявок нет", open: "Есть открытая заявка", urgent: "Есть срочная заявка" };
 
+/**
+ * Название и подпись кабинета без повтора: у обычного кабинета номер и тип,
+ * у столовой, спортзала и актового зала название и номер, у холла — что это вход.
+ */
+export function roomNames(cell) {
+  if (cell.type === "lobby") return { title: "Главный холл", sub: "Вход в колледж" };
+  if (["canteen", "gym", "hall"].includes(cell.type)) return { title: TYPES[cell.type], sub: `Кабинет ${cell.n}` };
+  return { title: `Кабинет ${cell.n}`, sub: TYPES[cell.type] };
+}
+
 export function roomTitle(cell) {
-  if (cell.type === "lobby") return "Главный холл";
-  if (["canteen", "gym", "hall"].includes(cell.type)) return `${TYPES[cell.type]}, ${cell.n}`;
-  return `Кабинет ${cell.n}`;
+  return roomNames(cell).title;
 }
 
 export function floorRooms(f) {
@@ -325,8 +333,8 @@ export function bindPlan(root, states, { onOpenFloor } = {}) {
     const data = stateOf(states, n);
     info.innerHTML = `
       <div class="pl-info-text">
-        <b>${esc(roomTitle(cell))}</b>
-        <div class="pl-info-type">${esc(TYPES[cell.type])}</div>
+        <b>${esc(roomNames(cell).title)}</b>
+        <div class="pl-info-type">${esc(roomNames(cell).sub)}</div>
         <div class="pl-info-state is-${esc(data.state)}"><i></i>${esc(STATE_TEXT[data.state])}${data.chronic ? ", проблемы повторяются" : ""}</div>
       </div>`;
   };

@@ -1,5 +1,5 @@
 import { api, esc, icon, openModal, priorityChip, relTime, toast } from "../core.js";
-import { STATUS_COLOR, assigneeCell } from "./tickets.js";
+import { assigneeCell } from "./tickets.js";
 
 const COLUMNS = [
   ["new", "Новые"],
@@ -73,9 +73,9 @@ export async function render({ el, setHead }) {
     // колонки появляются каскадом только при первом показе
     el.innerHTML = `<div class="board ${shown ? "quiet" : ""}">${COLUMNS.map(([status, label], i) => {
       const items = tickets.filter((t) => t.status === status);
-      return `<section class="col" data-status="${status}" style="--i:${i}" role="region" aria-label="${esc(label)}: ${items.length}">
-        <div class="col-head"><span class="col-dot" aria-hidden="true" style="background:${STATUS_COLOR[status]}"></span>${label}<span class="badge">${items.length}</span></div>
-        ${items.map(card).join("") || `<div class="small faint center" style="padding:16px 0">Пусто</div>`}
+      return `<section class="col" data-status="${status}" data-css-i="${i}" role="region" aria-label="${esc(label)}: ${items.length}">
+        <div class="col-head"><span class="col-dot st-c-${status}" aria-hidden="true"></span>${label}<span class="badge">${items.length}</span></div>
+        ${items.map(card).join("") || `<div class="u-py16 small faint center">Пусто</div>`}
       </section>`;
     }).join("")}</div>`;
     shown = true;

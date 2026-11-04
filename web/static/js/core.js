@@ -449,7 +449,7 @@ export async function copyText(text) {
     await navigator.clipboard.writeText(text);
     toast("Скопировано");
   } catch {
-    const area = h(`<textarea style="position:fixed;opacity:0">${esc(text)}</textarea>`);
+    const area = h(`<textarea class="u-offscreen">${esc(text)}</textarea>`);
     document.body.append(area);
     area.select();
     document.execCommand("copy");
@@ -548,4 +548,24 @@ export const myTickets = {
   },
 };
 
-if (document.body) watchNetwork();
+// ---------- числа для стилей из разметки ----------
+// CSP запрещает style="" в разметке. Порядок появления (--i) и ширина полосы в процентах передаются
+// через data-css-i и data-css-pct и ставятся отсюда. Принимаются только числа.
+
+function applyCssData(root) {
+  if (root.nodeType !== 1) return;
+  const nodes = root.matches("[data-css-i], [data-css-pct]") ? [root] : [];
+  nodes.push(...root.querySelectorAll("[data-css-i], [data-css-pct]"));
+  for (const el of nodes) {
+    const i = Number(el.dataset.cssI);
+    if (el.dataset.cssI !== undefined && Number.isFinite(i)) el.style.setProperty("--i", String(Math.trunc(i)));
+    const pct = Number(el.dataset.cssPct);
+    if (el.dataset.cssPct !== undefined && Number.isFinite(pct)) el.style.width = `${Math.min(100, Math.max(0, pct))}%`;
+  }
+}
+
+if (document.body) {
+  watchNetwork();
+  applyCssData(document.body);
+  new MutationObserver((records) => records.forEach((r) => r.addedNodes.forEach(applyCssData))).observe(document.body, { childList: true, subtree: true });
+}
