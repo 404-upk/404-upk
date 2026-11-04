@@ -1,22 +1,23 @@
-// План этажей колледжа: три этажа, кабинеты как двери, лестницы слева и справа.
+// Схема колледжа в блоке «Состояние колледжа»: здание в разрезе, три этажа, кабинеты по обе стороны коридора.
+// Лестницы: по бокам на всех этажах, посередине с 1 на 2 этаж, на 1 этаже посередине вход.
 // Состояние кабинета берётся из /api/campus: без заявок, есть заявка, срочная заявка.
-// При наведении, фокусе или касании дверь открывается, внизу показывается, что это за кабинет.
+// Наведение открывает дверь кабинета, нажатие открывает план этажа во весь экран (floor-view.js).
 
 import { esc } from "./core.js";
 import { REDUCED } from "./motion.js";
 
-const TYPES = {
+export const TYPES = {
   lecture: "Лекционный кабинет",
   computer: "Компьютерный кабинет",
   seminar: "Семинарский кабинет",
   canteen: "Столовая",
   gym: "Спортзал",
   hall: "Актовый зал",
-  lobby: "Холл",
+  lobby: "Главный холл",
 };
 
-// Значки типов, видны за открытой дверью. Рисуются линиями, как остальные иконки проекта.
-const TYPE_ICON = {
+// Значки типов линиями, как остальные иконки проекта
+export const TYPE_ICON = {
   lecture: '<rect x="4" y="4" width="16" height="10" rx="1"/><path d="M8 18h8M12 14v4"/>',
   computer: '<rect x="3" y="4" width="18" height="12" rx="1.5"/><path d="M9 20h6M12 16v4"/>',
   seminar: '<path d="M3 10h18M5 10v9M19 10v9"/><path d="M8 6h8"/>',
@@ -26,36 +27,59 @@ const TYPE_ICON = {
   lobby: '<path d="M4 20V9l8-5 8 5v11"/><path d="M10 20v-6h4v6"/>',
 };
 
-// Колледж: номер, тип, ширина в ячейках. Каждый этаж — два ряда по 8 ячеек вдоль коридора.
-const L = (n, type = "seminar", w = 1) => ({ n: String(n), type, w });
+const R = (n, type = "seminar", w = 1) => ({ n: String(n), type, w });
+
+/**
+ * Этажи сверху вниз. Каждая часть этажа — два ряда кабинетов друг напротив друга через коридор (a и b).
+ * center: что посередине этажа — "entrance" (вход и лестница на 2 этаж), "arrive" (сюда приходит лестница с 1 этажа) или нет.
+ */
 export const FLOORS = [
   {
     floor: 3,
-    rows: [
-      [L(301, "lecture"), L(302), L(303), L(304), L(305), L(306), L(307, "lecture"), L(308)],
-      [L(309), L(310), L(311), L(312), L(314), L(315), L(316), L(317, "computer")],
+    center: null,
+    parts: [
+      {
+        a: [R(301, "lecture"), R(302), R(303), R(304), R(305), R(306), R(307, "lecture"), R(308)],
+        b: [R(309), R(310), R(311), R(312), R(314), R(315), R(316), R(317, "computer")],
+      },
     ],
   },
   {
     floor: 2,
-    rows: [
-      [L(201, "lecture"), L(202, "computer"), L(203), L(204), L(205), L(206), L(207, "lecture"), L(208)],
-      [L(209), L(210), L(212), L(213), L(214, "computer"), L(215, "computer"), L(216), L(217)],
+    center: "arrive",
+    parts: [
+      { a: [R(201, "lecture"), R(202, "computer"), R(203), R(204)], b: [R(205), R(206), R(207, "lecture"), R(208)] },
+      { a: [R(209), R(210), R(212), R(213)], b: [R(214, "computer"), R(215, "computer"), R(216), R(217)] },
     ],
   },
   {
     floor: 1,
-    rows: [
-      [L(101, "canteen", 2), L(102, "gym", 2), L(103), L(104), L(105), L(106, "lecture")],
-      [L(107), L(108), L(109, "lecture"), { n: "холл", type: "lobby", w: 3 }, L(110, "hall", 2)],
+    center: "entrance",
+    parts: [
+      { a: [R(101, "canteen", 2), R(102, "gym", 2)], b: [R(103), R(104), R(105), R(106, "lecture")] },
+      { a: [R(107), R(108), R(109, "lecture", 2)], b: [R(110, "hall", 4)] },
     ],
   },
 ];
 
-const RANK = { clear: 0, open: 1, urgent: 2 };
-const STATE_TEXT = { clear: "Открытых заявок нет", open: "Есть открытая заявка", urgent: "Есть срочная заявка" };
+export const LOBBY = { n: "холл", type: "lobby", w: 1 };
 
-/** Помещение из /api/campus → номер ячейки на плане: «Кабинет 214» → 214, «Столовая» → 101 */
+const RANK = { clear: 0, open: 1, urgent: 2 };
+const HOVER = matchMedia("(hover: hover)").matches;
+export const STATE_TEXT = { clear: "Открытых заявок нет", open: "Есть открытая заявка", urgent: "Есть срочная заявка" };
+
+export function roomTitle(cell) {
+  if (cell.type === "lobby") return "Главный холл";
+  if (["canteen", "gym", "hall"].includes(cell.type)) return `${TYPES[cell.type]}, ${cell.n}`;
+  return `Кабинет ${cell.n}`;
+}
+
+export function floorRooms(f) {
+  const list = f.parts.flatMap((p) => [...p.a, ...p.b]);
+  return f.center === "entrance" ? [...list, LOBBY] : list;
+}
+
+/** Помещение из /api/campus → ячейка схемы: «Кабинет 214» → 214, «Столовая» → 101, «Главный холл» → холл */
 function cellKey(title) {
   const t = String(title).toLowerCase();
   const m = t.match(/кабинет\s+(\d+)/);
@@ -67,7 +91,7 @@ function cellKey(title) {
   return null;
 }
 
-/** Собирает состояние ячеек: если на ячейку пришлось несколько помещений, берётся самое тревожное */
+/** Состояние ячеек: если на ячейку пришлось несколько помещений, берётся самое тревожное */
 export function planStates(campus) {
   const map = new Map();
   for (const b of campus?.buildings || []) {
@@ -79,7 +103,7 @@ export function planStates(campus) {
       else if (r.chronic) prev.chronic = true;
     }
   }
-  // ?plan=demo: показать все три состояния на плане, только для просмотра оформления
+  // ?plan=demo: все три состояния на схеме, только для просмотра оформления
   if (new URLSearchParams(location.search).get("plan") === "demo") {
     const demo = { 102: "open", 107: "open", 206: "open", 214: "open", 303: "open", 311: "open", холл: "open", 202: "urgent", 305: "urgent" };
     for (const [key, state] of Object.entries(demo)) map.set(key, { ...map.get(key), state });
@@ -87,144 +111,210 @@ export function planStates(campus) {
   return map;
 }
 
-function title(cell) {
-  if (cell.type === "lobby") return "Главный холл";
-  if (["canteen", "gym", "hall"].includes(cell.type)) return `${TYPES[cell.type]}, ${cell.n}`;
-  return `Кабинет ${cell.n}`;
+export function stateOf(states, n) {
+  return states.get(n) || { state: "clear" };
 }
 
-function stairsSvg(side) {
-  // три площадки на уровнях этажей и марши между ними; растягивается по высоте плана
-  const flights = [];
-  const levels = [1 / 6, 3 / 6, 5 / 6].map((y) => y * 300);
-  for (let i = 0; i < 2; i++) {
-    const y0 = levels[i];
-    const y1 = levels[i + 1];
-    const steps = 7;
-    let d = `M${side === "left" ? 14 : 0} ${y0}`;
-    for (let s = 1; s <= steps; s++) {
-      const x = side === "left" ? 14 - (14 * s) / steps : (14 * s) / steps;
-      const y = y0 + ((y1 - y0) * s) / steps;
-      d += `V${y.toFixed(1)}H${x.toFixed(1)}`;
-    }
-    flights.push(`<path class="pl-flight" vector-effect="non-scaling-stroke" d="${d}"/>`);
-  }
-  const landings = levels.map((y) => `<path class="pl-landing" vector-effect="non-scaling-stroke" d="M0 ${y}H14"/>`).join("");
-  return `<svg class="pl-stairs pl-stairs-${side}" viewBox="0 0 14 300" preserveAspectRatio="none" aria-hidden="true">
-    <path class="pl-rail" vector-effect="non-scaling-stroke" d="M${side === "left" ? 0.5 : 13.5} 18V282"/>${flights.join("")}${landings}</svg>`;
+// ---------- геометрия схемы (единицы viewBox) ----------
+
+const W = 480;
+const X0 = 30; // левая стена здания
+const X1 = 476; // правая стена
+const SW = 40; // ширина боковой лестничной клетки
+const CW = 52; // ширина средней лестничной клетки
+const CX = (X0 + X1) / 2;
+const TOP = 40; // верх 3 этажа
+const FH = 96; // высота этажа
+const G = TOP + 3 * FH; // земля
+const H = G + 24;
+const ROW = 38;
+
+const floorTop = (n) => TOP + (3 - n) * FH;
+const f1 = (n) => n.toFixed(1);
+
+/** Марш лестницы в разрезе: ступени от (xa, ya) до (xb, yb), снизу косоур */
+function flight(xa, ya, xb, yb, steps = 6) {
+  const dx = (xb - xa) / steps;
+  const dy = (yb - ya) / steps;
+  let d = `M${f1(xa)} ${f1(ya)}`;
+  for (let i = 0; i < steps; i++) d += `v${f1(dy)}h${f1(dx)}`;
+  const under = `L${f1(xb)} ${f1(yb + 5)}L${f1(xa + dx * 0.4)} ${f1(ya + 1.5)}Z`;
+  return `<path class="pf-steps" d="${d}${under}"/>`;
 }
 
-/**
- * Разметка плана. states: Map из planStates(); here: id помещения, выбранного заявителем.
- */
+/** Лестничная клетка на высоту одного этажа: два марша с промежуточной площадкой */
+function stairFloor(a, b, yb, yt, mirror = false) {
+  const ym = (yb + yt) / 2;
+  const L = mirror ? b : a;
+  const Rr = mirror ? a : b;
+  const s = mirror ? -1 : 1;
+  return `${flight(L + 6 * s, yb, Rr - 6 * s, ym)}
+    <path class="pf-landing" d="M${f1(Rr - 7 * s)} ${f1(ym)}H${f1(Rr)}"/>
+    ${flight(Rr - 6 * s, ym, L + 6 * s, yt)}
+    <path class="pf-landing" d="M${f1(L)} ${f1(yt)}H${f1(L + 7 * s)}"/>`;
+}
+
+function rail(a, b, y) {
+  const posts = [];
+  for (let x = a + 4; x <= b - 3; x += 6) posts.push(`M${f1(x)} ${f1(y)}v8`);
+  return `<path class="pf-rail" d="M${f1(a + 2)} ${f1(y)}H${f1(b - 2)}${posts.join("")}"/>`;
+}
+
+function roomSvg(cell, x, w, y, states, here) {
+  const info = stateOf(states, cell.n);
+  const dw = cell.w > 1 ? Math.min(28, w * 0.42) : Math.min(16, w * 0.46);
+  const dh = 21;
+  const cx = x + w / 2;
+  const dx = cx - dw / 2;
+  const dy = y + ROW - dh - 1;
+  const isHere = here != null && info.id === here;
+  return `<g class="pf-room is-${esc(info.state)}${isHere ? " is-here" : ""}" data-n="${esc(cell.n)}">
+    <rect class="pf-hit" x="${f1(x)}" y="${f1(y)}" width="${f1(w)}" height="${ROW}" rx="4"/>
+    <text class="pf-num" x="${f1(cx)}" y="${f1(y + 9)}">${esc(cell.n)}</text>
+    <rect class="pf-inside" x="${f1(dx)}" y="${f1(dy)}" width="${f1(dw)}" height="${dh}" fill="url(#pfg-${esc(info.state)})"/>
+    <svg class="pf-icon" x="${f1(cx - 5.5)}" y="${f1(dy + dh / 2 - 5.5)}" width="11" height="11" viewBox="0 0 24 24">${TYPE_ICON[cell.type]}</svg>
+    <rect class="pf-door" x="${f1(dx)}" y="${f1(dy)}" width="${f1(dw)}" height="${dh}"/>
+    <rect class="pf-lamp" x="${f1(cx - 2.5)}" y="${f1(dy - 4)}" width="5" height="1.8" rx="0.9"/>
+    <path class="pf-sill" d="M${f1(dx - 1.5)} ${f1(y + ROW - 0.5)}H${f1(dx + dw + 1.5)}"/>
+  </g>`;
+}
+
+function rowSvg(cells, x0, x1, y, states, here) {
+  const units = cells.reduce((s, c) => s + c.w, 0);
+  const gap = 3;
+  const unit = (x1 - x0 - gap * (units - 1)) / units;
+  let x = x0;
+  return cells
+    .map((c) => {
+      const w = unit * c.w + gap * (c.w - 1);
+      const svg = roomSvg(c, x, w, y, states, here);
+      x += w + gap;
+      return svg;
+    })
+    .join("");
+}
+
+function partRanges(f) {
+  const a = X0 + SW + 4;
+  const b = X1 - SW - 4;
+  if (!f.center) return [[a, b]];
+  return [
+    [a, CX - CW / 2 - 4],
+    [CX + CW / 2 + 4, b],
+  ];
+}
+
+/** Разметка схемы. states — из planStates(), here — id помещения, выбранного заявителем. */
 export function planHtml(states, { here = null, enter = false } = {}) {
-  let i = 0;
   const floors = FLOORS.map((f) => {
-    const rows = f.rows
-      .map(
-        (row) => `<div class="pl-row">${row
-          .map((cell) => {
-            const info = states.get(cell.n) || { state: "clear" };
-            const isHere = here != null && info.id === here;
-            const name = title(cell);
-            const label = `${name}, ${TYPES[cell.type].toLowerCase()}: ${STATE_TEXT[info.state].toLowerCase()}`;
-            return `<button type="button" class="pl-room is-${esc(info.state)} w${cell.w}${isHere ? " is-here" : ""}" data-n="${esc(cell.n)}" data-i="${i++}" aria-label="${esc(label)}">
-              <span class="pl-num">${cell.type === "lobby" ? "холл" : esc(cell.n)}</span>
-              <span class="pl-frame">
-                <span class="pl-inside"><svg viewBox="0 0 24 24" aria-hidden="true">${TYPE_ICON[cell.type]}</svg></span>
-                <span class="pl-door"><i class="pl-handle"></i></span>
-                <i class="pl-lamp"></i>
-              </span>
-            </button>`;
-          })
-          .join("")}</div>`,
-      )
-      .join(`<div class="pl-corridor" aria-hidden="true"></div>`);
-    return `<div class="pl-floor" data-floor="${f.floor}">
-      <div class="pl-label" aria-hidden="true">${f.floor}&nbsp;эт</div>
-      <div class="pl-slab" role="group" aria-label="${f.floor} этаж">${rows}</div>
-    </div>`;
+    const y0 = floorTop(f.floor);
+    const ranges = partRanges(f);
+    const open = floorRooms(f).filter((c) => stateOf(states, c.n).state !== "clear").length;
+    const rooms = f.parts
+      .map((p, i) => {
+        const [xa, xb] = ranges[i];
+        return `${rowSvg(p.a, xa, xb, y0 + 6, states, here)}
+          <path class="pf-corridor" d="M${f1(xa)} ${f1(y0 + 48)}H${f1(xb)}"/>
+          ${rowSvg(p.b, xa, xb, y0 + 52, states, here)}`;
+      })
+      .join("");
+    let center = "";
+    if (f.center === "entrance") {
+      const lobby = stateOf(states, LOBBY.n);
+      const isHere = here != null && lobby.id === here;
+      center = `${stairFloor(CX - CW / 2, CX + CW / 2, G - 30, y0)}
+        <g class="pf-room pf-lobby is-${esc(lobby.state)}${isHere ? " is-here" : ""}" data-n="${LOBBY.n}">
+          <rect class="pf-hit" x="${f1(CX - CW / 2 + 2)}" y="${f1(G - 32)}" width="${CW - 4}" height="32" rx="4"/>
+          <rect class="pf-inside" x="${f1(CX - 11)}" y="${f1(G - 25)}" width="22" height="25" fill="url(#pfg-${esc(lobby.state)})"/>
+          <rect class="pf-door pf-door-l" x="${f1(CX - 11)}" y="${f1(G - 25)}" width="11" height="25"/>
+          <rect class="pf-door pf-door-r" x="${f1(CX)}" y="${f1(G - 25)}" width="11" height="25"/>
+          <rect class="pf-lamp" x="${f1(CX - 3)}" y="${f1(G - 29.5)}" width="6" height="1.8" rx="0.9"/>
+        </g>`;
+    } else if (f.center === "arrive") {
+      center = rail(CX - CW / 2, CX + CW / 2, y0 + FH - 14);
+    }
+    const label = `${f.floor} этаж: ${open ? `помещений с заявками ${open}` : "заявок нет"}. Открыть план этажа`;
+    return `<g class="pf-floor" data-floor="${f.floor}" tabindex="0" role="button" aria-label="${esc(label)}">
+      <rect class="pf-floor-bg" x="${X0 + 1}" y="${f1(y0 + 1)}" width="${X1 - X0 - 2}" height="${FH - 2}" rx="3"/>
+      <text class="pf-label" x="0" y="${f1(y0 + FH / 2 + 3)}">${f.floor} эт</text>
+      ${rooms}${center}
+    </g>`;
   }).join("");
+
+  // боковые лестничные клетки: марши с 1 на 2 и со 2 на 3 этаж
+  const sideStairs = [1, 2]
+    .map((n) => `${stairFloor(X0, X0 + SW, floorTop(n) + FH, floorTop(n))}${stairFloor(X1 - SW, X1, floorTop(n) + FH, floorTop(n), true)}`)
+    .join("");
+  const facade = `
+    <rect class="pf-base" x="${X0}" y="${floorTop(1)}" width="${X1 - X0}" height="${FH}"/>
+    <path class="pf-attic" d="M${CX - 50} ${TOP - 3}V12H${CX + 50}V${TOP - 3}"/>
+    <path class="pf-cornice" d="M${CX - 55} 12H${CX + 55}M${CX - 52} 8.5H${CX + 52}"/>
+    <circle class="pf-emblem" cx="${CX}" cy="${(TOP + 9) / 2}" r="8"/>
+    <path class="pf-spark" transform="translate(${CX - 5} ${(TOP + 9) / 2 - 5}) scale(0.4167)" d="M12 0C12.9 7.6 16.4 11.1 24 12C16.4 12.9 12.9 16.4 12 24C11.1 16.4 7.6 12.9 0 12C7.6 11.1 11.1 7.6 12 0Z"/>
+    <path class="pf-cornice" d="M${X0 - 6} ${TOP - 3}H${X1 + 6}"/>
+    <path class="pf-pilaster" d="M${CX - 50} ${TOP}V${G}M${CX + 50} ${TOP}V${G}"/>
+    <path class="pf-inner" d="M${X0 + SW} ${TOP}V${G}M${X1 - SW} ${TOP}V${G}M${CX - CW / 2} ${floorTop(2)}V${G}M${CX + CW / 2} ${floorTop(2)}V${G}"/>
+    <path class="pf-slab" d="M${X0} ${floorTop(2)}H${X1}M${X0} ${floorTop(1)}H${f1(CX - CW / 2 + 6)}M${f1(CX + CW / 2 - 4)} ${floorTop(1)}H${X1}"/>
+    <rect class="pf-outline" x="${X0}" y="${TOP}" width="${X1 - X0}" height="${G - TOP}"/>
+    <path class="pf-ground" d="M2 ${G}H${W - 2}M${CX - 18} ${G + 3}H${CX + 18}M${CX - 22} ${G + 6}H${CX + 22}"/>
+    <text class="pf-entry" x="${CX}" y="${G + 18}">Вход</text>`;
+
+  const grad = (s) => `<radialGradient id="pfg-${s}" class="pfg-${s}" cx="50%" cy="100%" r="110%"><stop offset="0"/><stop offset="1"/></radialGradient>`;
   return `<div class="plan${enter && !REDUCED ? " is-enter" : ""}">
-    ${stairsSvg("left")}${floors}${stairsSvg("right")}
+    <svg class="pf" viewBox="0 0 ${W} ${H}" role="group" aria-label="Схема колледжа: 3 этажа">
+      <defs>${grad("clear")}${grad("open")}${grad("urgent")}</defs>
+      ${facade}
+      <g class="pf-stairs" aria-hidden="true">${sideStairs}</g>
+      ${floors}
+    </svg>
   </div>
-  <div class="pl-info" aria-live="polite"><span class="pl-hint">Наведите на кабинет или нажмите на него</span></div>`;
+  <div class="pl-info" aria-live="polite"><span class="pl-hint">${HOVER ? "Наведите на кабинет, нажмите на этаж, чтобы открыть его план" : "Нажмите на этаж, чтобы открыть его план"}</span></div>`;
 }
 
 /**
- * Открывание дверей и строка с описанием кабинета.
- * onPick(id): заявитель выбрал помещение, id из /api/campus; кнопка появляется, только если помещение есть в системе.
+ * Двери открываются при наведении, под схемой строка о кабинете.
+ * onOpenFloor(floor, n): открыть план этажа, n — кабинет, на который нажали (может быть null).
  */
-export function bindPlan(root, states, { onPick, here = null } = {}) {
-  const plan = root.querySelector(".plan");
+export function bindPlan(root, states, { onOpenFloor } = {}) {
+  const svg = root.querySelector(".pf");
   const info = root.querySelector(".pl-info");
-  if (!plan || !info) return;
-  const cells = new Map(FLOORS.flatMap((f) => f.rows.flat()).map((c) => [c.n, c]));
-  // задержка появления дверей при первом показе
-  plan.querySelectorAll(".pl-room").forEach((b) => b.style.setProperty("--i", b.dataset.i));
-  let pinned = null;
+  if (!svg || !info) return;
+  const cells = new Map(FLOORS.flatMap((f) => floorRooms(f).map((c) => [c.n, c])));
 
-  const describe = (btn) => {
-    const cell = cells.get(btn.dataset.n);
-    const data = states.get(btn.dataset.n) || { state: "clear" };
-    const canPick = onPick && data.id != null && data.id !== here;
+  const describe = (n) => {
+    const cell = cells.get(n);
+    const data = stateOf(states, n);
     info.innerHTML = `
       <div class="pl-info-text">
-        <b>${esc(title(cell))}</b>
+        <b>${esc(roomTitle(cell))}</b>
         <div class="pl-info-type">${esc(TYPES[cell.type])}</div>
         <div class="pl-info-state is-${esc(data.state)}"><i></i>${esc(STATE_TEXT[data.state])}${data.chronic ? ", проблемы повторяются" : ""}</div>
-      </div>
-      ${canPick ? `<button type="button" class="btn btn-sm pl-pick">Это здесь</button>` : ""}`;
-    info.querySelector(".pl-pick")?.addEventListener("click", () => onPick(data.id));
+      </div>`;
   };
-  const open = (btn) => {
-    plan.querySelectorAll(".pl-room.is-open-door").forEach((b) => b !== btn && b.classList.remove("is-open-door"));
-    btn.classList.add("is-open-door");
-    plan.classList.add("has-open");
-    plan.querySelectorAll(".pl-floor").forEach((f) => f.classList.toggle("is-hot", f.contains(btn)));
-    describe(btn);
-  };
-  const closeAll = () => {
-    plan.querySelectorAll(".pl-room.is-open-door").forEach((b) => b.classList.remove("is-open-door"));
-    plan.classList.remove("has-open");
-    plan.querySelectorAll(".pl-floor.is-hot").forEach((f) => f.classList.remove("is-hot"));
+  const light = (floorEl) => {
+    svg.classList.toggle("has-hot", !!floorEl);
+    svg.querySelectorAll(".pf-floor").forEach((f) => f.classList.toggle("is-hot", f === floorEl));
   };
 
-  plan.addEventListener("pointerover", (e) => {
-    if (e.pointerType !== "mouse" || pinned) return;
-    const btn = e.target.closest(".pl-room");
-    if (btn) open(btn);
+  svg.addEventListener("pointerover", (e) => {
+    if (e.pointerType !== "mouse") return;
+    const room = e.target.closest(".pf-room");
+    light(e.target.closest(".pf-floor"));
+    if (room) describe(room.dataset.n);
   });
-  plan.addEventListener("pointerleave", (e) => {
-    if (e.pointerType === "mouse" && !pinned) closeAll();
+  svg.addEventListener("pointerleave", () => light(null));
+  svg.addEventListener("click", (e) => {
+    const floor = e.target.closest(".pf-floor");
+    if (!floor) return;
+    onOpenFloor?.(Number(floor.dataset.floor), e.target.closest(".pf-room")?.dataset.n ?? null);
   });
-  // касание или клик закрепляет открытую дверь, повторное нажатие закрывает
-  plan.addEventListener("click", (e) => {
-    const btn = e.target.closest(".pl-room");
-    if (!btn) {
-      pinned = null;
-      closeAll();
-      return;
-    }
-    if (pinned === btn) {
-      pinned = null;
-      closeAll();
-      return;
-    }
-    pinned = btn;
-    open(btn);
-  });
-  plan.addEventListener("focusin", (e) => {
-    const btn = e.target.closest(".pl-room");
-    if (btn) open(btn);
-  });
-  plan.addEventListener("focusout", (e) => {
-    if (!plan.contains(e.relatedTarget) && !pinned) closeAll();
-  });
-  plan.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") {
-      pinned = null;
-      closeAll();
+  svg.addEventListener("keydown", (e) => {
+    const floor = e.target.closest(".pf-floor");
+    if (floor && (e.key === "Enter" || e.key === " ")) {
+      e.preventDefault();
+      onOpenFloor?.(Number(floor.dataset.floor), null);
     }
   });
+  svg.addEventListener("focusin", (e) => light(e.target.closest(".pf-floor")));
+  svg.addEventListener("focusout", () => light(null));
 }
