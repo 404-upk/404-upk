@@ -3,6 +3,7 @@ from fastapi.responses import Response
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
+from ..ai import resilience
 from ..ai.gigachat import client as gigachat
 from ..ai.selftest import run_selftest
 from ..db import get_db
@@ -261,6 +262,7 @@ def create_article(payload: ArticleIn, _: User = Depends(upk_staff), db: Session
     _fill_article(article, payload, db)
     db.add(article)
     db.commit()
+    resilience.cache.clear()  # ответы из кэша могли опираться на старую версию базы знаний
     return _article(article)
 
 
@@ -271,6 +273,7 @@ def update_article(article_id: int, payload: ArticleIn, _: User = Depends(upk_st
         raise HTTPException(404, "Статья не найдена")
     _fill_article(article, payload, db)
     db.commit()
+    resilience.cache.clear()
     return _article(article)
 
 
@@ -281,6 +284,7 @@ def delete_article(article_id: int, _: User = Depends(upk_staff), db: Session = 
         raise HTTPException(404, "Статья не найдена")
     db.delete(article)
     db.commit()
+    resilience.cache.clear()
     return {"ok": True}
 
 

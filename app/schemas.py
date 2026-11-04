@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, Field
 
@@ -11,7 +11,8 @@ class LoginIn(BaseModel):
 class AssistantIn(BaseModel):
     message: str = Field(min_length=1, max_length=2000)
     location_id: int | None = None
-    context: list[str] = Field(default_factory=list, max_length=5)
+    # контекст присылает браузер, поэтому каждый кусок ограничен так же, как само сообщение
+    context: list[Annotated[str, Field(max_length=2000)]] = Field(default_factory=list, max_length=5)
 
 
 class SimilarIn(BaseModel):
