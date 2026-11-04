@@ -304,7 +304,7 @@ html:not(.is-revealed) .track-enter .tp-step, html:not(.is-revealed) .track-ente
 .campus-kpi { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
 
 /* ===== Схема колледжа: здание в разрезе ===== */
-.plan { margin: 0 -4px; }
+.plan { position: relative; margin: 0 -4px; }
 .pf { display: block; width: 100%; height: auto; overflow: visible; user-select: none; -webkit-tap-highlight-color: transparent; }
 .pf text { font-family: inherit; }
 
@@ -368,9 +368,10 @@ html:not(.is-revealed) .track-enter .tp-step, html:not(.is-revealed) .track-ente
 .pf-room.is-urgent .pf-lamp, .pf-room.is-urgent .pf-sill { animation: pl-alert 1.6s ease-in-out infinite; }
 @keyframes pl-alert { 50% { opacity: 0.35; } }
 /* дверь открывается внутрь кабинета */
-.pf-room:hover .pf-door { transform: skewY(-14deg) scaleX(0.3); fill: color-mix(in srgb, var(--surface-3) 70%, var(--text)); }
-.pf-room:hover .pf-door-r { transform: skewY(14deg) scaleX(0.3); }
-.pf-room:hover .pf-icon { opacity: 1; }
+.pf-room:hover .pf-door, .pf-room.is-demo .pf-door { transform: skewY(-14deg) scaleX(0.3); fill: color-mix(in srgb, var(--surface-3) 70%, var(--text)); }
+.pf-room:hover .pf-door-r, .pf-room.is-demo .pf-door-r { transform: skewY(14deg) scaleX(0.3); }
+.pf-room:hover .pf-icon, .pf-room.is-demo .pf-icon { opacity: 1; }
+.pf-room.is-demo .pf-hit { fill: color-mix(in srgb, var(--text) 6%, transparent); }
 
 /* первое появление: этажи снизу вверх */
 .plan.is-enter .pf-floor { animation: pl-slab-in 0.7s var(--ease-out) both; }
@@ -430,13 +431,14 @@ html:not(.is-revealed) .plan.is-enter * { animation-play-state: paused; }
 
 /* этаж сверху: внешние стены, лестницы, части с кабинетами */
 .fv-plan {
-  --wall: color-mix(in srgb, var(--text) 38%, transparent);
-  --row: 132px;
+  --wall: color-mix(in srgb, var(--text) 20%, transparent);
+  --row: 116px;
   --corr: 46px;
   display: flex;
   min-width: 840px;
-  border: 2px solid var(--wall);
-  border-radius: 6px;
+  border: 1.5px solid color-mix(in srgb, var(--text) 32%, transparent);
+  border-radius: 10px;
+  overflow: hidden;
   background: color-mix(in srgb, var(--surface-2) 55%, transparent);
 }
 .fv-stair { position: relative; flex: none; width: 84px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 8px 4px; border-inline: 1px solid var(--wall); }
@@ -446,13 +448,14 @@ html:not(.is-revealed) .plan.is-enter * { animation-play-state: paused; }
 .fs-h { width: 76px; height: calc(var(--row) * 2 + var(--corr) - 52px); }
 .fv-center .fs-h { height: calc(var(--row) * 2 + var(--corr) - 152px); }
 .fs-v { display: none; }
-.fs-well { fill: color-mix(in srgb, var(--text) 3%, transparent); stroke: var(--wall); stroke-width: 1; }
-.fs-treads { stroke: var(--text); stroke-opacity: 0.32; stroke-width: 1; }
-.fs-mid, .fs-landing { stroke: var(--text); stroke-opacity: 0.4; stroke-width: 1.2; }
+.fs-well { fill: color-mix(in srgb, var(--text) 3%, transparent); stroke: none; }
+.fs-treads { stroke: var(--text); stroke-opacity: 0.18; stroke-width: 1; }
+.fs-mid, .fs-landing { stroke: var(--text); stroke-opacity: 0.26; stroke-width: 1.1; }
 .fs-arrow { fill: none; stroke: var(--primary); stroke-width: 1.4; stroke-linejoin: round; stroke-opacity: 0.85; }
 .fs-arrow-head { fill: none; stroke: var(--primary); stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; }
 .fs-arrow-start { fill: var(--primary); }
-.fv-stair-label { font-size: 10px; line-height: 1.2; text-align: center; color: var(--muted); }
+.fv-stair-label { font-size: 11px; font-weight: 600; line-height: 1.25; text-align: center; color: var(--muted); }
+.fv-stair-label small { display: block; font-size: 10px; font-weight: 400; }
 
 .fv-part {
   flex: 1 1 0;
@@ -460,7 +463,7 @@ html:not(.is-revealed) .plan.is-enter * { animation-play-state: paused; }
   grid-template-columns: repeat(var(--units, 4), minmax(76px, 1fr));
   grid-template-rows: minmax(var(--row), 1fr) var(--corr) minmax(var(--row), 1fr);
 }
-.fv-corridor { grid-row: 2; grid-column: 1 / -1; display: grid; place-items: center; border-block: 1px solid var(--wall); background: color-mix(in srgb, var(--bg) 35%, transparent); }
+.fv-corridor { grid-row: 2; grid-column: 1 / -1; display: grid; place-items: center; border-block: 1px solid var(--wall); background: color-mix(in srgb, var(--bg) 25%, transparent); }
 .fv-corridor span { font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
 .fv-center { position: relative; flex: none; width: 116px; display: flex; flex-direction: column; border-inline: 1px solid var(--wall); }
 .fv-center .fv-stair { border: 0; flex: 1; width: auto; }
@@ -594,4 +597,66 @@ html:not(.is-revealed) .plan.is-enter * { animation-play-state: paused; }
   .pf-room:hover .pf-door, .pf-room:hover .pf-door-r { transform: none; opacity: 0.15; }
   .pf-room.is-urgent .pf-lamp, .pf-room.is-urgent .pf-sill, .fv-room.is-urgent .fv-state i { animation: none; }
   .fv, .fv-overlay { animation: none; }
+}
+
+/* ===== Кнопка «?» и обучение по схеме ===== */
+.campus-panel { position: relative; }
+.campus-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.pl-help {
+  flex: none; display: grid; place-items: center;
+  width: 30px; height: 30px; border-radius: 50%;
+  border: 1px solid var(--border-strong); background: var(--surface-2);
+  color: var(--muted); font: inherit; font-size: 14px; font-weight: 700; cursor: pointer;
+  transition: color 0.2s, border-color 0.2s, background 0.2s, transform 0.2s var(--ease-out);
+}
+.pl-help:hover, .pl-help[aria-expanded="true"] { color: var(--text); border-color: var(--primary); background: color-mix(in srgb, var(--primary) 14%, var(--surface-2)); }
+.pl-help:active { transform: scale(0.94); }
+.pl-help:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+
+.campus-panel.is-tut .pl-info, .campus-panel.is-tut .campus-legend { display: none; }
+.campus-panel.is-tut .campus-foot { justify-content: flex-end; margin-top: -8px; }
+.tut {
+  position: relative; z-index: 3;
+  padding: 14px 16px 14px;
+  border: 1px solid color-mix(in srgb, var(--primary) 40%, var(--border));
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--surface-2) 94%, var(--primary));
+  box-shadow: var(--shadow), 0 20px 40px -20px rgba(0, 0, 0, 0.6);
+  animation: tut-in 0.35s var(--ease-out) both;
+}
+.tut.is-leaving { animation: tut-out 0.2s ease-in both; }
+@keyframes tut-in { from { opacity: 0; transform: translateY(10px); } }
+@keyframes tut-out { to { opacity: 0; transform: translateY(8px); } }
+.tut-head { display: flex; align-items: center; justify-content: space-between; margin: -4px -6px 2px 0; }
+.tut-count { font-size: 11px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--primary); }
+.tut-title { display: block; font-size: 16px; font-weight: 600; }
+.tut-text { margin-top: 4px; font-size: 13.5px; line-height: 1.45; color: var(--muted); }
+.tut-foot { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
+.tut-dots { display: flex; gap: 5px; margin-right: auto; }
+.tut-dots i { width: 6px; height: 6px; border-radius: 3px; background: var(--border-strong); transition: width 0.3s var(--ease-out), background 0.3s; }
+.tut-dots i.is-on { width: 18px; background: var(--primary); }
+
+/* указатель, который показывает, куда навести или нажать */
+.tut-cursor { position: absolute; left: 0; top: 0; z-index: 2; width: 18px; height: 18px; margin: -2px 0 0 -2px; pointer-events: none; }
+.tut-cursor::before {
+  content: ""; position: absolute; inset: 0;
+  background: var(--text);
+  clip-path: polygon(0 0, 0 78%, 24% 60%, 40% 100%, 54% 94%, 38% 56%, 70% 56%);
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
+}
+.tut-cursor::after { content: ""; position: absolute; left: -9px; top: -9px; width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--primary); opacity: 0; }
+.tut-cursor.is-click::after { animation: tut-click 1.2s var(--ease-out) infinite; }
+@keyframes tut-click { 0% { opacity: 0.9; transform: scale(0.4); } 100% { opacity: 0; transform: scale(1.8); } }
+
+/* что подсвечивается на каждом шаге */
+.pf.tut-floors .pf-floor-bg { animation: tut-floor 2.4s ease-in-out infinite; }
+.pf.tut-floors .pf-floor[data-floor="2"] .pf-floor-bg { animation-delay: 0.4s; }
+.pf.tut-floors .pf-floor[data-floor="3"] .pf-floor-bg { animation-delay: 0.8s; }
+@keyframes tut-floor { 0%, 100% { fill: transparent; stroke: transparent; } 35% { fill: color-mix(in srgb, var(--primary) 10%, transparent); stroke: color-mix(in srgb, var(--primary) 50%, transparent); } }
+.pf.tut-lamps .pf-room.is-clear { opacity: 0.4; }
+.pf.tut-lamps .pf-room:not(.is-clear) .pf-lamp, .pf.tut-lamps .pf-room:not(.is-clear) .pf-sill { animation: pl-alert 1.2s ease-in-out infinite; }
+.pf.tut-lamps .pf-room:not(.is-clear) .pf-num { fill: var(--c); }
+@media (prefers-reduced-motion: reduce) {
+  .pf.tut-floors .pf-floor-bg { animation: none; fill: color-mix(in srgb, var(--primary) 8%, transparent); }
+  .tut, .tut.is-leaving { animation: none; }
 }
