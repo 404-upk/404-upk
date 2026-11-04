@@ -345,10 +345,9 @@ html:not(.is-revealed) .track-enter .tp-step, html:not(.is-revealed) .track-ente
 .pf-room.is-open { --c: var(--primary); }
 .pf-room.is-urgent { --c: var(--red); }
 .pf-hit { fill: transparent; transition: fill 0.25s; }
-.pf-room:hover .pf-hit { fill: color-mix(in srgb, var(--text) 6%, transparent); }
 .pf-room.is-here .pf-hit { stroke: var(--primary); stroke-width: 1.2; }
 .pf-num { font-size: 8.5px; font-weight: 600; font-variant-numeric: tabular-nums; fill: var(--faint); text-anchor: middle; transition: fill 0.25s; }
-.pf-room.is-open .pf-num, .pf-room.is-urgent .pf-num, .pf-room:hover .pf-num { fill: var(--text); }
+.pf-room.is-open .pf-num, .pf-room.is-urgent .pf-num { fill: var(--text); }
 .pfg-clear stop:first-child { stop-color: color-mix(in srgb, var(--node) 70%, transparent); }
 .pfg-open stop:first-child { stop-color: var(--primary); }
 .pfg-urgent stop:first-child { stop-color: var(--red); }
@@ -368,10 +367,23 @@ html:not(.is-revealed) .track-enter .tp-step, html:not(.is-revealed) .track-ente
 .pf-room.is-urgent .pf-lamp, .pf-room.is-urgent .pf-sill { animation: pl-alert 1.6s ease-in-out infinite; }
 @keyframes pl-alert { 50% { opacity: 0.35; } }
 /* дверь открывается внутрь кабинета */
-.pf-room:hover .pf-door, .pf-room.is-demo .pf-door { transform: skewY(-14deg) scaleX(0.3); fill: color-mix(in srgb, var(--surface-3) 70%, var(--text)); }
-.pf-room:hover .pf-door-r, .pf-room.is-demo .pf-door-r { transform: skewY(14deg) scaleX(0.3); }
-.pf-room:hover .pf-icon, .pf-room.is-demo .pf-icon { opacity: 1; }
+.pf-room.is-demo .pf-door { transform: skewY(-14deg) scaleX(0.3); fill: color-mix(in srgb, var(--surface-3) 70%, var(--text)); }
+.pf-room.is-demo .pf-door-r { transform: skewY(14deg) scaleX(0.3); }
+.pf-room.is-demo .pf-icon { opacity: 1; }
 .pf-room.is-demo .pf-hit { fill: color-mix(in srgb, var(--text) 6%, transparent); }
+/* двери открываются при наведении только там, где есть мышь; на телефоне касание сразу открывает этаж */
+@media (hover: hover) {
+  .pf-room:hover .pf-hit { fill: color-mix(in srgb, var(--text) 6%, transparent); }
+  .pf-room:hover .pf-num { fill: var(--text); }
+  .pf-room:hover .pf-door { transform: skewY(-14deg) scaleX(0.3); fill: color-mix(in srgb, var(--surface-3) 70%, var(--text)); }
+  .pf-room:hover .pf-door-r { transform: skewY(14deg) scaleX(0.3); }
+  .pf-room:hover .pf-icon { opacity: 1; }
+}
+/* на телефоне строки о кабинете под схемой нет: навести нельзя; этаж подсвечивается, пока палец на нём */
+@media (hover: none) {
+  #campus-map .pl-info { display: none; }
+  .pf-floor:active .pf-floor-bg { fill: color-mix(in srgb, var(--primary) 10%, transparent); stroke: color-mix(in srgb, var(--primary) 55%, transparent); }
+}
 
 /* первое появление: этажи снизу вверх */
 .plan.is-enter .pf-floor { animation: pl-slab-in 0.7s var(--ease-out) both; }
@@ -541,8 +553,18 @@ html:not(.is-revealed) .plan.is-enter * { animation-play-state: paused; }
 .fv-issues:not(:empty) { margin-top: 12px; }
 .fv-issues-skeleton { height: 34px; }
 .fv-issue-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
-.fv-issue-list li { display: flex; align-items: baseline; gap: 10px; font-size: 13px; padding: 8px 10px; border-radius: var(--radius-sm); background: var(--surface-3); }
-.fv-issue-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fv-issue-list li {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: baseline; gap: 4px 10px;
+  font-size: 13px; line-height: 1.4; padding: 8px 10px; border-radius: var(--radius-sm); background: var(--surface-3);
+}
+.fv-issue-title { min-width: 0; overflow-wrap: anywhere; }
+@media (max-width: 899px) {
+  /* на узком экране: номер и статус сверху, название целиком строкой ниже */
+  .fv-issue-list li { grid-template-columns: auto 1fr; }
+  .fv-issue-title { grid-column: 1 / -1; grid-row: 2; }
+  .fv-issue-list li > :last-child { justify-self: end; text-align: right; }
+  .fv-detail { max-height: 50vh; overflow-y: auto; }
+}
 
 /* телефон и узкий экран: коридор сверху вниз, кабинеты крупными плитками по сторонам */
 @media (max-width: 899px) {
@@ -594,7 +616,7 @@ html:not(.is-revealed) .plan.is-enter * { animation-play-state: paused; }
 
 @media (prefers-reduced-motion: reduce) {
   .pf-door, .fv-leaf { transition: opacity 0.2s; }
-  .pf-room:hover .pf-door, .pf-room:hover .pf-door-r { transform: none; opacity: 0.15; }
+  .pf-room:hover .pf-door, .pf-room:hover .pf-door-r, .pf-room.is-demo .pf-door, .pf-room.is-demo .pf-door-r { transform: none; opacity: 0.15; }
   .pf-room.is-urgent .pf-lamp, .pf-room.is-urgent .pf-sill, .fv-room.is-urgent .fv-state i { animation: none; }
   .fv, .fv-overlay { animation: none; }
 }
