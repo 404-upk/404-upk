@@ -9,7 +9,7 @@ from ..db import get_db, lower
 from ..models import ROLE_ADMIN, ROLE_EXECUTOR, ROLE_STAFF, Attachment, Category, Location, Ticket, User, utcnow
 from ..schemas import CommentIn, TicketUpdateIn
 from ..security import any_staff, upk_staff
-from ..services import campus, export
+from ..services import campus, export, views
 from ..services import tickets as ts
 from ..services.stats import build_stats
 from ..services.telegram import bot
@@ -131,7 +131,7 @@ def list_tickets(
     counts = dict(db.execute(counts_stmt).all())
 
     return {
-        "items": [ts.ticket_brief(t) for t in items],
+        "items": [views.ticket_brief(t) for t in items],
         "total": total,
         "page": page,
         "pages": max((total + per_page - 1) // per_page, 1),
@@ -141,7 +141,7 @@ def list_tickets(
 
 @router.get("/tickets/{ticket_id}")
 def get_ticket(ticket_id: int, user: User = Depends(any_staff), db: Session = Depends(get_db)):
-    return ts.ticket_full(_ticket_for(db, ticket_id, user), user)
+    return views.ticket_full(_ticket_for(db, ticket_id, user), user)
 
 
 @router.patch("/tickets/{ticket_id}")
@@ -184,7 +184,7 @@ def update_ticket(
         background.add_task(bot.ticket_changed, ticket.id, "assigned")
     if ticket.status != status_before:
         background.add_task(bot.ticket_changed, ticket.id, "status")
-    return ts.ticket_full(ticket, user)
+    return views.ticket_full(ticket, user)
 
 
 @router.post("/tickets/{ticket_id}/comments")
@@ -201,7 +201,7 @@ def comment(
     db.commit()
     if payload.visibility == "public":
         background.add_task(bot.ticket_changed, ticket.id, "comment", payload.body.strip())
-    return ts.ticket_full(ticket, user)
+    return views.ticket_full(ticket, user)
 
 
 @router.get("/attachments/{attachment_id}")
