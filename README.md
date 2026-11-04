@@ -69,14 +69,29 @@
 - http://localhost:8000/admin: панель УПК
 - http://localhost:8000/api/docs: документация API (Swagger)
 
-Вручную то же самое:
+Вручную то же самое.
+
+**Windows (PowerShell или Git Bash):**
 
 ```bash
 python -m venv .venv
-.venv/Scripts/pip install -r requirements.txt      # Linux/macOS: .venv/bin/pip
+.venv/Scripts/pip install -r requirements.txt
 cp .env.example .env
 .venv/Scripts/python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
+
+**Linux и macOS:**
+
+```bash
+python3 -m venv .venv
+.venv/bin/pip install -r requirements.txt
+cp .env.example .env
+.venv/bin/python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
+```
+
+**Codespaces:** отдельное окружение не нужно, зависимости уже стоят. Если сайт не запустился сам: `sh .devcontainer/start.sh`.
+
+В командах ниже `python` значит: на Windows `.venv/Scripts/python`, на Linux и macOS `.venv/bin/python`, в Codespaces просто `python`.
 
 Через Docker:
 
@@ -255,8 +270,8 @@ erDiagram
 ## Тесты
 
 ```bash
-.venv/Scripts/pip install -r requirements-dev.txt
-.venv/Scripts/python -m pytest
+python -m pip install -r requirements-dev.txt
+python -m pytest
 ```
 
 В `tests/test_acceptance.py` все критерии приёмки из ТЗ, в `tests/test_ai_guards.py` защиты вокруг
@@ -292,7 +307,7 @@ docker compose --env-file .env -f deploy/docker-compose.prod.yml up -d --build
 Запустятся Caddy, приложение и PostgreSQL. Если что-то опасное осталось по умолчанию, приложение не стартует и напишет,
 что исправить. Бэкапить нужно тома `db-data` и `upk-data`.
 
-Новая миграция после изменения моделей: `alembic revision --autogenerate -m "что изменилось"`.
+Новая миграция после изменения моделей: `python -m alembic revision --autogenerate -m "что изменилось"`.
 
 ## Что можно развить дальше
 
