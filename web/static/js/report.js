@@ -282,12 +282,12 @@ function renderPlace() {
       </div>`;
   }
   if (state.qrError) {
-    html = `<div class="notice notice-warn" style="margin-bottom:12px">${icon("alert")}<div>${esc(state.qrError)}</div></div>` + html;
+    html = `<div class="u-mb12 notice notice-warn">${icon("alert")}<div>${esc(state.qrError)}</div></div>` + html;
   }
   if (!loc && state.suggestedLocation) {
     const s = state.suggestedLocation;
     html += `
-      <div class="notice notice-info" style="margin:-4px 0 14px">${icon("pin")}
+      <div class="u-mv-n4-14 notice notice-info">${icon("pin")}
         <div class="grow">Похоже, речь о помещении <b>${esc(s.full_title)}</b>. Выбрать его?</div>
         <button class="btn btn-primary btn-sm" data-accept-suggest>Да</button>
       </div>`;
@@ -555,7 +555,7 @@ function addAiCard(reply) {
       <div class="ai-card-head">
         <span class="ai-avatar">${reply.kind === "danger" ? icon("alert") : markSvg()}</span>
         <div class="grow">
-          <div class="row" style="gap:8px"><b>${esc(reply.kind_label)}</b>${
+          <div class="u-gap8 row"><b>${esc(reply.kind_label)}</b>${
             reply.kind === "danger" ? `<span class="chip pr-critical">Важно</span>` : ""
           }</div>
         </div>
@@ -567,7 +567,7 @@ function addAiCard(reply) {
         <div class="ai-meta">
           <span>${icon("sparkles", "icon-sm")} ${esc(reply.engine_label)}</span>
           ${reply.category ? `<span>Категория: ${esc(categoryName(reply.category))}</span>` : ""}
-          <span class="confidence" title="Уверенность помощника">уверенность <span class="confidence-bar"><i style="width:${confidence}%"></i></span> ${confidence}%</span>
+          <span class="confidence" title="Уверенность помощника">уверенность <span class="confidence-bar"><i data-css-pct="${confidence}"></i></span> ${confidence}%</span>
         </div>
         ${reply.notice ? `<div class="small faint">${icon("info", "icon-sm")} ${esc(reply.notice)}</div>` : ""}
       </div>
@@ -690,7 +690,7 @@ function renderDraft() {
   }
   const loc = state.location;
   const placeField = loc
-    ? `<div class="place-pill" style="margin:0"><span class="place-icon">${icon("pin")}</span>
+    ? `<div class="u-m0 place-pill"><span class="place-icon">${icon("pin")}</span>
          <div class="place-text"><b>${esc(loc.title)}</b><span>${esc(floorText(loc))}</span></div>
          <button type="button" class="btn btn-ghost btn-sm" data-pick>Изменить</button></div>`
     : `<button type="button" class="btn btn-soft" data-pick>${icon("pin")} Выбрать помещение из списка</button>
@@ -765,7 +765,7 @@ function renderDraftPhoto() {
   if (!slot) return;
   if (state.photoUrl) {
     slot.innerHTML = `
-      <div class="photo-preview" style="margin:0">
+      <div class="u-m0 photo-preview">
         <img src="${state.photoUrl}" alt="Фото">
         <div class="grow small muted">${state.photoAi === "loading" ? "ИИ смотрит на фото…" : "Фото будет прикреплено"}</div>
         <button type="button" class="btn btn-ghost btn-icon btn-sm" aria-label="Убрать фото">${icon("x")}</button>
@@ -773,7 +773,7 @@ function renderDraftPhoto() {
     slot.querySelector("button").addEventListener("click", removePhoto);
   } else {
     slot.innerHTML = `
-      <label class="btn file-btn" style="align-self:flex-start">${icon("camera")} Добавить фото
+      <label class="u-self-start btn file-btn">${icon("camera")} Добавить фото
         <input type="file" accept="image/*"></label>`;
     slot.querySelector("input").addEventListener("change", (e) => onPhoto(e.target.files[0]));
   }
@@ -821,11 +821,11 @@ function renderDup() {
           <div class="small muted">${esc(s.category)} · ${relTime(s.created_at)} · сообщили ${s.reports_count} ${
             s.reports_count === 1 ? "человек" : "человека"
           }</div>
-          <button type="button" class="btn btn-primary btn-sm" data-join="${s.number}" style="align-self:flex-start">Это та же проблема, присоединиться</button>
+          <button type="button" class="u-self-start btn btn-primary btn-sm" data-join="${s.number}">Это та же проблема, присоединиться</button>
         </div>`,
         )
         .join("")}
-      <button type="button" class="btn btn-ghost btn-sm" data-dismiss style="align-self:flex-start">Нет, у меня другая проблема</button>
+      <button type="button" class="u-self-start btn btn-ghost btn-sm" data-dismiss>Нет, у меня другая проблема</button>
       <div class="tiny muted">Если присоединиться, вы будете следить за той же заявкой, а сотрудники увидят, что проблема касается многих.</div>
     </div>`;
   box.querySelector("[data-dismiss]").addEventListener("click", () => {
@@ -920,9 +920,9 @@ async function showDone(res, joined) {
   window.scrollTo({ top: 0 });
   app.innerHTML = `
     <section class="card done-card">
-      <div class="ignite" aria-hidden="true">${[0, 45, 90, 135].map((r) => `<i class="ray" style="--r:${r}deg"></i>`).join("")}${spark()}</div>
+      <div class="ignite" aria-hidden="true"><i class="ray"></i><i class="ray"></i><i class="ray"></i><i class="ray"></i>${spark()}</div>
       <h2>${joined ? "Вы присоединились к заявке" : "Заявка зарегистрирована"}</h2>
-      <p class="muted" style="max-width:440px">${
+      <p class="u-maxw440 muted">${
         joined
           ? "Теперь вы следите за той же заявкой. Чем больше людей сообщили, тем быстрее её замечают."
           : `Сотрудники УПК уже видят заявку${state.location ? ` по помещению «${esc(state.location.title)}»` : ""}. Статус можно отслеживать по коду ниже.`
@@ -934,13 +934,13 @@ async function showDone(res, joined) {
       ${statusChip("new", res.status_label)}
       ${
         res.code
-          ? `<div class="stack-sm" style="width:100%;max-width:420px">
+          ? `<div class="u-w100 u-maxw420 stack-sm">
               <div class="small muted">Код отслеживания</div>
               <div class="code-box"><span class="grow">${esc(res.code)}</span>
                 <button class="btn btn-ghost btn-icon btn-sm" data-copy aria-label="Скопировать код">${icon("copy")}</button></div>
               <div class="tiny muted">Сохраните код: по нему можно проверить статус. Заявка также сохранена на этом устройстве в разделе «Мои заявки».</div>
             </div>
-            <div class="row-wrap" style="justify-content:center">
+            <div class="u-justify-center row-wrap">
               <a class="btn btn-primary btn-lg" href="${esc(trackUrl)}">${icon("clipboard")} Открыть статус</a>
               ${res.telegram_url ? `<a class="btn btn-lg" href="${esc(res.telegram_url)}" target="_blank" rel="noopener">${icon("telegram")} Уведомления в Telegram</a>` : ""}
             </div>
@@ -999,11 +999,11 @@ function renderExtras() {
     ${
       mine.length
         ? `<section class="my-tickets">
-            <div class="row between" style="margin-bottom:8px"><h3>Мои заявки</h3><a class="small" href="/track">Все</a></div>
+            <div class="u-mb8 row between"><h3>Мои заявки</h3><a class="small" href="/track">Все</a></div>
             <div class="card">${mine
               .map(
                 (t) => `<a class="my-ticket" href="/t/${esc(t.code)}">
-                  <span class="place-icon" style="width:34px;height:34px;border-radius:10px;display:grid;place-items:center;background:var(--surface-3);color:var(--muted)">${icon("clipboard")}</span>
+                  <span class="my-ticket-icon place-icon">${icon("clipboard")}</span>
                   <span class="grow"><b>${esc(t.number)}</b> <span class="muted">${esc(t.title)}</span><br><span class="tiny faint">${fmtDate(t.created_at)}</span></span>
                   ${icon("chevronRight")}</a>`,
               )

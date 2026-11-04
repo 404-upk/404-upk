@@ -17,7 +17,7 @@ async function init() {
   const picker = $("#picker");
   picker.innerHTML = items
     .map(
-      (l) => `<label class="check" style="padding:6px 10px;border:1px solid var(--border);border-radius:999px">
+      (l) => `<label class="u-pill-check check">
         <input type="checkbox" value="${l.id}" ${selected.has(l.id) ? "checked" : ""}> ${esc(l.title)}</label>`,
     )
     .join("");
@@ -28,13 +28,13 @@ async function init() {
       .map(
         (l) => `
         <div class="print-card">
-          <div class="row" style="gap:8px;font-weight:800"><img src="/static/img/icon.svg" alt="" style="width:28px;height:28px">УПК · Цифровой помощник</div>
+          <div class="u-gap8 u-fw800 row"><img class="u-sq28" src="/static/img/icon.svg" alt="">УПК · Цифровой помощник</div>
           <h2>${esc(l.title)}</h2>
           <p>${esc(l.building)}${l.floor != null ? `, ${l.floor} этаж` : ""}</p>
           <img src="/api/manage/locations/${l.id}/qr.svg" alt="QR-код">
           <b>Что-то сломалось или есть вопрос?</b>
           <p>Наведите камеру телефона на код. Помещение подставится само, ничего устанавливать не нужно.</p>
-          <p style="font-size:11px;color:#888">${esc(l.url)}</p>
+          <p class="u-print-url">${esc(l.url)}</p>
         </div>`,
       )
       .join("");

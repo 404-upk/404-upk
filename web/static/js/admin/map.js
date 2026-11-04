@@ -56,7 +56,7 @@ export async function render({ el, setHead }) {
 
     el.innerHTML = `
       <section class="card campus-card campus-panel enter stack">
-        <div class="row between" style="flex-wrap:wrap;gap:14px">
+        <div class="u-wrap u-gap14 row between">
           <div class="stack-sm">
             <div class="eyebrow">${spark()} Состояние · ${esc(current)}</div>
             <div class="campus-kpi"><span class="campus-state">${label}</span>
@@ -69,7 +69,7 @@ export async function render({ el, setHead }) {
             <span><i class="dot chronic"></i>3+ за 30 дней</span>
           </div>
         </div>
-        <div class="campus-meter" aria-hidden="true"><i style="width:${index}%"></i></div>
+        <div class="campus-meter" aria-hidden="true"><i data-css-pct="${index}"></i></div>
         <div id="floors">${campusMapSvg(rooms, { width, rowHeight: width < 720 ? 104 : 124, labels: true, interactive: true, enter: true })}</div>
         <div class="small muted">Нажмите на помещение, чтобы открыть его заявки.</div>
       </section>
