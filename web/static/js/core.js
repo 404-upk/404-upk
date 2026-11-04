@@ -81,14 +81,34 @@ export function h(html) {
 }
 
 export class ApiError extends Error {
-  constructor(message, status) {
+  constructor(message, status, { network = false } = {}) {
     super(message);
     this.status = status;
+    // нет связи или сервер не ответил вовремя: запрос можно повторить, когда сеть вернётся
+    this.network = network;
   }
 }
 
-export async function api(path, { method = "GET", body, form, signal } = {}) {
-  const opts = { method, credentials: "same-origin", headers: { Accept: "application/json" }, signal };
+const TEXT_OFFLINE = "Нет интернета.";
+const TEXT_NO_SERVER = "Нет связи с сервером. Проверьте интернет и попробуйте ещё раз.";
+const TEXT_TIMEOUT = "Сервер долго не отвечает. Проверьте интернет и попробуйте ещё раз.";
+const TEXT_DOWN = "Сервер временно недоступен. Попробуйте ещё раз через минуту.";
+
+/**
+ * Запрос к API. timeout — сколько ждать ответа, мс: на медленной сети запрос не висит бесконечно.
+ * Ответы ИИ и отправка заявки с фото ждут дольше, чем обычные запросы.
+ */
+export async function api(path, { method = "GET", body, form, signal, timeout } = {}) {
+  const limit = timeout ?? (method === "GET" ? 20000 : 60000);
+  const timer = new AbortController();
+  const stop = setTimeout(() => timer.abort(), limit);
+  const signals = signal ? [signal, timer.signal] : [timer.signal];
+  const opts = {
+    method,
+    credentials: "same-origin",
+    headers: { Accept: "application/json" },
+    signal: AbortSignal.any ? AbortSignal.any(signals) : timer.signal,
+  };
   if (form) {
     opts.body = form;
   } else if (body !== undefined) {
@@ -99,8 +119,12 @@ export async function api(path, { method = "GET", body, form, signal } = {}) {
   try {
     resp = await fetch(path, opts);
   } catch (err) {
-    if (err.name === "AbortError") throw err;
-    throw new ApiError("Нет связи с сервером. Проверьте интернет и попробуйте ещё раз.", 0);
+    // отмена вызывающим кодом пробрасывается как есть, отмена по таймеру — понятная ошибка
+    if (err.name === "AbortError" && signal?.aborted) throw err;
+    const text = timer.signal.aborted ? TEXT_TIMEOUT : navigator.onLine === false ? TEXT_OFFLINE : TEXT_NO_SERVER;
+    throw new ApiError(text, 0, { network: true });
+  } finally {
+    clearTimeout(stop);
   }
   let data = null;
   const type = resp.headers.get("content-type") || "";
@@ -112,10 +136,94 @@ export async function api(path, { method = "GET", body, form, signal } = {}) {
     }
   }
   if (!resp.ok) {
-    const detail = data && typeof data.detail === "string" ? data.detail : "Сервер вернул ошибку, попробуйте ещё раз.";
-    throw new ApiError(detail, resp.status);
+    const detail = data && typeof data.detail === "string" ? data.detail : null;
+    // прокси или сервер не поднялись: ответ не от приложения
+    if (!detail && [502, 503, 504].includes(resp.status)) throw new ApiError(TEXT_DOWN, resp.status, { network: true });
+    throw new ApiError(detail || "Сервер вернул ошибку, попробуйте ещё раз.", resp.status);
   }
   return data;
+}
+
+// ---------- нет сети и ошибки загрузки ----------
+
+/** Выполнить fn один раз, когда появится связь. Возвращает функцию отмены. */
+export function whenOnline(fn) {
+  const run = () => fn();
+  window.addEventListener("online", run, { once: true });
+  return () => window.removeEventListener("online", run);
+}
+
+/**
+ * Блок ошибки с кнопкой «Повторить». Если ошибка из-за сети, повтор выполнится сам, когда связь вернётся.
+ * Возвращает элемент, который нужно вставить на страницу.
+ */
+export function errorBlock(err, retry, { compact = false } = {}) {
+  const el = h(`
+    <div class="notice notice-danger error-block${compact ? " is-compact" : ""}" role="alert">${icon("alert")}
+      <div class="grow">${esc(err?.message || err || "Не удалось загрузить данные.")}</div>
+      <button type="button" class="btn btn-sm">${icon("refresh", "icon-sm")}Повторить</button>
+    </div>`);
+  let cancel = null;
+  const again = () => {
+    cancel?.();
+    const btn = el.querySelector("button");
+    setBusy(btn, true);
+    Promise.resolve(retry()).finally(() => btn.isConnected && setBusy(btn, false));
+  };
+  el.querySelector("button").addEventListener("click", again);
+  if (err?.network) cancel = whenOnline(() => el.isConnected && again());
+  return el;
+}
+
+let netBanner = null;
+
+/** Плашка «Нет интернета» вверху экрана на всех страницах; когда связь вернулась — короткое сообщение */
+function watchNetwork() {
+  const show = () => {
+    if (netBanner) return;
+    netBanner = h(`<div class="net-banner" role="status">${icon("alert", "icon-sm")}Нет интернета. Введённое не пропадёт</div>`);
+    document.body.append(netBanner);
+  };
+  window.addEventListener("offline", show);
+  window.addEventListener("online", () => {
+    if (!netBanner) return;
+    leaveAndRemove(netBanner);
+    netBanner = null;
+    toast("Связь восстановлена");
+  });
+  if (navigator.onLine === false) show();
+}
+
+// ---------- черновики на этом устройстве ----------
+
+export const drafts = {
+  get(key) {
+    try {
+      return JSON.parse(localStorage.getItem(`upk-draft-${key}`));
+    } catch {
+      return null;
+    }
+  },
+  set(key, value) {
+    try {
+      localStorage.setItem(`upk-draft-${key}`, JSON.stringify(value));
+    } catch {
+      /* хранилище недоступно: черновик живёт только до перезагрузки */
+    }
+  },
+  remove(key) {
+    try {
+      localStorage.removeItem(`upk-draft-${key}`);
+    } catch {
+      /* нечего удалять */
+    }
+  },
+};
+
+/** Страница открывается без сети: оболочка сайта сохраняется на устройстве (только публичные страницы) */
+export function enableOffline() {
+  if (!("serviceWorker" in navigator) || location.protocol === "file:") return;
+  navigator.serviceWorker.register("/sw.js").catch(() => {});
 }
 
 // ---------- даты ----------
@@ -439,3 +547,5 @@ export const myTickets = {
     );
   },
 };
+
+if (document.body) watchNetwork();

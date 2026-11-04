@@ -2,6 +2,8 @@ import {
   $,
   api,
   copyText,
+  enableOffline,
+  errorBlock,
   esc,
   fmtDate,
   icon,
@@ -99,7 +101,10 @@ async function load(silent = false) {
   } catch (err) {
     if (!silent) {
       if (err.status === 404) renderLookup(err.message);
-      else app.innerHTML = `<div class="notice notice-danger">${icon("alert")}<div>${esc(err.message)}</div></div>`;
+      else {
+        app.innerHTML = "";
+        app.append(errorBlock(err, () => load()));
+      }
     }
   }
 }
@@ -317,7 +322,7 @@ function bindRating() {
         method: "POST",
         body: { rating: pickedRating, comment: $("#rate-comment").value },
       });
-      toast("Спасибо за оценку!");
+      toast("Спасибо за оценку");
       render();
     } catch (err) {
       toast(err.message, "error");
@@ -337,6 +342,7 @@ function start(value) {
 }
 
 startAmbient();
+enableOffline();
 initMotion();
 themeToggle($("#theme"));
 window.addEventListener("popstate", () => {
