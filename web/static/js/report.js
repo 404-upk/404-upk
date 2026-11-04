@@ -3,6 +3,9 @@ import {
   ApiError,
   api,
   copyText,
+  drafts,
+  enableOffline,
+  errorBlock,
   esc,
   fmtDate,
   h,
@@ -15,12 +18,12 @@ import {
   statusChip,
   themeToggle,
   toast,
+  whenOnline,
 } from "./core.js";
 import { markSvg } from "./brand.js";
 import { ambient, startAmbient } from "./ambient.js";
 import { campusBadge, nodeGlyph, spark } from "./campus.js";
 import { bindPlan, planHtml, planStates } from "./plan.js";
-import { openFloor } from "./floor-view.js";
 import { collapseOut, countUp, expandIn, initMotion, leave, rise, scramble, splitWords, textIn } from "./motion.js";
 
 const EXAMPLES = [
@@ -111,8 +114,14 @@ function floorText(loc) {
 async function loadCampus() {
   try {
     state.campus = await api("/api/campus");
-  } catch {
+  } catch (err) {
     state.campus = null;
+    const aside = $("#campus");
+    if (aside) {
+      aside.innerHTML = `<section class="card card-pad campus-panel"><div class="eyebrow">${spark()} Состояние колледжа</div></section>`;
+      aside.querySelector(".campus-panel").append(errorBlock(new ApiError(`Не удалось загрузить состояние колледжа. ${err.message}`, err.status, { network: err.network }), loadCampus, { compact: true }));
+    }
+    return;
   }
   renderCampus();
 }
@@ -156,7 +165,11 @@ function renderCampus() {
     </section>`;
   aside.querySelector(".campus-meter i").style.width = `${campus.index}%`;
   bindPlan(aside, states, {
-    onOpenFloor: (floor, room) => openFloor(floor, { states, here, room, onPick: pickFromPlan }),
+    // план этажа загружается при первом открытии: на старте страницы он не нужен
+    onOpenFloor: (floor, room) =>
+      import("./floor-view.js")
+        .then(({ openFloor }) => openFloor(floor, { states, here, room, onPick: pickFromPlan }))
+        .catch(() => toast("Не удалось открыть план этажа. Проверьте интернет и попробуйте ещё раз.", "error")),
   });
   if (first) {
     rise(aside, ".campus-panel", { delay: 340, dur: 1100 });
@@ -327,7 +340,21 @@ function renderComposer() {
     </form>`;
   const form = $("#ask-form");
   const area = $("#message");
-  area.addEventListener("input", () => autoGrow(area));
+  // текст не пропадает при обрыве сети и перезагрузке страницы
+  // сохранённое сообщение возвращается в поле один раз, при открытии страницы
+  if (!area.value && !state.messageRestored) {
+    state.messageRestored = true;
+    const saved = drafts.get("message");
+    if (saved) {
+      area.value = saved;
+      autoGrow(area);
+    }
+  }
+  area.addEventListener("input", () => {
+    autoGrow(area);
+    if (area.value.trim()) drafts.set("message", area.value);
+    else drafts.remove("message");
+  });
   area.addEventListener("keydown", (e) => {
     if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) form.requestSubmit();
   });
@@ -444,6 +471,7 @@ async function ask(rawText) {
       body: { message: text, location_id: state.location?.id ?? null, context: state.context },
     });
     typing.remove();
+    drafts.remove("message");
     state.context = reply.kind === "unclear" ? [...state.context, text].slice(-3) : [];
     if (reply.suggested_location && !state.location) {
       state.suggestedLocation = reply.suggested_location;
@@ -454,7 +482,7 @@ async function ask(rawText) {
     else renderComposer();
   } catch (err) {
     typing.remove();
-    addErrorBubble(err.message, text);
+    addErrorBubble(err, text);
     renderComposer();
   } finally {
     setBusy(button, false);
@@ -478,17 +506,25 @@ function addTyping() {
   return el;
 }
 
-function addErrorBubble(message, text) {
+function addErrorBubble(err, text) {
+  // сообщение сохраняется: после перезагрузки оно вернётся в поле ввода
+  drafts.set("message", text);
+  const note = err.network ? " Сообщение сохранено и уйдёт само, когда появится связь." : "";
   const el = h(`
     <div class="notice notice-danger">${icon("alert")}
-      <div class="grow">${esc(message)}</div>
+      <div class="grow">${esc(err.message)}${esc(note)}</div>
       <button class="btn btn-sm">Повторить</button>
     </div>`);
-  el.querySelector("button").addEventListener("click", () => {
+  let cancel = null;
+  const retry = () => {
+    cancel?.();
+    if (!el.isConnected) return;
     el.remove();
     $("#thread").lastElementChild?.remove();
     ask(text);
-  });
+  };
+  el.querySelector("button").addEventListener("click", retry);
+  if (err.network) cancel = whenOnline(retry);
   $("#thread").append(el);
 }
 
@@ -575,7 +611,70 @@ function openDraft(reply, manual = false) {
   setTimeout(() => $("#draft").scrollIntoView({ behavior: "smooth", block: "start" }), 80);
 }
 
+/** Черновик заявки на этом устройстве: переживает обрыв сети и перезагрузку страницы. Фото не сохраняется. */
+function saveTicketDraft() {
+  const d = state.draft;
+  if (!d) return;
+  drafts.set("ticket", {
+    title: d.title,
+    description: d.description,
+    category: d.category,
+    priority: d.priority,
+    contact: d.contact,
+    requestId: d.requestId,
+    analysisId: d.analysisId,
+    kind: d.kind,
+    manual: d.manual,
+    locationId: state.location?.id ?? null,
+    locationNote: state.locationNote,
+    hadPhoto: !!state.photo,
+    // заявку уже пытались отправить без сети: после перезагрузки она уйдёт сама
+    queued: !!d.queued,
+  });
+}
+
+/** Незаконченная заявка с прошлого раза открывается снова, с тем же номером запроса: дубля не будет */
+async function restoreTicketDraft() {
+  const saved = drafts.get("ticket");
+  if (!saved || state.draft || !saved.description) return;
+  if (saved.locationId != null && !state.location) {
+    try {
+      state.locations = state.locations || (await api("/api/locations"));
+      state.location = state.locations.find((l) => l.id === saved.locationId) || null;
+    } catch {
+      /* без сети помещение не узнать: заявитель выберет его заново */
+    }
+  }
+  if (!state.location && saved.locationNote) state.locationNote = saved.locationNote;
+  state.draft = { ...saved, error: null };
+  state.similar = [];
+  state.dupDismissed = false;
+  renderPlace();
+  renderComposer();
+  renderDraft();
+  if (saved.queued) {
+    // заявка ждала связь: отправляем сразу или когда сеть появится
+    state.draft.error = saved.hadPhoto
+      ? "Заявка ждёт связь и отправится сама. Фото не сохранилось на устройстве: прикрепите его заново, если нужно."
+      : "Заявка ждёт связь и отправится сама.";
+    renderError();
+    if (navigator.onLine) submit();
+    else {
+      state.retrySubmit = whenOnline(() => {
+        state.retrySubmit = null;
+        if (state.draft?.requestId === saved.requestId) submit();
+      });
+    }
+  } else if (saved.hadPhoto) {
+    state.draft.error = "Черновик восстановлен. Фото не сохранилось: прикрепите его заново, если нужно.";
+    renderError();
+  } else {
+    toast("Восстановлен незаконченный черновик заявки");
+  }
+}
+
 function closeDraft() {
+  drafts.remove("ticket");
   state.draft = null;
   const box = $("#draft");
   collapseOut(box, { then: () => (box.innerHTML = "") });
@@ -595,7 +694,7 @@ function renderDraft() {
          <div class="place-text"><b>${esc(loc.title)}</b><span>${esc(floorText(loc))}</span></div>
          <button type="button" class="btn btn-ghost btn-sm" data-pick>Изменить</button></div>`
     : `<button type="button" class="btn btn-soft" data-pick>${icon("pin")} Выбрать помещение из списка</button>
-       <input class="input" id="d-note" maxlength="160" placeholder="или напишите сами: корпус, этаж, кабинет" value="${esc(state.locationNote)}">`;
+       <input class="input" id="d-note" maxlength="160" placeholder="или напишите сами: этаж и кабинет" value="${esc(state.locationNote)}">`;
 
   const cats = state.meta.categories
     .map(
@@ -648,6 +747,9 @@ function renderDraft() {
   $("#d-desc").addEventListener("input", (e) => (d.description = e.target.value));
   $("#d-contact").addEventListener("input", (e) => (d.contact = e.target.value));
   $("#d-note")?.addEventListener("input", (e) => (state.locationNote = e.target.value));
+  form.addEventListener("input", saveTicketDraft);
+  form.addEventListener("click", () => setTimeout(saveTicketDraft));
+  saveTicketDraft();
   form.querySelector("[data-cancel]").addEventListener("click", closeDraft);
   form.addEventListener("submit", (e) => {
     e.preventDefault();
@@ -750,7 +852,7 @@ async function submit() {
   if (state.sending) return;
   d.error = null;
   if ((d.description || "").trim().length < 5) d.error = "Опишите проблему хотя бы парой слов.";
-  else if (!state.location && !state.locationNote.trim()) d.error = "Укажите, где это: выберите помещение или напишите корпус и кабинет.";
+  else if (!state.location && !state.locationNote.trim()) d.error = "Укажите, где это: выберите помещение или напишите этаж и кабинет.";
   if (d.error) {
     renderError();
     $("#d-error").scrollIntoView({ behavior: "smooth", block: "center" });
@@ -779,7 +881,19 @@ async function submit() {
     showDone({ ...res, title: d.title || d.description.slice(0, 60) }, false);
   } catch (err) {
     // заявка не создана: показываем ошибку, а не «успех»
-    d.error = err instanceof ApiError && err.status === 0 ? err.message : `Заявка не отправлена. ${err.message}`;
+    if (err instanceof ApiError && err.network) {
+      // номер запроса тот же, поэтому повторная отправка не создаст дубль
+      d.queued = true;
+      saveTicketDraft();
+      d.error = `${err.message} Заявка сохранена на этом устройстве и отправится сама, когда появится связь.`;
+      state.retrySubmit?.();
+      state.retrySubmit = whenOnline(() => {
+        state.retrySubmit = null;
+        if (state.draft === d) submit();
+      });
+    } else {
+      d.error = `Заявка не отправлена. ${err.message}`;
+    }
     renderError();
     setBusy(button, false);
   } finally {
@@ -790,6 +904,8 @@ async function submit() {
 // ---------- готово ----------
 
 async function showDone(res, joined) {
+  drafts.remove("ticket");
+  drafts.remove("message");
   if (res.code) {
     myTickets.add({
       code: res.code.replace(/-/g, ""),
@@ -981,10 +1097,16 @@ async function init() {
   startAmbient();
   initMotion();
   themeToggle($("#theme"));
+  enableOffline();
+  await start();
+}
+
+async function start() {
   try {
     state.meta = await api("/api/meta");
   } catch (err) {
-    app.innerHTML = `<div class="notice notice-danger">${icon("alert")}<div>${esc(err.message)}</div></div>`;
+    app.innerHTML = "";
+    app.append(errorBlock(err, start));
     return;
   }
   const match = location.pathname.match(/^\/r\/([^/]+)/);
@@ -1000,6 +1122,7 @@ async function init() {
   renderShell();
   loadCampus();
   if (state.location) loadRoomStatus();
+  restoreTicketDraft();
 }
 
 init();

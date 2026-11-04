@@ -1,4 +1,4 @@
-import { $, api, esc, h, icon, plural, relTime } from "../core.js";
+import { $, api, esc, h, icon, plural, relTime, toast } from "../core.js";
 import { countUp, onView, rise } from "../motion.js";
 import { STATUS_COLOR } from "./tickets.js";
 
@@ -102,7 +102,8 @@ export async function render({ el, setHead }) {
     b.addEventListener("click", () => {
       days = Number(b.dataset.d);
       document.querySelectorAll("#range button").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
-      load();
+      // при ошибке остаются прежние цифры и сообщение, раздел не пустеет
+      load().catch((err) => toast(err.message, "error"));
     }),
   );
 

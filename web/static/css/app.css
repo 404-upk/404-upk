@@ -877,3 +877,23 @@ h2.h3 { font-size: 16px; font-weight: 600; letter-spacing: normal; }
 @media (prefers-reduced-motion: reduce) { .ui-select-menu, .ui-select-menu.is-leaving { animation: none; } }
 /* у списков и этажей схемы своё выделение фокуса, общая рамка не нужна */
 .ui-select-btn:focus-visible, .pf-floor:focus-visible { outline: none; }
+
+/* ===== Нет сети и ошибки загрузки ===== */
+.net-banner {
+  position: fixed; z-index: 95; top: 12px; left: 50%; transform: translateX(-50%);
+  display: inline-flex; align-items: center; gap: 8px;
+  max-width: calc(100vw - 32px); padding: 8px 14px;
+  border: 1px solid color-mix(in srgb, var(--amber) 45%, var(--border)); border-radius: 999px;
+  background: color-mix(in srgb, var(--surface) 92%, var(--amber));
+  box-shadow: var(--shadow);
+  font-size: 13px; font-weight: 600; color: var(--text);
+  animation: net-in 0.4s var(--ease-out) both;
+}
+.net-banner .icon { color: var(--amber); }
+.net-banner.is-leaving { animation: net-out 0.3s ease-in both; }
+@keyframes net-in { from { opacity: 0; transform: translate(-50%, -10px); } }
+@keyframes net-out { to { opacity: 0; transform: translate(-50%, -10px); } }
+.error-block { align-items: center; }
+.error-block .btn { flex: none; }
+.error-block.is-compact { font-size: 13px; }
+@media (prefers-reduced-motion: reduce) { .net-banner, .net-banner.is-leaving { animation: none; } }
