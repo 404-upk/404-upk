@@ -7,7 +7,7 @@
 Ничего устанавливать на телефон не нужно, всё работает в браузере.
 
 **Команда:** [Тимур: ИИ, бэкенд, инфраструктура](docs/team/TIMUR.md) · [Осман: фронтенд](docs/team/OSMAN.md) ·
-[Азамат: карта обучения](docs/team/AZAMAT.md) · [Брендбук](docs/brand/404-brandbook.pdf)
+[Азамат: карта обучения](docs/team/AZAMAT.md) · [Брендбук](docs/brand/404-brandbook.pdf) · [Логотипы](docs/brand/404-logos.zip)
 
 ## Состояние помещений
 
