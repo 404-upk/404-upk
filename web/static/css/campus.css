@@ -621,20 +621,42 @@ html:not(.is-revealed) .plan.is-enter * { animation-play-state: paused; }
   border: 1px solid color-mix(in srgb, var(--primary) 40%, var(--border));
   border-radius: var(--radius);
   background: color-mix(in srgb, var(--surface-2) 94%, var(--primary));
-  box-shadow: var(--shadow), 0 20px 40px -20px rgba(0, 0, 0, 0.6);
-  animation: tut-in 0.35s var(--ease-out) both;
+  box-shadow: 0 16px 34px -20px rgba(0, 0, 0, 0.6);
+  animation: tut-in 0.5s var(--ease-out) 0.12s both;
 }
-.tut.is-leaving { animation: tut-out 0.2s ease-in both; }
-@keyframes tut-in { from { opacity: 0; transform: translateY(10px); } }
-@keyframes tut-out { to { opacity: 0; transform: translateY(8px); } }
+.tut.is-leaving { animation: tut-out 0.18s ease-in both; }
+@keyframes tut-in { from { opacity: 0; transform: translateY(14px) scale(0.98); } }
+@keyframes tut-out { to { opacity: 0; transform: translateY(8px) scale(0.98); } }
 .tut-head { display: flex; align-items: center; justify-content: space-between; margin: -4px -6px 2px 0; }
 .tut-count { font-size: 11px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--primary); }
 .tut-title { display: block; font-size: 16px; font-weight: 600; }
 .tut-text { margin-top: 4px; font-size: 13.5px; line-height: 1.45; color: var(--muted); }
+.tut-body.from-right { animation: tut-slide-r 0.42s var(--ease-out) both; }
+.tut-body.from-left { animation: tut-slide-l 0.42s var(--ease-out) both; }
+@keyframes tut-slide-r { from { opacity: 0; transform: translateX(18px); } }
+@keyframes tut-slide-l { from { opacity: 0; transform: translateX(-18px); } }
 .tut-foot { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
 .tut-dots { display: flex; gap: 5px; margin-right: auto; }
-.tut-dots i { width: 6px; height: 6px; border-radius: 3px; background: var(--border-strong); transition: width 0.3s var(--ease-out), background 0.3s; }
+.tut-dots i { width: 6px; height: 6px; border-radius: 3px; background: var(--border-strong); transition: width 0.35s var(--ease-out), background 0.35s; }
 .tut-dots i.is-on { width: 18px; background: var(--primary); }
+
+/* фокус на блоке: остальная страница затемнена и размыта */
+.tut-backdrop {
+  position: fixed; inset: 0; z-index: 85;
+  background: color-mix(in srgb, var(--bg) 58%, transparent);
+  backdrop-filter: blur(7px) saturate(1.1);
+  -webkit-backdrop-filter: blur(7px) saturate(1.1);
+  animation: tut-fade 0.45s ease-out both;
+  cursor: pointer;
+}
+.tut-backdrop.is-leaving { animation: tut-fade-out 0.3s ease-in both; }
+@keyframes tut-fade { from { opacity: 0; } }
+@keyframes tut-fade-out { to { opacity: 0; } }
+.report-aside.is-tut-host { z-index: 86; }
+/* пока открыта подсказка, слой страницы выше шапки: шапка тоже уходит под затемнение */
+main.is-tut-page { z-index: 70; }
+@media (max-width: 979px) { .report-aside.is-tut-host { position: relative; } }
+.campus-panel.is-tut { box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary) 45%, transparent), 0 30px 80px -30px color-mix(in srgb, var(--primary) 55%, transparent), var(--shadow); transition: box-shadow 0.5s var(--ease-out); }
 
 /* указатель, который показывает, куда навести или нажать */
 .tut-cursor { position: absolute; left: 0; top: 0; z-index: 2; width: 18px; height: 18px; margin: -2px 0 0 -2px; pointer-events: none; }
@@ -645,8 +667,21 @@ html:not(.is-revealed) .plan.is-enter * { animation-play-state: paused; }
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
 }
 .tut-cursor::after { content: ""; position: absolute; left: -9px; top: -9px; width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--primary); opacity: 0; }
-.tut-cursor.is-click::after { animation: tut-click 1.2s var(--ease-out) infinite; }
+
 @keyframes tut-click { 0% { opacity: 0.9; transform: scale(0.4); } 100% { opacity: 0; transform: scale(1.8); } }
+
+/* на телефоне вместо курсора палец, который нажимает на этаж */
+.tut-cursor.is-finger { width: 30px; height: 30px; margin: -3px 0 0 -10px; }
+.tut-cursor.is-finger::before { display: none; }
+.tut-cursor.is-finger svg { position: relative; z-index: 1; width: 30px; height: 30px; fill: var(--surface); stroke: var(--text); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.45)); transform-origin: 30% 10%; }
+.tut-cursor.is-finger::after { display: none; }
+.tut-ring { position: absolute; left: 1px; top: -6px; width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--primary); background: color-mix(in srgb, var(--primary) 25%, transparent); opacity: 0; }
+.tut-cursor.is-finger.is-press svg { animation: tut-tap 1.4s var(--ease-out) infinite; }
+.tut-cursor.is-finger.is-press .tut-ring { animation: tut-ripple 1.4s var(--ease-out) infinite; }
+@keyframes tut-tap { 0%, 100% { transform: none; } 18% { transform: scale(0.86) translateY(2px); } 40% { transform: none; } }
+@keyframes tut-ripple { 0%, 12% { opacity: 0; transform: scale(0.3); } 22% { opacity: 1; } 100% { opacity: 0; transform: scale(2.4); } }
+.tut-cursor.is-press::after { animation: tut-click 1.4s var(--ease-out) infinite; }
+.tut-cursor.is-finger.is-press::after { animation: none; }
 
 /* что подсвечивается на каждом шаге */
 .pf.tut-floors .pf-floor-bg { animation: tut-floor 2.4s ease-in-out infinite; }
@@ -658,5 +693,6 @@ html:not(.is-revealed) .plan.is-enter * { animation-play-state: paused; }
 .pf.tut-lamps .pf-room:not(.is-clear) .pf-num { fill: var(--c); }
 @media (prefers-reduced-motion: reduce) {
   .pf.tut-floors .pf-floor-bg { animation: none; fill: color-mix(in srgb, var(--primary) 8%, transparent); }
-  .tut, .tut.is-leaving { animation: none; }
+  .tut, .tut.is-leaving, .tut-body.from-right, .tut-body.from-left, .tut-backdrop, .tut-backdrop.is-leaving { animation: none; }
+  .tut-cursor.is-finger.is-press svg, .tut-cursor.is-finger.is-press .tut-ring, .tut-cursor.is-press::after { animation: none; }
 }

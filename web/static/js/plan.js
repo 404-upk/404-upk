@@ -370,6 +370,7 @@ export function bindPlan(root, states, { onOpenFloor } = {}) {
 
 // ---------- обучение: как пользоваться схемой ----------
 
+// На телефоне навести на кабинет нельзя: шаг про двери пропускается, вместо курсора показывается палец.
 const TUTORIAL = [
   {
     title: "Это колледж",
@@ -383,22 +384,32 @@ const TUTORIAL = [
   },
   {
     title: "Загляните в кабинет",
-    text: HOVER ? "Наведите на кабинет, дверь откроется. Под схемой появится, что это за кабинет и есть ли заявки." : "Под схемой видно, сколько на этаже заявок. Подробности по кабинетам — на плане этажа.",
+    text: "Наведите на кабинет, дверь откроется. Под схемой появится, что это за кабинет и есть ли заявки.",
     show: "door",
+    mouseOnly: true,
   },
   {
     title: "Откройте этаж",
-    text: "Нажмите на этаж: откроется план с крупными кабинетами. Там видны заявки и кнопка «Это здесь», чтобы выбрать кабинет для обращения.",
+    text: HOVER
+      ? "Нажмите на этаж: откроется план с крупными кабинетами. Там видны заявки и кнопка «Это здесь», чтобы выбрать кабинет для обращения."
+      : "Коснитесь этажа: откроется план с крупными кабинетами. Там видны заявки и кнопка «Это здесь», чтобы выбрать кабинет для обращения.",
     show: "floor",
   },
 ];
+
+const EASE = "cubic-bezier(.22,.8,.24,1)";
+const FINGER =
+  '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 9.5V4a2 2 0 0 0-4 0v10M14 10V9a2 2 0 0 0-4 0v1M18 11v-1a2 2 0 0 0-4 0M18 11a2 2 0 1 1 4 0v3a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.9-6-2.3l-3.6-3.6a2 2 0 0 1 2.8-2.8L7 15"/></svg>';
 
 function bindTutorial(root, svg, { onOpenFloor, light }) {
   const help = root.querySelector(".pl-help");
   const panel = root.querySelector(".campus-panel");
   const plan = root.querySelector(".plan");
+  const aside = panel?.closest(".report-aside") || panel?.parentElement;
   if (!help || !panel || !plan) return;
+  const steps = TUTORIAL.filter((s) => HOVER || !s.mouseOnly);
   let box = null;
+  let backdrop = null;
   let step = 0;
   let cursor = null;
   let timers = [];
@@ -413,97 +424,169 @@ function bindTutorial(root, svg, { onOpenFloor, light }) {
     cursor = null;
   };
 
-  // указатель показывает движение к кабинету или этажу
-  const pointTo = (el, { click = false } = {}) => {
+  /** Высота блока меняется плавно: замеряем до и после изменения и анимируем разницу */
+  const resize = (change, duration = 520) => {
+    const from = panel.offsetHeight;
+    panel.getAnimations().forEach((an) => an.cancel());
+    change();
+    const to = panel.offsetHeight;
+    if (REDUCED || from === to) return;
+    panel.animate([{ height: `${from}px` }, { height: `${to}px` }], { duration, easing: EASE });
+  };
+
+  // указатель мыши или палец движется к кабинету или этажу
+  const pointTo = (el, { press = false } = {}) => {
     if (!el) return;
     const r = el.getBoundingClientRect();
     const base = plan.getBoundingClientRect();
     cursor = document.createElement("span");
-    cursor.className = "tut-cursor";
+    cursor.className = HOVER ? "tut-cursor" : "tut-cursor is-finger";
     cursor.setAttribute("aria-hidden", "true");
+    if (!HOVER) cursor.innerHTML = `${FINGER}<i class="tut-ring"></i>`;
     plan.append(cursor);
-    const x = r.left - base.left + r.width / 2;
+    const x = r.left - base.left + Math.min(r.width / 2, 120);
     const y = r.top - base.top + r.height * 0.55;
-    const from = { transform: `translate(${base.width * 0.82}px, ${base.height * 0.92}px)`, opacity: 0 };
-    const to = { transform: `translate(${x}px, ${y}px)`, opacity: 1 };
+    const to = `translate(${x}px, ${y}px)`;
     if (REDUCED) {
-      cursor.style.transform = to.transform;
+      cursor.style.transform = to;
+      cursor.classList.add("is-here");
     } else {
-      cursor.animate([from, to], { duration: 1100, easing: "cubic-bezier(.2,.7,.2,1)", fill: "forwards" });
-      if (click) timers.push(setTimeout(() => cursor?.classList.add("is-click"), 1150));
+      cursor.animate(
+        [
+          { transform: `translate(${base.width * 0.85}px, ${base.height + 30}px)`, opacity: 0 },
+          { opacity: 1, offset: 0.35 },
+          { transform: to, opacity: 1 },
+        ],
+        { duration: 1150, easing: EASE, fill: "forwards" },
+      );
+      if (press) timers.push(setTimeout(() => cursor?.classList.add("is-press"), 1200));
     }
   };
 
-  const showStep = () => {
+  const showStep = (dir = 0) => {
     clearShow();
-    const s = TUTORIAL[step];
+    const s = steps[step];
     svg.classList.add(`tut-${s.show}`);
     if (s.show === "door") {
       const room = svg.querySelector('.pf-room.is-open[data-n="214"]') || svg.querySelector(".pf-room.is-open") || svg.querySelector('.pf-room[data-n="214"]');
       pointTo(room?.querySelector(".pf-hit"));
-      timers.push(setTimeout(() => room?.classList.add("is-demo"), REDUCED ? 0 : 1000));
+      timers.push(setTimeout(() => room?.classList.add("is-demo"), REDUCED ? 0 : 1050));
     }
     if (s.show === "floor") {
       const floor = svg.querySelector('.pf-floor[data-floor="2"]');
-      pointTo(floor?.querySelector(".pf-floor-bg"), { click: true });
-      timers.push(setTimeout(() => light(floor), REDUCED ? 0 : 1000));
+      pointTo(floor?.querySelector(".pf-floor-bg"), { press: true });
+      timers.push(setTimeout(() => light(floor), REDUCED ? 0 : 1150));
     }
-    const last = step === TUTORIAL.length - 1;
-    box.innerHTML = `
+    const last = step === steps.length - 1;
+    const content = `
       <div class="tut-head">
-        <span class="tut-count">${step + 1} из ${TUTORIAL.length}</span>
+        <span class="tut-count">${step + 1} из ${steps.length}</span>
         <button type="button" class="btn btn-ghost btn-icon btn-sm tut-close" aria-label="Закрыть подсказку">
           <svg class="icon icon-sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
       </div>
-      <b class="tut-title">${esc(s.title)}</b>
-      <p class="tut-text">${esc(s.text)}</p>
+      <div class="tut-body${dir ? (dir > 0 ? " from-right" : " from-left") : ""}">
+        <b class="tut-title">${esc(s.title)}</b>
+        <p class="tut-text">${esc(s.text)}</p>
+      </div>
       <div class="tut-foot">
-        <span class="tut-dots" aria-hidden="true">${TUTORIAL.map((_, i) => `<i class="${i === step ? "is-on" : ""}"></i>`).join("")}</span>
+        <span class="tut-dots" aria-hidden="true">${steps.map((_, i) => `<i class="${i === step ? "is-on" : ""}"></i>`).join("")}</span>
         ${step ? `<button type="button" class="btn btn-ghost btn-sm tut-back">Назад</button>` : ""}
         ${last ? `<button type="button" class="btn btn-primary btn-sm tut-try">Открыть 2 этаж</button>` : `<button type="button" class="btn btn-primary btn-sm tut-next">Дальше</button>`}
       </div>`;
+    // текст другой длины: карточка меняет высоту плавно
+    resize(() => (box.innerHTML = content), 380);
     box.querySelector(".tut-next, .tut-try")?.focus({ preventScroll: true });
+    timers.push(setTimeout(keepVisible, REDUCED ? 0 : 420));
   };
 
-  const close = () => {
-    if (!box) return;
-    clearShow();
-    box.classList.add("is-leaving");
-    const old = box;
-    setTimeout(() => old.remove(), 0);
-    box = null;
-    panel.classList.remove("is-tut");
-    help.setAttribute("aria-expanded", "false");
-    document.removeEventListener("keydown", onKey);
-    help.focus({ preventScroll: true });
-  };
-  const onKey = (e) => {
-    if (e.key === "Escape") close();
-    else if (e.key === "ArrowRight" && step < TUTORIAL.length - 1) (step++, showStep());
-    else if (e.key === "ArrowLeft" && step > 0) (step--, showStep());
+  const go = (d) => {
+    const next = step + d;
+    if (next < 0 || next >= steps.length) return;
+    step = next;
+    showStep(d);
   };
 
-  help.addEventListener("click", () => {
-    if (box) return close();
+  const open = () => {
     step = 0;
+    // фон страницы затемняется и размывается, блок остаётся над ним
+    backdrop = document.createElement("div");
+    backdrop.className = "tut-backdrop";
+    backdrop.addEventListener("click", () => close());
+    // фон кладётся в main рядом с колонкой блока: у main свой слой, иначе блок оказался бы под фоном
+    const page = panel.closest("main") || document.body;
+    page.classList.add("is-tut-page");
+    page.append(backdrop);
+    aside?.classList.add("is-tut-host");
     box = document.createElement("div");
     box.className = "tut";
     box.setAttribute("role", "dialog");
+    box.setAttribute("aria-modal", "true");
     box.setAttribute("aria-label", "Как пользоваться схемой");
-    // карточка встаёт под схемой на место строки о кабинете и легенды, здание остаётся видно целиком
-    root.querySelector("#campus-map").after(box);
-    panel.classList.add("is-tut");
+    resize(() => {
+      root.querySelector("#campus-map").after(box);
+      panel.classList.add("is-tut");
+    });
     help.setAttribute("aria-expanded", "true");
     document.addEventListener("keydown", onKey);
     box.addEventListener("click", (e) => {
       if (e.target.closest(".tut-close")) close();
-      else if (e.target.closest(".tut-next")) (step++, showStep());
-      else if (e.target.closest(".tut-back")) (step--, showStep());
+      else if (e.target.closest(".tut-next")) go(1);
+      else if (e.target.closest(".tut-back")) go(-1);
       else if (e.target.closest(".tut-try")) {
-        close();
+        close(false);
         onOpenFloor?.(2, null);
       }
     });
     showStep();
-  });
+  };
+
+  // блок выше экрана (телефон): прокручиваем так, чтобы карточка была видна целиком, схема над ней
+  const keepVisible = () => {
+    if (!box) return;
+    const tall = panel.offsetHeight + 40 > innerHeight;
+    panel.scrollIntoView({ block: tall ? "end" : "center", behavior: REDUCED ? "auto" : "smooth" });
+  };
+
+  function close(focusHelp = true) {
+    if (!box) return;
+    clearShow();
+    document.removeEventListener("keydown", onKey);
+    const old = box;
+    box = null;
+    old.classList.add("is-leaving");
+    backdrop?.classList.add("is-leaving");
+    const oldBackdrop = backdrop;
+    backdrop = null;
+    setTimeout(() => {
+      oldBackdrop?.remove();
+      if (!box) panel.closest("main")?.classList.remove("is-tut-page");
+    }, 320);
+    const finish = () => {
+      resize(() => {
+        old.remove();
+        panel.classList.remove("is-tut");
+      }, 420);
+      aside?.classList.remove("is-tut-host");
+    };
+    if (REDUCED) finish();
+    else setTimeout(finish, 160);
+    help.setAttribute("aria-expanded", "false");
+    if (focusHelp) help.focus({ preventScroll: true });
+  }
+
+  function onKey(e) {
+    if (e.key === "Escape") return close();
+    if (e.key === "ArrowRight") return go(1);
+    if (e.key === "ArrowLeft") return go(-1);
+    if (e.key !== "Tab" || !box) return;
+    // фокус остаётся в подсказке
+    const items = [...box.querySelectorAll("button")];
+    const i = items.indexOf(document.activeElement);
+    e.preventDefault();
+    items[(i + (e.shiftKey ? -1 : 1) + items.length) % items.length]?.focus();
+  }
+
+  help.addEventListener("click", () => (box ? close() : open()));
+  // нажатие на этаж во время подсказки сначала закрывает её
+  svg.addEventListener("click", () => box && close(false), true);
 }
