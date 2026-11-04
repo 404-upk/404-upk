@@ -11,7 +11,7 @@
 Нужен Python 3.12 или новее и Git.
 
 ```bash
-git clone https://github.com/innnom/404-upk.git
+git clone https://github.com/404-upk/404-upk.git
 cd 404-upk
 python -m venv .venv
 .venv/Scripts/pip install -r requirements-dev.txt      # Linux и macOS: .venv/bin/pip
