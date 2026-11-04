@@ -12,7 +12,7 @@ if ! grep -q '^GIGACHAT_AUTH_KEY=.' .env; then
   printf "Вставьте ключ и нажмите Enter (пусто: запустить в демо-режиме без GigaChat): "
   read -r GKEY || GKEY=""
   if [ -n "$GKEY" ]; then
-    GKEY="$GKEY" .venv/bin/python -c "import os, pathlib, re; p = pathlib.Path('.env'); s = p.read_text(encoding='utf-8'); p.write_text(re.sub(r'(?m)^GIGACHAT_AUTH_KEY=.*$', 'GIGACHAT_AUTH_KEY=' + os.environ['GKEY'].strip(), s), encoding='utf-8')"
+    GKEY="$GKEY" .venv/bin/python -c "import os, pathlib, re; k = re.sub(r'^GIGACHAT_AUTH_KEY\s*=\s*', '', os.environ['GKEY'].strip()).strip(chr(34) + chr(39) + ' '); p = pathlib.Path('.env'); s = p.read_text(encoding='utf-8'); p.write_text(re.sub(r'(?m)^GIGACHAT_AUTH_KEY=.*$', lambda m: 'GIGACHAT_AUTH_KEY=' + k, s), encoding='utf-8')"
     echo "Ключ сохранён в .env на этом компьютере, в репозиторий он не попадёт."
   fi
 fi
