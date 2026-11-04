@@ -1,0 +1,33 @@
+name: Codespaces
+
+on:
+  push:
+    paths:
+      - ".devcontainer/**"
+      - "requirements*.txt"
+      - ".github/workflows/devcontainer.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  start:
+    name: Конфигурация собирается и сайт запускается
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm install -g @devcontainers/cli
+      - run: devcontainer up --workspace-folder .
+      - name: Сайт отвечает
+        run: |
+          devcontainer exec --workspace-folder . sh -c '
+            for i in $(seq 1 45); do
+              curl -fsS http://127.0.0.1:8000/api/health && exit 0
+              sleep 2
+            done
+            cat /tmp/upk.log
+            exit 1
+          '
