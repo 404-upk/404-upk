@@ -147,6 +147,9 @@ def current_user(user: User | None = Depends(optional_user)) -> User:
 
 def require_roles(*roles: str):
     def checker(user: User = Depends(current_user)) -> User:
+        # с временным паролем доступны только вход, выход и смена пароля
+        if user.must_change_password:
+            raise HTTPException(403, "Сначала смените временный пароль")
         if user.role not in roles:
             raise HTTPException(403, "Недостаточно прав для этого действия")
         return user
@@ -157,3 +160,42 @@ def require_roles(*roles: str):
 any_staff = require_roles(ROLE_ADMIN, ROLE_STAFF, ROLE_EXECUTOR)
 upk_staff = require_roles(ROLE_ADMIN, ROLE_STAFF)
 admin_only = require_roles(ROLE_ADMIN)
+
+
+MIN_PASSWORD_LENGTH = 12
+# самые частые пароли из утечек; длинные варианты, которые проходят по длине
+COMMON_PASSWORDS = {
+    "123456789012",
+    "1234567890123",
+    "qwertyuiop12",
+    "qwerty123456",
+    "password1234",
+    "password12345",
+    "1q2w3e4r5t6y",
+    "йцукенгшщзхъ",
+    "пароль123456",
+    "administrator",
+    "adminadmin123",
+}
+
+
+def password_problem(password: str, login: str = "") -> str | None:
+    """Почему пароль не подходит, или None, если подходит."""
+    if len(password) < MIN_PASSWORD_LENGTH:
+        return f"Пароль должен быть не короче {MIN_PASSWORD_LENGTH} символов"
+    lowered = password.lower()
+    if lowered in COMMON_PASSWORDS or len(set(password)) < 4:
+        return "Этот пароль слишком простой, его легко подобрать"
+    if password.isdigit():
+        return "Пароль не должен состоять только из цифр"
+    if login and login.lower() in lowered:
+        return "Пароль не должен содержать логин"
+    return None
+
+
+TEMP_ALPHABET = CODE_ALPHABET + CODE_ALPHABET.lower()
+
+
+def temporary_password() -> str:
+    """Временный пароль для первого входа: четыре группы по четыре символа, без похожих букв и цифр."""
+    return "-".join("".join(secrets.choice(TEMP_ALPHABET) for _ in range(4)) for _ in range(4))

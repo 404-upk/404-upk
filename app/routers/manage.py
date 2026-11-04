@@ -28,6 +28,7 @@ def _user(u: User) -> dict:
         "role_label": ROLES.get(u.role, u.role),
         "is_active": u.is_active,
         "telegram_linked": bool(u.tg_chat_id),
+        "must_change_password": u.must_change_password,
         "created_at": ts.iso(u.created_at),
     }
 
@@ -48,6 +49,8 @@ def create_user(payload: UserIn, _: User = Depends(admin_only), db: Session = De
         login=login,
         role=payload.role,
         password_hash=hash_password(payload.password),
+        # пароль придумал администратор, поэтому при первом входе сотрудник заменит его своим
+        must_change_password=True,
     )
     db.add(user)
     db.commit()
@@ -71,6 +74,7 @@ def update_user(user_id: int, payload: UserUpdateIn, me: User = Depends(admin_on
         user.is_active = payload.is_active
     if payload.password:
         user.password_hash = hash_password(payload.password)
+        user.must_change_password = True
     if payload.password or payload.is_active is False:
         db.execute(UserSession.__table__.delete().where(UserSession.user_id == user.id))
     db.commit()

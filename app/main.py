@@ -14,7 +14,7 @@ from .ai.gigachat import client as gigachat
 from .config import WEB_DIR, settings
 from .db import SessionLocal, init_db
 from .middleware import CompressText, HideTrackingCodes, hide_tracking_code, security_headers
-from .models import User
+from .models import Category
 from .routers import auth, manage, pages, public, staff, track
 from .seed import seed
 from .services.retention import retention_loop
@@ -32,8 +32,9 @@ async def lifespan(_: FastAPI):
     settings.ensure_production_ready()
     init_db()
     with SessionLocal() as db:
-        if not db.scalar(select(func.count(User.id))):
-            seed(db, demo_tickets=settings.seed_demo)
+        if not db.scalar(select(func.count(Category.id))):
+            # на боевом сервере демо-аккаунтов нет: первого администратора создаёт python -m app.create_admin
+            seed(db, demo_tickets=settings.seed_demo, demo_users=not settings.is_production)
             log.info("База заполнена начальными данными")
     if not gigachat.enabled:
         log.warning("GIGACHAT_AUTH_KEY не задан: ИИ работает в демо-режиме на правилах")

@@ -105,6 +105,48 @@ function renderLogin(message = "") {
   $("#l-login").focus();
 }
 
+// ---------- смена временного пароля ----------
+
+function renderPasswordChange(message = "") {
+  root.innerHTML = `
+    <div class="login-wrap">
+      <form class="card login-card" id="pwd" novalidate>
+        <div class="stack-sm"><div class="eyebrow">Первый вход</div><h2>Задайте свой пароль</h2>
+          <p class="small muted">${esc(ctx.user.name)}, у вас временный пароль. Пока вы его не замените, панель закрыта.
+          Новый пароль: не короче 12 символов, без логина и не из простых.</p></div>
+        ${message ? `<div class="notice notice-danger">${icon("alert")}<div>${esc(message)}</div></div>` : ""}
+        <div class="field"><label for="p-old">Временный пароль</label>
+          <input class="input" id="p-old" type="password" autocomplete="current-password" required></div>
+        <div class="field"><label for="p-new">Новый пароль</label>
+          <input class="input" id="p-new" type="password" autocomplete="new-password" minlength="12" required></div>
+        <div class="field"><label for="p-again">Новый пароль ещё раз</label>
+          <input class="input" id="p-again" type="password" autocomplete="new-password" required></div>
+        <button class="btn btn-primary btn-lg" type="submit" id="p-btn">Сохранить и войти</button>
+      </form>
+    </div>`;
+  const form = $("#pwd");
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    if ($("#p-new").value !== $("#p-again").value) {
+      renderPasswordChange("Новые пароли не совпадают");
+      return;
+    }
+    const btn = $("#p-btn");
+    setBusy(btn, true);
+    try {
+      ctx.user = await api("/api/auth/password", {
+        method: "POST",
+        body: { current_password: $("#p-old").value, new_password: $("#p-new").value },
+      });
+      toast("Пароль сохранён");
+      await boot();
+    } catch (err) {
+      renderPasswordChange(err.message);
+    }
+  });
+  $("#p-old").focus();
+}
+
 // ---------- каркас ----------
 
 function navLink(key, p) {
@@ -295,6 +337,10 @@ async function boot() {
       return;
     }
     root.innerHTML = `<div class="login-wrap"><div class="notice notice-danger">${icon("alert")}<div>${esc(err.message)}</div></div></div>`;
+    return;
+  }
+  if (ctx.user.must_change_password) {
+    renderPasswordChange();
     return;
   }
   await Promise.all([loadAssignees(), loadLocations()]);
