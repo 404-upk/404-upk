@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from ..config import settings
 from ..models import Category, Location
 from ..services.uploads import normalize_image
-from . import rules, safety
+from . import resilience, rules, safety
 from .gigachat import GigaChatError, client
 from .knowledge import Article, load_articles
 from .prompts import PHOTO_SYSTEM, system_prompt, user_prompt
@@ -154,6 +154,20 @@ def _apply_guards(reply: AssistantReply, articles: list[Article]) -> AssistantRe
     if reply.engine == "safety":
         return reply
     texts = [reply.answer, *reply.tips]
+    # модель пересказала свои инструкции: такой ответ не показываем
+    if any(safety.leaks_prompt(t) for t in texts):
+        reply.kind = "unknown"
+        reply.answer = UNKNOWN_ANSWER
+        reply.tips = []
+        reply.sources = []
+        reply.guard = "prompt_leak"
+        return reply
+    # модель не может менять заявки, поэтому «я закрыл заявку» всегда неправда
+    if any(safety.claims_action(t) for t in texts):
+        reply.answer = safety.INJECTION_ANSWER
+        reply.tips = []
+        reply.guard = "fake_action"
+        return reply
     if any(safety.is_unsafe_advice(t) for t in texts):
         reply.answer = safety.SAFE_FALLBACK_ANSWER
         reply.tips = []
@@ -185,6 +199,7 @@ async def analyze(
     location: Location | None = None,
     context: list[str] | None = None,
     use_llm: bool = True,
+    use_cache: bool = True,
 ) -> AssistantReply:
     text = re.sub(r"\s+", " ", message).strip()
     context = [re.sub(r"\s+", " ", c).strip() for c in (context or []) if c.strip()][-3:]
@@ -196,8 +211,16 @@ async def analyze(
 
     articles = load_articles(db)
     has_location = location is not None
+    cache_key = (full_text.lower(), location.id if location else None)
 
-    if use_llm and client.enabled:
+    if use_llm and client.enabled and use_cache and (cached := resilience.cache.get(cache_key)):
+        return cached
+
+    if use_llm and client.enabled and resilience.breaker.is_open:
+        # GigaChat недавно не ответил несколько раз подряд: не ждём таймаут, сразу отвечаем по правилам
+        reply = rules.analyze(full_text, articles, has_location)
+        reply.notice = FALLBACK_NOTICE
+    elif use_llm and client.enabled:
         categories = _categories(db)
         try:
             raw = await client.chat(
@@ -217,9 +240,13 @@ async def analyze(
                     },
                 ]
             )
+            resilience.breaker.success()
             reply = _from_llm(_parse_json(raw), articles, {c.code for c in categories}, has_location, full_text)
             reply = _reconcile(reply, rules.analyze(full_text, articles, has_location))
         except (GigaChatError, ValueError, KeyError) as exc:
+            # сбоем связи считается только ошибка GigaChat; кривой ответ модели предохранитель не включает
+            if isinstance(exc, GigaChatError):
+                resilience.breaker.failure()
             log.warning("GigaChat недоступен, работаем по правилам: %s", exc)
             reply = rules.analyze(full_text, articles, has_location)
             reply.notice = FALLBACK_NOTICE
@@ -229,7 +256,11 @@ async def analyze(
 
     if reply.kind in ("fault", "danger") and reply.priority == "normal":
         reply.priority = rules.suggest_priority(reply.kind, reply.category, full_text)
-    return _apply_guards(reply, articles)
+    reply = _apply_guards(reply, articles)
+    # в кэш попадают только ответы модели: запасные ответы должны смениться настоящими, как только GigaChat вернётся
+    if reply.notice is None and use_llm and client.enabled and use_cache:
+        resilience.cache.put(cache_key, reply)
+    return reply
 
 
 async def analyze_photo(db: Session, data: bytes) -> dict:
