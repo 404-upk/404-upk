@@ -36,7 +36,7 @@ def campus_state(index: int) -> str:
     return "busy" if index >= BUSY_INDEX else "heavy"
 
 
-def _counts(db: Session) -> tuple[dict, dict, set]:
+def location_counts(db: Session) -> tuple[dict, dict, set]:
     month_ago = utcnow() - timedelta(days=30)
     open_counts = dict(
         db.execute(
@@ -65,7 +65,7 @@ def campus_summary(db: Session) -> dict:
     locations = db.scalars(
         select(Location).where(Location.is_active).order_by(Location.building, Location.floor, Location.room)
     ).all()
-    open_counts, month_counts, critical = _counts(db)
+    open_counts, month_counts, critical = location_counts(db)
 
     buildings: dict[str, list] = defaultdict(list)
     for loc in locations:
@@ -137,3 +137,36 @@ def room_status(db: Session, location: Location, limit: int = 3) -> dict:
             for t in rows[:limit]
         ],
     }
+
+
+def building_map(db: Session) -> list[dict]:
+    """Помещения по корпусам и этажам для карты в панели: открытые заявки, заявки за месяц, срочные."""
+    locations = db.scalars(
+        select(Location).where(Location.is_active).order_by(Location.building, Location.floor, Location.room)
+    ).all()
+    open_counts, month_counts, critical = location_counts(db)
+
+    buildings: dict[str, dict[int | None, list]] = defaultdict(lambda: defaultdict(list))
+    for loc in locations:
+        buildings[loc.building][loc.floor].append(
+            {
+                "id": loc.id,
+                "title": loc.title,
+                "room": loc.room,
+                "zone_name": loc.zone_name,
+                "kind": loc.kind,
+                "open": open_counts.get(loc.id, 0),
+                "month": month_counts.get(loc.id, 0),
+                "critical": loc.id in critical,
+            }
+        )
+    return [
+        {
+            "building": name,
+            "floors": [
+                {"floor": floor, "locations": items}
+                for floor, items in sorted(floors.items(), key=lambda x: (x[0] is None, -(x[0] or 0)))
+            ],
+        }
+        for name, floors in buildings.items()
+    ]
