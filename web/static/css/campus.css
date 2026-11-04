@@ -308,27 +308,27 @@ html:not(.is-revealed) .track-enter .tp-step, html:not(.is-revealed) .track-ente
 .pf { display: block; width: 100%; height: auto; overflow: visible; user-select: none; -webkit-tap-highlight-color: transparent; }
 .pf text { font-family: inherit; }
 
-/* контуры здания */
-.pf-outline { fill: none; stroke: var(--text); stroke-opacity: 0.42; stroke-width: 1.3; }
-.pf-cornice { fill: none; stroke: var(--text); stroke-opacity: 0.42; stroke-width: 1.6; stroke-linecap: round; }
-.pf-attic { fill: color-mix(in srgb, var(--surface-2) 60%, transparent); stroke: var(--text); stroke-opacity: 0.38; stroke-width: 1.2; }
-.pf-attic-inner { fill: none; stroke: var(--text); stroke-opacity: 0.16; stroke-width: 0.8; }
+/* контуры здания: мягкие заливки вместо множества линий */
+.pf-body { fill: color-mix(in srgb, var(--surface-2) 55%, transparent); stroke: var(--text); stroke-opacity: 0.22; stroke-width: 1.2; }
+.pf-well { fill: color-mix(in srgb, var(--text) 3%, transparent); }
+.pf-cornice { fill: none; stroke: var(--text); stroke-opacity: 0.3; stroke-width: 2; stroke-linecap: round; }
+.pf-attic { fill: color-mix(in srgb, var(--surface-2) 75%, transparent); stroke: var(--text); stroke-opacity: 0.22; stroke-width: 1.2; stroke-linejoin: round; }
 /* эмблема университета контуром */
-.pf-emblem-disc { fill: color-mix(in srgb, var(--primary) 12%, var(--surface)); stroke: var(--primary); stroke-width: 1.1; }
-.pf-emblem-ring { fill: none; stroke: var(--primary); stroke-opacity: 0.75; stroke-width: 0.8; }
-.pf-emblem-text { fill: none; stroke: var(--primary); stroke-opacity: 0.55; stroke-width: 1.6; stroke-dasharray: 1.4 1.1; }
-.pf-emblem-line { fill: none; stroke: var(--text); stroke-opacity: 0.85; stroke-width: 0.8; stroke-linecap: round; stroke-linejoin: round; }
-.pf-handrail { fill: none; stroke: var(--text); stroke-opacity: 0.32; stroke-width: 0.8; stroke-linecap: round; }
-.pf-pilaster { stroke: var(--text); stroke-opacity: 0.07; stroke-width: 1; }
-.pf-inner { stroke: var(--text); stroke-opacity: 0.16; stroke-width: 1; }
-.pf-slab { stroke: var(--text); stroke-opacity: 0.32; stroke-width: 2; }
-.pf-ground { fill: none; stroke: var(--text); stroke-opacity: 0.3; stroke-width: 1.2; stroke-linecap: round; }
+.pf-emblem-disc { fill: color-mix(in srgb, var(--primary) 12%, var(--surface)); stroke: var(--primary); stroke-width: 1; }
+.pf-emblem-ring { fill: none; stroke: var(--primary); stroke-opacity: 0.7; stroke-width: 0.7; }
+.pf-emblem-text { fill: none; stroke: var(--primary); stroke-opacity: 0.5; stroke-width: 1.4; stroke-dasharray: 1.3 1.1; }
+.pf-emblem-line { fill: none; stroke: var(--text); stroke-opacity: 0.85; stroke-width: 0.75; stroke-linecap: round; stroke-linejoin: round; }
+.pf-handrail { fill: none; stroke: var(--text); stroke-opacity: 0.28; stroke-width: 0.8; stroke-linecap: round; }
+.pf-stair-front { fill: color-mix(in srgb, var(--text) 6%, transparent); }
+.pf-treads { stroke: var(--text); stroke-opacity: 0.32; stroke-width: 0.9; stroke-linecap: round; }
+.pf-slab { stroke: var(--text); stroke-opacity: 0.18; stroke-width: 1.5; stroke-linecap: round; }
+.pf-ground { fill: none; stroke: var(--text); stroke-opacity: 0.22; stroke-width: 1.2; stroke-linecap: round; }
 .pf-entry { font-size: 8.5px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; fill: var(--muted); text-anchor: middle; }
-.pf-label { font-size: 9.5px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; fill: var(--faint); transition: fill 0.3s; }
+.pf-label { font-size: 9.5px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; fill: var(--muted); transition: fill 0.3s; }
 
 /* лестницы в разрезе: ступени, косоур, площадки, перила */
-.pf-steps { fill: color-mix(in srgb, var(--text) 8%, transparent); stroke: var(--text); stroke-opacity: 0.4; stroke-width: 0.8; stroke-linejoin: round; }
-.pf-landing { stroke: var(--text); stroke-opacity: 0.45; stroke-width: 2; stroke-linecap: round; }
+.pf-steps { fill: color-mix(in srgb, var(--text) 7%, transparent); stroke: var(--text); stroke-opacity: 0.3; stroke-width: 0.8; stroke-linejoin: round; }
+.pf-landing { stroke: var(--text); stroke-opacity: 0.3; stroke-width: 1.6; stroke-linecap: round; }
 .pf-rail { fill: none; stroke: var(--text); stroke-opacity: 0.3; stroke-width: 0.8; }
 
 /* этаж: подсветка при наведении, фокус с клавиатуры */
@@ -339,7 +339,6 @@ html:not(.is-revealed) .track-enter .tp-step, html:not(.is-revealed) .track-ente
 .pf-floor:focus-visible .pf-floor-bg { stroke: var(--primary); stroke-width: 1.6; }
 .pf-floor.is-hot .pf-label { fill: var(--primary); }
 .pf.has-hot .pf-floor:not(.is-hot) .pf-room { opacity: 0.55; }
-.pf-corridor { stroke: var(--text); stroke-opacity: 0.14; stroke-width: 0.8; stroke-dasharray: 3 3; }
 
 /* кабинет: номер, дверь, лампа над дверью, свет из-под двери */
 .pf-room { --c: var(--node); transition: opacity 0.3s; }

@@ -144,6 +144,28 @@ function flight(xa, ya, xb, yb, steps = 6, withRail = false) {
   return `<path class="pf-steps" d="${d}${under}"/>${withRail ? `<path class="pf-handrail" d="${hr}"/>` : ""}`;
 }
 
+/** Средняя лестница прямо от входа: вид спереди, ступени уходят вглубь и сужаются */
+function straightStair(yb, yt) {
+  const steps = 9;
+  const wb = 40; // ширина внизу
+  const wt = 22; // ширина наверху
+  let treads = "";
+  let y = yb;
+  // ступени ближе к входу крупнее, дальше мельче
+  const total = (yb - yt);
+  const weights = Array.from({ length: steps }, (_, i) => 1 - i * 0.07);
+  const sum = weights.reduce((a, b) => a + b, 0);
+  const at = (yy) => wb + (wt - wb) * ((yb - yy) / total);
+  for (let i = 0; i < steps; i++) {
+    const half = at(y) / 2;
+    treads += `M${f1(CX - half)} ${f1(y)}H${f1(CX + half)}`;
+    y -= (total * weights[i]) / sum;
+  }
+  const body = `M${f1(CX - wb / 2)} ${f1(yb)}L${f1(CX - wt / 2)} ${f1(yt)}H${f1(CX + wt / 2)}L${f1(CX + wb / 2)} ${f1(yb)}Z`;
+  const rails = `M${f1(CX - wb / 2 - 3)} ${f1(yb - 8)}L${f1(CX - wt / 2 - 2)} ${f1(yt - 6)}M${f1(CX + wb / 2 + 3)} ${f1(yb - 8)}L${f1(CX + wt / 2 + 2)} ${f1(yt - 6)}`;
+  return `<path class="pf-stair-front" d="${body}"/><path class="pf-treads" d="${treads}"/><path class="pf-handrail" d="${rails}"/>`;
+}
+
 /** Лестничная клетка на высоту одного этажа: два марша с промежуточной площадкой */
 function stairFloor(a, b, yb, yt, mirror = false) {
   const ym = (yb + yt) / 2;
@@ -229,7 +251,6 @@ export function planHtml(states, { here = null, enter = false } = {}) {
       .map((p, i) => {
         const [xa, xb] = ranges[i];
         return `${rowSvg(p.a, xa, xb, y0 + 6, states, here)}
-          <path class="pf-corridor" d="M${f1(xa)} ${f1(y0 + 48)}H${f1(xb)}"/>
           ${rowSvg(p.b, xa, xb, y0 + 52, states, here)}`;
       })
       .join("");
@@ -237,8 +258,7 @@ export function planHtml(states, { here = null, enter = false } = {}) {
     if (f.center === "entrance") {
       const lobby = stateOf(states, LOBBY.n);
       const isHere = here != null && lobby.id === here;
-      center = `${flight(CX - CW / 2 + 5, G - 31, CX + CW / 2 - 4, y0, 10, true)}
-        <path class="pf-landing" d="M${f1(CX + CW / 2 - 5)} ${f1(y0)}H${f1(CX + CW / 2)}"/>
+      center = `${straightStair(G - 31, y0 + 2)}
         <g class="pf-room pf-lobby is-${esc(lobby.state)}${isHere ? " is-here" : ""}" data-n="${LOBBY.n}">
           <rect class="pf-hit" x="${f1(CX - CW / 2 + 2)}" y="${f1(G - 32)}" width="${CW - 4}" height="32" rx="4"/>
           <rect class="pf-inside" x="${f1(CX - 11)}" y="${f1(G - 25)}" width="22" height="25" fill="url(#pfg-${esc(lobby.state)})"/>
@@ -262,17 +282,16 @@ export function planHtml(states, { here = null, enter = false } = {}) {
     .map((n) => `${stairFloor(X0, X0 + SW, floorTop(n) + FH, floorTop(n))}${stairFloor(X1 - SW, X1, floorTop(n) + FH, floorTop(n), true)}`)
     .join("");
   const facade = `
-    <path class="pf-attic" d="M${CX - 74} ${TOP - 5}L${CX - 52} ${TOP - 37}H${CX + 52}L${CX + 74} ${TOP - 5}Z"/>
-    <path class="pf-attic-inner" d="M${CX - 64} ${TOP - 9}L${CX - 47} ${TOP - 33}H${CX + 47}L${CX + 64} ${TOP - 9}Z"/>
-    <path class="pf-cornice" d="M${CX - 56} ${TOP - 37}H${CX + 56}M${CX - 53} ${TOP - 40}H${CX + 53}"/>
-    <path class="pf-cornice" d="M${CX - 86} ${TOP - 5}H${CX - 70}V${TOP - 9}H${CX - 66}M${CX + 86} ${TOP - 5}H${CX + 70}V${TOP - 9}H${CX + 66}"/>
-    ${emblem(CX, TOP - 20, 13)}
-    <path class="pf-cornice" d="M${X0 - 6} ${TOP - 3}H${X1 + 6}M${X0 - 3} ${TOP - 5.5}H${X1 + 3}"/>
-    <path class="pf-pilaster" d="M${CX - 52} ${TOP}V${G}M${CX + 52} ${TOP}V${G}"/>
-    <path class="pf-inner" d="M${X0 + SW} ${TOP}V${G}M${X1 - SW} ${TOP}V${G}M${CX - CW / 2} ${floorTop(2)}V${G}M${CX + CW / 2} ${floorTop(2)}V${G}"/>
-    <path class="pf-slab" d="M${X0} ${floorTop(2)}H${X1}M${X0} ${floorTop(1)}H${f1(CX + 2)}M${f1(CX + CW / 2)} ${floorTop(1)}H${X1}"/>
-    <rect class="pf-outline" x="${X0}" y="${TOP}" width="${X1 - X0}" height="${G - TOP}"/>
-    <path class="pf-ground" d="M2 ${G}H${W - 2}M${CX - 18} ${G + 3}H${CX + 18}M${CX - 22} ${G + 6}H${CX + 22}"/>
+    <path class="pf-attic" d="M${CX - 72} ${TOP - 4}L${CX - 50} ${TOP - 36}H${CX + 50}L${CX + 72} ${TOP - 4}Z"/>
+    <path class="pf-cornice" d="M${CX - 55} ${TOP - 36}H${CX + 55}"/>
+    ${emblem(CX, TOP - 19, 10.5)}
+    <rect class="pf-body" x="${X0}" y="${TOP}" width="${X1 - X0}" height="${G - TOP}" rx="5"/>
+    <rect class="pf-well" x="${X0 + 3}" y="${floorTop(2) + 3}" width="${SW - 5}" height="${2 * FH - 6}" rx="4"/>
+    <rect class="pf-well" x="${X1 - SW + 2}" y="${floorTop(2) + 3}" width="${SW - 5}" height="${2 * FH - 6}" rx="4"/>
+    <rect class="pf-well" x="${CX - CW / 2 + 3}" y="${floorTop(1) + 3}" width="${CW - 6}" height="${FH - 6}" rx="4"/>
+    <path class="pf-cornice" d="M${X0 - 6} ${TOP - 2}H${X1 + 6}"/>
+    <path class="pf-slab" d="M${X0 + 4} ${floorTop(2)}H${X1 - 4}M${X0 + 4} ${floorTop(1)}H${f1(CX - 15)}M${f1(CX + 15)} ${floorTop(1)}H${X1 - 4}"/>
+    <path class="pf-ground" d="M2 ${G}H${W - 2}M${CX - 20} ${G + 4}H${CX + 20}"/>
     <text class="pf-entry" x="${CX}" y="${G + 18}">Вход</text>`;
 
   const grad = (s) => `<radialGradient id="pfg-${s}" class="pfg-${s}" cx="50%" cy="100%" r="110%"><stop offset="0"/><stop offset="1"/></radialGradient>`;

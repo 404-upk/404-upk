@@ -103,6 +103,11 @@ function renderShell() {
 
 // ---------- состояние колледжа и выбранного помещения ----------
 
+/** Этаж помещения без названия корпуса: корпус в колледже один */
+function floorText(loc) {
+  return loc.floor != null ? `${loc.floor} этаж` : loc.building;
+}
+
 async function loadCampus() {
   try {
     state.campus = await api("/api/campus");
@@ -242,7 +247,7 @@ function renderPlace() {
     html = `
       <div class="place-pill">
         ${nodeGlyph(room?.state || "none")}
-        <div class="place-text"><b>${esc(loc.title)}</b><span>${esc(loc.building)}${loc.floor != null ? `, ${loc.floor} этаж` : ""}${state.fromQr ? " · по QR-коду" : ""}${statusLine}</span></div>
+        <div class="place-text"><b>${esc(loc.title)}</b><span>${esc(floorText(loc))}${state.fromQr ? " · по QR-коду" : ""}${statusLine}</span></div>
         <button class="btn btn-ghost btn-sm" data-pick>Изменить</button>
       </div>`;
   } else if (state.locationNote) {
@@ -584,7 +589,7 @@ function renderDraft() {
   const loc = state.location;
   const placeField = loc
     ? `<div class="place-pill" style="margin:0"><span class="place-icon">${icon("pin")}</span>
-         <div class="place-text"><b>${esc(loc.title)}</b><span>${esc(loc.building)}${loc.floor != null ? `, ${loc.floor} этаж` : ""}</span></div>
+         <div class="place-text"><b>${esc(loc.title)}</b><span>${esc(floorText(loc))}</span></div>
          <button type="button" class="btn btn-ghost btn-sm" data-pick>Изменить</button></div>`
     : `<button type="button" class="btn btn-soft" data-pick>${icon("pin")} Выбрать помещение из списка</button>
        <input class="input" id="d-note" maxlength="160" placeholder="или напишите сами: корпус, этаж, кабинет" value="${esc(state.locationNote)}">`;
@@ -915,7 +920,7 @@ async function pickLocation() {
     let html = "";
     let group = "";
     for (const l of items) {
-      const g = `${l.building}${l.floor != null ? `, ${l.floor} этаж` : ""}`;
+      const g = floorText(l);
       if (g !== group) {
         html += `<div class="loc-group">${esc(g)}</div>`;
         group = g;
@@ -933,7 +938,7 @@ async function pickLocation() {
       <div class="loc-list" id="loc-list">${renderList("")}</div>
       <hr class="sep">
       <div class="field"><label for="loc-note">Нет в списке? Напишите сами</label>
-        <div class="row"><input class="input" id="loc-note" maxlength="160" placeholder="Корпус 2, 3 этаж, кабинет 318" value="${esc(state.locationNote)}">
+        <div class="row"><input class="input" id="loc-note" maxlength="160" placeholder="3 этаж, кабинет 318" value="${esc(state.locationNote)}">
         <button class="btn btn-primary" id="loc-note-ok">Готово</button></div></div>`,
     onMount(el, close) {
       const list = el.querySelector("#loc-list");
