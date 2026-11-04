@@ -72,6 +72,16 @@ def manifest():
     return FileResponse(WEB_DIR / "static" / "manifest.webmanifest", media_type="application/manifest+json")
 
 
+@router.get("/sw.js")
+def service_worker():
+    # работник лежит в корне сайта, чтобы управлять всеми публичными страницами, а не только /static
+    return FileResponse(
+        WEB_DIR / "sw.js",
+        media_type="text/javascript",
+        headers={"Cache-Control": "no-cache", "Service-Worker-Allowed": "/"},
+    )
+
+
 @router.get("/favicon.ico")
 def favicon():
     return FileResponse(WEB_DIR / "static" / "img" / "icon.svg", media_type="image/svg+xml")

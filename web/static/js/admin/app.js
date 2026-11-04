@@ -1,4 +1,4 @@
-import { $, ApiError, api, esc, h, icon, leaveAndRemove, setBusy, themeToggle, toast } from "../core.js";
+import { $, ApiError, api, errorBlock, esc, h, icon, leaveAndRemove, setBusy, themeToggle, toast } from "../core.js";
 import { can, ctx, initials, loadAssignees, loadLocations, parseHash } from "./ctx.js";
 import { ambient, startAmbient } from "../ambient.js";
 import { campusBadge, campusMapSvg, spark } from "../campus.js";
@@ -238,8 +238,9 @@ async function route() {
       renderLogin("Сессия закончилась, войдите снова");
       return;
     }
-    content.innerHTML = `<div class="notice notice-danger">${icon("alert")}<div>${esc(err.message)}</div></div>`;
-    console.error(err);
+    content.innerHTML = "";
+    content.append(errorBlock(err, route));
+    if (!(err instanceof ApiError)) console.error(err);
   }
 }
 
