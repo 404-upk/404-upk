@@ -826,3 +826,8 @@ main:focus { outline: none; }
 .prose p { line-height: 1.6; margin: 8px 0; }
 .prose ul { padding-left: 18px; line-height: 1.6; margin: 8px 0; }
 .prose li { margin: 6px 0; }
+
+/* Доступность: видимый фокус и кнопка закрытия просмотра фото */
+a:focus-visible, button:focus-visible, [tabindex]:focus-visible, summary:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.btn:focus-visible { outline: none; }
+.lightbox-close { position: absolute; top: 16px; right: 16px; color: #fff; }
