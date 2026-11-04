@@ -299,3 +299,9 @@ docker compose --env-file .env -f deploy/docker-compose.prod.yml up -d --build
 - `style-src` в CSP пока разрешает встроенные стили
 - распознавание фото работает только с подключённым GigaChat
 - уведомления по почте не сделаны, есть только Telegram
+
+## Contributors
+
+- [innnom](https://github.com/innnom)
+- [Kelw1n](https://github.com/Kelw1n)
+- [whyden](https://github.com/whyden)
