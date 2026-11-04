@@ -24,6 +24,8 @@ UNKNOWN_ANSWER = (
     "Проверенной информации по этому вопросу у меня нет, поэтому не буду гадать. "
     "Обратитесь к ответственному сотруднику УПК или оставьте обращение, и вам ответит человек."
 )
+ASKS_PLACE = re.compile(r"укажите[^.]*(кабинет|мест|помещени)")
+
 LOW_CONFIDENCE_ANSWER = (
     "Я не уверен в ответе, поэтому лучше передать вопрос сотруднику. Оставьте обращение, и вам ответит человек."
 )
@@ -122,6 +124,32 @@ def _from_llm(data: dict, articles: list[Article], codes: set[str], has_location
     return reply
 
 
+def _reconcile(model: AssistantReply, rule: AssistantReply) -> AssistantReply:
+    """Правила и база знаний страхуют модель там, где они надёжнее её."""
+    # в базе знаний есть готовый ответ, а модель его не нашла или не сослалась на него
+    if rule.kind == "question" and rule.sources and not (model.kind == "question" and model.sources):
+        rule.engine = "rules"
+        return rule
+    # сообщение слишком размытое: лучше переспросить, чем гадать
+    if rule.kind == "unclear" and model.kind in ("fault", "unknown"):
+        rule.engine = "rules"
+        return rule
+    # правила уверенно видят проблему, которую модель не распознала
+    if rule.kind == "fault" and rule.confidence >= 0.6 and model.kind in ("unknown", "unclear"):
+        rule.engine = "rules"
+        return rule
+    if model.kind == "fault" and not model.category and rule.category:
+        model.category = rule.category
+    # место уже известно, а модель всё равно его переспрашивает
+    if model.kind == "fault" and "place" not in model.missing and ASKS_PLACE.search(model.answer.lower()):
+        model.answer = (
+            rule.answer
+            if rule.kind == "fault"
+            else "Похоже на неисправность. Проверьте черновик заявки и отправьте его."
+        )
+    return model
+
+
 def _apply_guards(reply: AssistantReply, articles: list[Article]) -> AssistantReply:
     if reply.engine == "safety":
         return reply
@@ -190,6 +218,7 @@ async def analyze(
                 ]
             )
             reply = _from_llm(_parse_json(raw), articles, {c.code for c in categories}, has_location, full_text)
+            reply = _reconcile(reply, rules.analyze(full_text, articles, has_location))
         except (GigaChatError, ValueError, KeyError) as exc:
             log.warning("GigaChat недоступен, работаем по правилам: %s", exc)
             reply = rules.analyze(full_text, articles, has_location)

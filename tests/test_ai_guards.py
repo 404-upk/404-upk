@@ -88,7 +88,7 @@ def test_invented_contacts_are_removed(fake_llm):
 
 def test_low_confidence_goes_to_human(fake_llm):
     fake_llm.append({"kind": "question", "confidence": 0.2, "answer": "Наверное так", "kb_ids": [1]})
-    reply = run("как подключить проектор?")
+    reply = run("как настроить проектор под потолком?")
     assert reply.kind == "unknown"
     assert reply.guard == "low_confidence"
 
