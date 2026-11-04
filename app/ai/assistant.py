@@ -154,6 +154,20 @@ def _apply_guards(reply: AssistantReply, articles: list[Article]) -> AssistantRe
     if reply.engine == "safety":
         return reply
     texts = [reply.answer, *reply.tips]
+    # модель пересказала свои инструкции: такой ответ не показываем
+    if any(safety.leaks_prompt(t) for t in texts):
+        reply.kind = "unknown"
+        reply.answer = UNKNOWN_ANSWER
+        reply.tips = []
+        reply.sources = []
+        reply.guard = "prompt_leak"
+        return reply
+    # модель не может менять заявки, поэтому «я закрыл заявку» всегда неправда
+    if any(safety.claims_action(t) for t in texts):
+        reply.answer = safety.INJECTION_ANSWER
+        reply.tips = []
+        reply.guard = "fake_action"
+        return reply
     if any(safety.is_unsafe_advice(t) for t in texts):
         reply.answer = safety.SAFE_FALLBACK_ANSWER
         reply.tips = []
