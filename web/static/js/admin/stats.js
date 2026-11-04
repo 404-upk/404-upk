@@ -125,20 +125,20 @@ export async function render({ el, setHead }) {
       </div>
 
       <section class="card">
-        <div class="card-head"><h3>Поступило и закрыто по дням</h3>
+        <div class="card-head"><h2 class="h3">Поступило и закрыто по дням</h2>
           <div class="legend"><span><i style="background:var(--chart-1)"></i>поступило</span><span><i style="background:var(--chart-2)"></i>закрыто</span></div></div>
         <div class="card-body chart" id="daily">${dailyChart(s.daily)}</div>
       </section>
 
       <div class="grid-2">
-        <section class="card"><div class="card-head"><h3>По категориям</h3><span class="small muted">всего заявок</span></div>
+        <section class="card"><div class="card-head"><h2 class="h3">По категориям</h2><span class="small muted">всего заявок</span></div>
           <div class="card-body">${hbars(s.by_category, {
             name: (c) => c.name,
             value: (c) => c.count,
             sub: (c) => `${c.count} всего, ${c.open} открыто`,
             iconOf: (c) => c.icon,
           })}</div></section>
-        <section class="card"><div class="card-head"><h3>По статусам</h3></div>
+        <section class="card"><div class="card-head"><h2 class="h3">По статусам</h2></div>
           <div class="card-body">${hbars(s.by_status, {
             name: (x) => x.label,
             value: (x) => x.count,
@@ -148,14 +148,14 @@ export async function render({ el, setHead }) {
       </div>
 
       <div class="grid-2">
-        <section class="card"><div class="card-head"><h3>Помещения с наибольшим числом заявок</h3></div>
+        <section class="card"><div class="card-head"><h2 class="h3">Помещения с наибольшим числом заявок</h2></div>
           <div class="card-body">${hbars(s.by_location, {
             name: (l) => l.title,
             value: (l) => l.count,
             sub: (l) => `${l.count} всего, ${l.open} открыто`,
             href: (l) => `#/tickets?status=&location=${l.id}`,
           })}</div></section>
-        <section class="card"><div class="card-head"><h3>Повторяющиеся проблемы</h3><span class="small muted">за 30 дней</span></div>
+        <section class="card"><div class="card-head"><h2 class="h3">Повторяющиеся проблемы</h2><span class="small muted">за 30 дней</span></div>
           <div class="card-body stack-sm">${
             s.repeated.length
               ? s.repeated
@@ -168,7 +168,7 @@ export async function render({ el, setHead }) {
           }</div></section>
       </div>
 
-      <section class="card"><div class="card-head"><h3>Работа ИИ-помощника</h3>
+      <section class="card"><div class="card-head"><h2 class="h3">Работа ИИ-помощника</h2>
           <span class="small muted">${ai.avg_latency_ms != null ? `среднее время ответа ${ai.avg_latency_ms} мс` : ""}</span></div>
         <div class="card-body grid-2" style="gap:24px">
           <div>${hbars(ai.by_kind, { name: (k) => k.label, value: (k) => k.count })}</div>

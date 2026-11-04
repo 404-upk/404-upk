@@ -86,22 +86,22 @@ export async function render({ el, setHead, params, id }) {
     <div class="tabs" role="tablist" id="tabs"></div>
     <div class="filters">
       <div class="input-icon search">${icon("search")}<input class="input" id="f-q" placeholder="Номер, кабинет или текст заявки" value="${esc(state.q)}"></div>
-      <select class="select" id="f-category"><option value="">Все категории</option>${catOptions}</select>
-      <select class="select" id="f-location"><option value="">Все помещения</option>${locOptions}</select>
+      <select class="select" id="f-category" aria-label="Категория"><option value="">Все категории</option>${catOptions}</select>
+      <select class="select" id="f-location" aria-label="Помещение"><option value="">Все помещения</option>${locOptions}</select>
       ${
         manage
-          ? `<select class="select" id="f-assignee"><option value="">Любой исполнитель</option><option value="none">Без исполнителя</option>${asgOptions}</select>`
+          ? `<select class="select" id="f-assignee" aria-label="Исполнитель"><option value="">Любой исполнитель</option><option value="none">Без исполнителя</option>${asgOptions}</select>`
           : `<span></span>`
       }
-      <select class="select" id="f-priority"><option value="">Любой приоритет</option>
+      <select class="select" id="f-priority" aria-label="Приоритет"><option value="">Любой приоритет</option>
         <option value="critical">Критический</option><option value="high">Высокий</option>
         <option value="normal">Обычный</option><option value="low">Низкий</option></select>
-      <button class="btn btn-ghost" id="f-more" title="Ещё фильтры">${icon("filter")}</button>
+      <button class="btn btn-ghost" id="f-more" title="Ещё фильтры" aria-label="Ещё фильтры" aria-controls="more" aria-expanded="false">${icon("filter")}</button>
     </div>
     <div class="filters-more" id="more" hidden>
-      <span class="small muted">Создана с</span><input class="input input-sm" type="date" id="f-from">
-      <span class="small muted">по</span><input class="input input-sm" type="date" id="f-to">
-      <select class="select select-sm" id="f-sort" style="width:auto">
+      <span class="small muted">Создана с</span><input class="input input-sm" type="date" id="f-from" aria-label="Создана с">
+      <span class="small muted">по</span><input class="input input-sm" type="date" id="f-to" aria-label="Создана по">
+      <select class="select select-sm" id="f-sort" style="width:auto" aria-label="Сортировка">
         <option value="new">Сначала новые</option><option value="old">Сначала старые</option>
         <option value="priority">По приоритету</option><option value="updated">По последнему изменению</option>
       </select>
@@ -178,7 +178,7 @@ export async function render({ el, setHead, params, id }) {
         (t, i) => `
         <tr class="clickable ${t.priority === "critical" && OPEN.includes(t.status) ? "crit" : ""} ${fresh(t) ? "fresh" : ""}" data-id="${t.id}" style="--i:${Math.min(i, 18)}">
           <td class="t-num">${esc(t.public_number)}</td>
-          <td style="min-width:220px"><div class="t-title">${esc(t.title)}</div><div class="t-sub">${esc(t.place)}</div></td>
+          <td style="min-width:220px"><a class="t-title t-link" href="#/tickets/${t.id}">${esc(t.title)}</a><div class="t-sub">${esc(t.place)}</div></td>
           <td><span class="cat-cell">${icon(t.category.icon, "icon-sm")}${esc(t.category.name)}</span></td>
           <td>${statusChip(t.status, t.status_label)}</td>
           <td>${priorityChip(t.priority, t.priority_label)}</td>
@@ -193,7 +193,7 @@ export async function render({ el, setHead, params, id }) {
         (t) => `
         <div class="ticket-card" data-id="${t.id}">
           <div class="row between"><span class="t-num">${esc(t.public_number)}</span>${statusChip(t.status, t.status_label)}</div>
-          <div class="t-title">${esc(t.title)}</div>
+          <a class="t-title t-link" href="#/tickets/${t.id}">${esc(t.title)}</a>
           <div class="t-sub">${esc(t.place)}</div>
           <div class="row between"><span class="row-wrap">${priorityChip(t.priority, t.priority_label)}${badges(t)}</span><span class="tiny faint">${relTime(t.created_at)}</span></div>
         </div>`,
@@ -201,15 +201,15 @@ export async function render({ el, setHead, params, id }) {
       .join("");
     box.innerHTML = `
       <div class="table-wrap"><table class="table ${enter}">
-        <thead><tr><th>№</th><th>Заявка</th><th>Категория</th><th>Статус</th><th>Приоритет</th><th>Исполнитель</th><th>Создана</th><th></th></tr></thead>
+        <thead><tr><th>№</th><th>Заявка</th><th>Категория</th><th>Статус</th><th>Приоритет</th><th>Исполнитель</th><th>Создана</th><th><span class="sr-only">Действия</span></th></tr></thead>
         <tbody>${rows}</tbody></table></div>
       <div class="ticket-cards">${cards}</div>
       <div class="pager">
         <span>Показано ${data.items.length} из ${data.total}</span>
         <span class="row">
-          <button class="btn btn-sm" data-page="-1" ${data.page <= 1 ? "disabled" : ""}>${icon("arrowLeft", "icon-sm")}</button>
+          <button class="btn btn-sm" data-page="-1" aria-label="Предыдущая страница" ${data.page <= 1 ? "disabled" : ""}>${icon("arrowLeft", "icon-sm")}</button>
           <span>${data.page} / ${data.pages}</span>
-          <button class="btn btn-sm" data-page="1" ${data.page >= data.pages ? "disabled" : ""}>${icon("arrowRight", "icon-sm")}</button>
+          <button class="btn btn-sm" data-page="1" aria-label="Следующая страница" ${data.page >= data.pages ? "disabled" : ""}>${icon("arrowRight", "icon-sm")}</button>
         </span>
       </div>`;
     box.querySelectorAll("[data-id]").forEach((r) => r.addEventListener("click", () => (location.hash = `#/tickets/${r.dataset.id}`)));
@@ -265,26 +265,58 @@ export async function render({ el, setHead, params, id }) {
   onFilter("date_from", "#f-from");
   onFilter("date_to", "#f-to");
   onFilter("sort", "#f-sort");
-  $("#f-more").addEventListener("click", () => ($("#more").hidden = !$("#more").hidden));
+  $("#f-more").addEventListener("click", () => {
+    $("#more").hidden = !$("#more").hidden;
+    $("#f-more").setAttribute("aria-expanded", String(!$("#more").hidden));
+  });
   $("#f-reset").addEventListener("click", resetFilters);
 
   // ---------- карточка заявки ----------
+
+  let drawerOpener = null;
 
   function closeDrawer() {
     leaveAndRemove(drawer);
     drawer = null;
     document.removeEventListener("keydown", onKey);
+    // фокус возвращается на заявку, из которой открыли карточку; список мог перерисоваться, поэтому ищем по адресу
+    const back = drawerOpener && [...document.querySelectorAll(`a[href="${drawerOpener}"]`)].find((a) => a.offsetParent !== null);
+    back?.focus();
+    drawerOpener = null;
   }
   const onKey = (e) => {
-    if (e.key === "Escape" && !document.querySelector(".overlay")) location.hash = "#/tickets";
+    if (document.querySelector(".overlay")) return;
+    if (e.key === "Escape") {
+      location.hash = "#/tickets";
+      return;
+    }
+    if (e.key !== "Tab" || !drawer) return;
+    // Tab ходит только внутри карточки заявки, под неё фокус не уходит
+    const aside = drawer.querySelector(".drawer");
+    const items = [...aside.querySelectorAll('a[href], button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])')].filter((n) => n.offsetParent !== null);
+    if (!items.length) return;
+    const first = items[0];
+    const last = items[items.length - 1];
+    if (!aside.contains(document.activeElement)) {
+      e.preventDefault();
+      first.focus();
+    } else if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    }
   };
 
   async function openTicket(ticketId) {
     if (!drawer) {
-      drawer = h(`<div class="drawer-wrap"><div class="drawer-overlay"></div><aside class="drawer" aria-label="Заявка"><div class="drawer-body"><div class="skeleton" style="height:400px"></div></div></aside></div>`);
+      drawerOpener = `#/tickets/${ticketId}`;
+      drawer = h(`<div class="drawer-wrap"><div class="drawer-overlay"></div><div class="drawer" role="dialog" aria-modal="true" aria-label="Заявка" tabindex="-1"><div class="drawer-body"><div class="skeleton" style="height:400px"></div></div></div></div>`);
       drawer.querySelector(".drawer-overlay").addEventListener("click", () => (location.hash = "#/tickets"));
       document.body.append(drawer);
       document.addEventListener("keydown", onKey);
+      drawer.querySelector(".drawer").focus();
     }
     try {
       const t = await api(`/api/staff/tickets/${ticketId}`);
@@ -298,7 +330,11 @@ export async function render({ el, setHead, params, id }) {
   function renderDrawer(t) {
     const aside = drawer.querySelector(".drawer");
     // содержимое появляется каскадом один раз, после действий карточка обновляется спокойно
-    aside.classList.toggle("quiet", aside.dataset.shownId === String(t.id));
+    const firstShow = aside.dataset.shownId !== String(t.id);
+    // после действия карточка перерисовывается: запоминаем, где был фокус, чтобы вернуть его на то же место
+    const active = aside.contains(document.activeElement) && document.activeElement !== aside ? document.activeElement : null;
+    const refocus = active && (active.id ? `#${active.id}` : active.dataset.status ? `[data-status="${active.dataset.status}"]` : null);
+    aside.classList.toggle("quiet", !firstShow);
     aside.dataset.shownId = t.id;
     const manageMode = can.manage();
     const statusButtons = t.transitions.length
@@ -348,8 +384,8 @@ export async function render({ el, setHead, params, id }) {
         ${statusChip(t.status, t.status_label)}
         ${priorityChip(t.priority, t.priority_label)}
         <span class="grow"></span>
-        <button class="btn btn-ghost btn-icon btn-sm" data-refresh title="Обновить">${icon("refresh")}</button>
-        <button class="btn btn-ghost btn-icon btn-sm" data-close title="Закрыть">${icon("x")}</button>
+        <button class="btn btn-ghost btn-icon btn-sm" data-refresh title="Обновить" aria-label="Обновить">${icon("refresh")}</button>
+        <button class="btn btn-ghost btn-icon btn-sm" data-close title="Закрыть" aria-label="Закрыть">${icon("x")}</button>
       </div>
       <div class="drawer-body">
         <div class="stack-sm">
@@ -429,6 +465,7 @@ export async function render({ el, setHead, params, id }) {
         </section>
       </div>`;
 
+    if (active) ((refocus && aside.querySelector(refocus)) || aside).focus();
     aside.querySelector("[data-close]").addEventListener("click", () => (location.hash = "#/tickets"));
     aside.querySelector("[data-refresh]").addEventListener("click", () => openTicket(t.id));
     aside.querySelectorAll("[data-photo]").forEach((b) => b.addEventListener("click", () => lightbox(b.dataset.photo)));

@@ -72,7 +72,7 @@ export async function render({ el, setHead }) {
     const executors = users.filter((u) => u.is_active);
     el.innerHTML = `
       <section class="card table-card"><div class="table-wrap" style="display:block"><table class="table">
-        <thead><tr><th>Сотрудник</th><th>Логин</th><th>Роль</th><th>Telegram</th><th>Статус</th><th></th></tr></thead>
+        <thead><tr><th>Сотрудник</th><th>Логин</th><th>Роль</th><th>Telegram</th><th>Статус</th><th><span class="sr-only">Действия</span></th></tr></thead>
         <tbody>${users
           .map(
             (u) => `<tr>
@@ -81,13 +81,13 @@ export async function render({ el, setHead }) {
               <td>${esc(u.role_label)}</td>
               <td>${u.telegram_linked ? `<span class="tag" style="color:var(--green)">${icon("telegram", "icon-sm")} подключён</span>` : `<span class="faint small">нет</span>`}</td>
               <td>${u.is_active ? `<span class="chip st-resolved">активен</span>` : `<span class="chip st-rejected">отключён</span>`}</td>
-              <td><button class="btn btn-ghost btn-icon btn-sm" data-edit="${u.id}" title="Изменить">${icon("edit", "icon-sm")}</button></td>
+              <td><button class="btn btn-ghost btn-icon btn-sm" data-edit="${u.id}" title="Изменить" aria-label="Изменить">${icon("edit", "icon-sm")}</button></td>
             </tr>`,
           )
           .join("")}</tbody></table></div></section>
 
       <section class="card">
-        <div class="card-head"><div><h3>Маршрутизация по категориям</h3>
+        <div class="card-head"><div><h2 class="h3">Маршрутизация по категориям</h2>
           <div class="small muted">Кого система предложит исполнителем для новой заявки и какой приоритет поставит по умолчанию</div></div></div>
         <div class="table-wrap" style="display:block"><table class="table">
           <thead><tr><th>Категория</th><th>Исполнитель по умолчанию</th><th>Приоритет по умолчанию</th></tr></thead>
@@ -95,11 +95,11 @@ export async function render({ el, setHead }) {
             .map(
               (c) => `<tr>
                 <td><span class="cat-cell">${icon(c.icon, "icon-sm")}${esc(c.name)}</span></td>
-                <td><select class="select select-sm" data-cat-assignee="${c.id}" style="max-width:280px">
+                <td><select class="select select-sm" data-cat-assignee="${c.id}" style="max-width:280px" aria-label="Исполнитель по умолчанию: ${esc(c.name)}">
                   <option value="">Не назначать</option>
                   ${executors.map((u) => `<option value="${u.id}" ${c.default_assignee?.id === u.id ? "selected" : ""}>${esc(u.name)}${u.position ? `, ${esc(u.position)}` : ""}</option>`).join("")}
                 </select></td>
-                <td><select class="select select-sm" data-cat-priority="${c.id}" style="max-width:180px">
+                <td><select class="select select-sm" data-cat-priority="${c.id}" style="max-width:180px" aria-label="Приоритет по умолчанию: ${esc(c.name)}">
                   ${ctx.meta.priorities.map((p) => `<option value="${p.value}" ${c.default_priority === p.value ? "selected" : ""}>${esc(p.label)}</option>`).join("")}
                 </select></td></tr>`,
             )
