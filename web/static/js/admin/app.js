@@ -345,6 +345,7 @@ async function route() {
   revealSection(content, Object.keys(PAGES).indexOf(key));
   try {
     const mod = await PAGES[key].load();
+    if (token !== routeToken) return;
     const title = key === "tickets" && ctx.user.role === "executor" ? "Мои заявки" : PAGES[key].title;
     setHead(title);
     const pending = Promise.resolve(mod.render({ el: content, setHead: (actions) => setHead(title, actions), params, id }));

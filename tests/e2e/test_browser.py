@@ -728,28 +728,47 @@ def test_room_with_ticket_leads_to_another_problem(page):
     expect(page.locator("#message")).to_be_focused()
 
 
-def test_slow_section_does_not_overwrite_the_next_one(page):
-    """Быстрое переключение: запоздавший ответ прошлого раздела не должен заменить тот, что открыт сейчас."""
-    login_admin(page)
-    page.goto("/admin#/users")
-    page.locator("#u-add").wait_for()
-
+def _hold_requests(page, pattern, open_section):
+    """Держит запросы раздела без ответа, пока тест открывает следующий раздел."""
     held = []
-    page.route("**/api/staff/tickets*", lambda route: held.append(route))
-    page.goto("/admin#/tickets")
+    page.context.route(pattern, lambda route: held.append(route))
+    open_section()
     for _ in range(50):
         if held:
             break
         page.wait_for_timeout(100)
-    assert held, "запрос списка заявок не дошёл до перехвата"
+    assert held, "запрос не дошёл до перехвата"
 
-    page.goto("/admin#/users")
+    def release():
+        for route in held:
+            route.continue_()
+        page.context.unroute(pattern)
+
+    return release
+
+
+def test_late_section_data_does_not_overwrite_the_next_one(page):
+    """Быстрое переключение: опоздавшие данные прошлого раздела не заменяют открытый раздел."""
+    login_admin(page)
+    release = _hold_requests(page, "**/api/staff/map*", lambda: page.goto("/admin#/map"))
+    page.goto("/admin#/kb")
     page.wait_for_timeout(300)
-    for route in held:
-        route.continue_()
-    page.unroute("**/api/staff/tickets*")
+    release()
 
-    expect(page.locator("#u-add")).to_be_visible()
+    expect(page.locator("#kb-add")).to_be_visible()
+    page.wait_for_timeout(800)
+    expect(page.locator("#kb-add")).to_be_visible()
+    expect(page.locator('.nav a[aria-current="page"]')).to_have_attribute("data-page", "kb")
+
+
+def test_late_section_module_does_not_overwrite_the_next_one(page):
+    """Модуль раздела загрузился после переключения: открытый раздел остаётся на месте."""
+    login_admin(page)
+    page.goto("about:blank")
+    release = _hold_requests(page, "**/static/js/admin/tickets.js*", lambda: page.goto("/admin"))
+    page.goto("/admin#/users")
+    page.locator("#u-add").wait_for()
+    release()
+
     page.wait_for_timeout(800)
     expect(page.locator("#u-add")).to_be_visible()
-    expect(page.locator('.nav a[aria-current="page"]')).to_have_attribute("data-page", "users")
