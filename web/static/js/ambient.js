@@ -17,7 +17,7 @@ const LINE_REACH = 96; // длина линий вокруг света
 const VERTEX = `attribute vec2 p;void main(){gl_Position=vec4(p,0.,1.);}`;
 const FRAGMENT = `precision highp float;
 uniform vec2 uRes;uniform float uT;uniform vec2 uPtr;uniform float uPower;
-uniform vec3 uA;uniform vec3 uB;uniform float uGain;uniform vec4 uPulse;
+uniform vec3 uA;uniform vec3 uB;uniform float uGain;uniform vec4 uPulse;uniform float uField;
 float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
 float noise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);
   return mix(mix(hash(i),hash(i+vec2(1.,0.)),f.x),mix(hash(i+vec2(0.,1.)),hash(i+vec2(1.,1.)),f.x),f.y);}
@@ -44,7 +44,7 @@ void main(){
     ring=exp(-w*w)*exp(-uPulse.z*1.5)*uPulse.w;
   }
   vec3 col=mix(uB,uA,clamp(r.x*1.25+glow*1.5+ring,0.,1.));
-  float alpha=clamp(light*.5+glow+ring*.55,0.,.9)*uGain;
+  float alpha=clamp(light*.5*uField+glow+ring*.55,0.,.9)*uGain;
   alpha+=(hash(gl_FragCoord.xy+fract(uT))-.5)/120.*step(.002,alpha);
   gl_FragColor=vec4(col*max(alpha,0.),max(alpha,0.));
 }`;
@@ -119,7 +119,7 @@ function createGlow(canvas) {
   const loc = gl.getAttribLocation(prog, "p");
   gl.enableVertexAttribArray(loc);
   gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
-  const u = Object.fromEntries(["uRes", "uT", "uPtr", "uPower", "uA", "uB", "uGain", "uPulse"].map((n) => [n, gl.getUniformLocation(prog, n)]));
+  const u = Object.fromEntries(["uRes", "uT", "uPtr", "uPower", "uA", "uB", "uGain", "uPulse", "uField"].map((n) => [n, gl.getUniformLocation(prog, n)]));
   let scale = 0.5;
   return {
     resize(w, h) {
@@ -131,7 +131,7 @@ function createGlow(canvas) {
       scale = 0.3;
       this.resize(w, h);
     },
-    draw(t, ptr, power, a, b, gain, pulse) {
+    draw(t, ptr, power, a, b, gain, pulse, field = 1) {
       gl.uniform2f(u.uRes, canvas.width, canvas.height);
       gl.uniform1f(u.uT, t);
       gl.uniform2f(u.uPtr, ptr[0], ptr[1]);
@@ -139,6 +139,7 @@ function createGlow(canvas) {
       gl.uniform3f(u.uA, a[0] / 255, a[1] / 255, a[2] / 255);
       gl.uniform3f(u.uB, b[0] / 255, b[1] / 255, b[2] / 255);
       gl.uniform1f(u.uGain, gain);
+      gl.uniform1f(u.uField, field);
       gl.uniform4f(u.uPulse, pulse[0], pulse[1], pulse[2], pulse[3]);
       gl.drawArrays(gl.TRIANGLES, 0, 3);
     },
@@ -182,6 +183,7 @@ function createAmbient({ bloom }) {
   let deepRgb = [38, 54, 104];
   let gain = 1;
   let light = false;
+  let black = false;
 
   // свет: сам ходит по экрану, при движении мыши идёт за курсором
   const ptr = { x: 0, y: 0, tx: 0, ty: 0, power: 0.55, moved: -1e9, attract: null };
@@ -204,10 +206,11 @@ function createAmbient({ bloom }) {
 
   function readTheme() {
     light = document.documentElement.dataset.theme === "light";
+    black = document.documentElement.dataset.theme === "black";
     pointColor = cssVar("--node", "#edf0f4");
     accentColor = cssVar("--primary", "#6a86be");
     accentRgb = hexRgb(accentColor);
-    deepRgb = light ? [150, 170, 214] : [38, 54, 104];
+    deepRgb = light ? [150, 170, 214] : black ? [14, 20, 40] : [38, 54, 104];
     gain = light ? 0.62 : 1;
   }
 
@@ -447,7 +450,7 @@ function createAmbient({ bloom }) {
       let pulse = [0, 0, 0, 0];
       const p = pulses[pulses.length - 1];
       if (p) pulse = [p.x / w, p.y / h, (now - p.t0) / 1000, p.s];
-      glow.draw(t, [ptr.x / w, ptr.y / h], ptr.power, accentRgb, deepRgb, gain * Math.min(1, appear * 1.2), pulse);
+      glow.draw(t, [ptr.x / w, ptr.y / h], ptr.power, accentRgb, deepRgb, gain * Math.min(1, appear * 1.2), pulse, black ? 0.12 : 1);
     }
   }
 
@@ -475,13 +478,15 @@ function createAmbient({ bloom }) {
 
   function drawField(now, dt, t) {
     ctx.clearRect(0, 0, w, h);
-    const R = COARSE ? 150 : 200;
+    // в чёрной теме круг света шире: точки видны в основном рядом с ним
+    const R = (COARSE ? 150 : 200) * (black ? 1.35 : 1);
     const R2 = R * R;
     const near = [];
     const px = (ptr.x / w - 0.5) * 2;
     const py = (ptr.y / h - 0.5) * 2;
     const reach = appear < 1 ? appear * Math.hypot(w, h) * 0.75 : Infinity;
     const alphaScale = light ? 0.62 : 1;
+    const baseScale = black ? 0.14 : 1;
     const fullW = w + PAD * 2;
     const fullH = h + PAD * 2;
     const velK = follow(1.6, dt);
@@ -567,7 +572,7 @@ function createAmbient({ bloom }) {
         if (!visible) continue;
       }
       const flicker = 0.62 + 0.38 * Math.sin(t * s.tw + s.ph);
-      const alpha = Math.min(1, (s.a * flicker + lit * 0.7 + s.b) * visible * alphaScale);
+      const alpha = Math.min(1, (s.a * flicker * baseScale + lit * (black ? 1 : 0.7) + s.b) * visible * alphaScale);
       const color = s.accent ? accentColor : pointColor;
       if (color !== fill) {
         ctx.fillStyle = color;
@@ -665,7 +670,7 @@ function createAmbient({ bloom }) {
       const drawn = clamp(age / l.draw, 0, 1);
       const eased = 1 - (1 - drawn) ** 2;
       const opacity = now > l.fadeAt ? 1 - (now - l.fadeAt) / l.fade : 1;
-      const theme = light ? 0.7 : 1;
+      const theme = light ? 0.7 : black ? 0.35 : 1;
       const segs = Math.min(end * eased, intact);
       const edges = l.chain.map(edgeFade);
 
@@ -692,7 +697,7 @@ function createAmbient({ bloom }) {
       ctx.fillStyle = pointColor;
       for (let i = 0; i <= Math.min(Math.floor(segs) + 1, intact); i++) {
         const s = l.chain[i];
-        ctx.globalAlpha = opacity * (light ? 0.7 : 0.95) * edges[i];
+        ctx.globalAlpha = opacity * (light ? 0.7 : black ? 0.35 : 0.95) * edges[i];
         ctx.beginPath();
         ctx.arc(s.sx, s.sy, 1.4 + s.z, 0, TAU);
         ctx.fill();
@@ -734,7 +739,7 @@ function createAmbient({ bloom }) {
     const ty = y - (trail.vy / n) * tail;
     const grad = ctx.createLinearGradient(x, y, tx, ty);
     const rgb = light ? accentRgb : [237, 240, 244];
-    const a = Math.sin(k * Math.PI) * (light ? 0.5 : 0.85);
+    const a = Math.sin(k * Math.PI) * (light ? 0.5 : black ? 0.3 : 0.85);
     grad.addColorStop(0, `rgba(${rgb.join(",")},${a})`);
     grad.addColorStop(1, `rgba(${rgb.join(",")},0)`);
     ctx.globalAlpha = 1;
@@ -763,6 +768,13 @@ function createAmbient({ bloom }) {
     appear = 1;
     drawField(0, 0, 0);
   }
+
+  // смена темы: волна по фону от кнопки темы
+  window.addEventListener("upk:theme", (e) => {
+    if (REDUCED) return;
+    pulses.push({ x: e.detail.x, y: e.detail.y, t0: performance.now(), s: e.detail.strength || 1 });
+    if (pulses.length > 4) pulses.shift();
+  });
 
   if (REDUCED) {
     drawStatic();

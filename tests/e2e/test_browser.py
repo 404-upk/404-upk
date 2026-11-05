@@ -80,14 +80,18 @@ def test_board_move_with_mouse_and_keyboard(page):
 
 
 def test_theme_switch_is_remembered(page):
+    """Три темы по кругу: тёмная, светлая, «Кромешная тьма»; выбранная сохраняется после перезагрузки."""
     page.goto("/")
     root = page.locator("html")
-    before = root.get_attribute("data-theme") or "dark"
-    page.click("#theme")
-    after = "light" if before == "dark" else "dark"
-    expect(root).to_have_attribute("data-theme", after)
+    expect(root).to_have_attribute("data-theme", "dark")
+    for theme in ("light", "black", "dark", "black"):
+        if theme == "black" and root.get_attribute("data-theme") == "dark":
+            page.click("#theme")  # из тёмной в «Кромешную тьму» через светлую
+        page.click("#theme")
+        expect(root).to_have_attribute("data-theme", theme)
     page.reload()
-    expect(root).to_have_attribute("data-theme", after)
+    expect(root).to_have_attribute("data-theme", "black")
+    expect(page.locator("#theme")).to_have_attribute("aria-label", "Тёмная тема")
 
 
 def test_phone_width_has_no_horizontal_scroll(phone):
