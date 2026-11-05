@@ -100,7 +100,8 @@ function renderShell() {
   renderExtras();
   renderCampus();
   splitWords($(".hero h1"));
-  rise(app, ".hero .eyebrow, .hero p, #place, #composer", { step: 95, delay: 90 });
+  // сводка по колледжу (на телефоне она под текстом) появляется в общем порядке, а не раньше всех во время интро
+  rise(app, ".hero .eyebrow, .hero p, #campus-badge, #place, #composer", { step: 95, delay: 90 });
 }
 
 // ---------- состояние колледжа и выбранного помещения ----------
