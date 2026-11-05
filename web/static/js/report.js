@@ -72,10 +72,6 @@ function uid() {
   return [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-function categoryName(code) {
-  return state.meta?.categories.find((c) => c.code === code)?.name || "Другое";
-}
-
 // ---------- каркас ----------
 
 function renderShell() {

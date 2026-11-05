@@ -242,7 +242,6 @@
 .kpi-value { font-size: 30px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; }
 .kpi-sub { font-size: 12.5px; color: var(--faint); }
 .grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
-.grid-3 { display: grid; grid-template-columns: 2fr 1fr; gap: 14px; }
 .hbars { display: flex; flex-direction: column; gap: 10px; }
 .hbar { display: grid; grid-template-columns: minmax(110px, 180px) 1fr 44px; align-items: center; gap: 10px; font-size: 13.5px; }
 .hbar-name { display: flex; align-items: center; gap: 7px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: var(--muted); }
@@ -258,9 +257,6 @@
 .chart-tip { position: fixed; z-index: 70; pointer-events: none; background: var(--surface-3); border: 1px solid var(--border-strong); color: var(--text); padding: 7px 10px; border-radius: 8px; font-size: 12.5px; box-shadow: var(--shadow-lg); }
 
 /* ===== Карта ===== */
-.map-floor { display: grid; grid-template-columns: 76px 1fr; gap: 12px; align-items: stretch; }
-.floor-label { display: flex; flex-direction: column; justify-content: center; align-items: center; border-radius: var(--radius-sm); background: var(--surface-3); font-weight: 800; font-size: 20px; color: var(--muted); }
-.floor-label span { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
 .rooms { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; padding: 10px; border-radius: var(--radius); border: 1px dashed var(--border-strong); }
 .room {
   position: relative;
@@ -279,7 +275,6 @@
 }
 .room:hover { transform: translateY(-1px); box-shadow: var(--shadow); }
 .room b { font-size: 13.5px; line-height: 1.2; }
-.room .room-count { font-size: 12px; color: var(--muted); display: flex; align-items: center; justify-content: space-between; }
 .room.h1 { background: var(--amber-soft); border-color: color-mix(in srgb, var(--amber) 35%, var(--border)); }
 .room.h2 { background: var(--orange-soft); border-color: color-mix(in srgb, var(--orange) 45%, var(--border)); }
 .room.h3 { background: var(--red-soft); border-color: color-mix(in srgb, var(--red) 55%, var(--border)); }
@@ -336,7 +331,7 @@ tr.is-fresh > td { animation: row-fresh 2.4s var(--ease-out) both; }
   .menu-btn { display: inline-flex; }
   .main-head { padding: 12px 16px; }
   .content { padding: 16px 16px 60px; }
-  .grid-2, .grid-3 { grid-template-columns: 1fr; }
+  .grid-2 { grid-template-columns: 1fr; }
   .kv, .actions-grid { grid-template-columns: 1fr 1fr; }
 }
 
@@ -347,7 +342,6 @@ tr.is-fresh > td { animation: row-fresh 2.4s var(--ease-out) both; }
   .ticket-card { display: flex; flex-direction: column; gap: 6px; padding: 14px 16px; border-bottom: 1px solid var(--border); cursor: pointer; }
   .ticket-card:last-child { border-bottom: 0; }
   .kv, .actions-grid { grid-template-columns: 1fr; }
-  .map-floor { grid-template-columns: 52px 1fr; }
   .rooms { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); }
   .hbar { grid-template-columns: 100px 1fr 34px; }
 }

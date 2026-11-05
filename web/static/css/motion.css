@@ -152,15 +152,13 @@ html:not(.is-revealed) .footer { animation-play-state: paused; }
 }
 .w-in { display: inline-block; animation: w-in 0.55s var(--ease-out) both; }
 @keyframes w-in { from { opacity: 0; transform: translateY(6px); filter: blur(3px); } to { opacity: 1; transform: none; filter: none; } }
-.ai-tips li, .ai-card-body > .notice, .ai-source, .ai-card-body > .row-wrap, .ai-meta { animation: rise 0.8s var(--ease-out) both; animation-delay: 0.42s; }
+.ai-tips li, .ai-card-body > .notice, .ai-source, .ai-card-body > .row-wrap { animation: rise 0.8s var(--ease-out) both; animation-delay: 0.42s; }
 .ai-tips li:nth-child(2) { animation-delay: 0.5s; }
 .ai-tips li:nth-child(3) { animation-delay: 0.58s; }
 .ai-tips li:nth-child(4) { animation-delay: 0.66s; }
 .ai-tips li:nth-child(n + 5) { animation-delay: 0.74s; }
 .ai-source { animation-delay: 0.7s; }
 .ai-card-body > .row-wrap { animation-delay: 0.78s; }
-.ai-meta { animation-delay: 0.86s; }
-.confidence-bar i { transform-origin: left; animation: grow-x 1.1s var(--ease-out) 0.95s both; }
 
 /* ---------- черновик заявки ---------- */
 .draft .card-pad > * { animation: rise 0.8s var(--ease-out) both; }

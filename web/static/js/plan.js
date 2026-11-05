@@ -86,10 +86,6 @@ export function roomNames(cell) {
   return { title: `Кабинет ${cell.n}`, sub: TYPES[cell.type] };
 }
 
-export function roomTitle(cell) {
-  return roomNames(cell).title;
-}
-
 export function floorRooms(f) {
   const list = f.parts.flatMap((p) => [...p.a, ...p.b]);
   return f.center === "entrance" ? [...list, LOBBY] : list;
