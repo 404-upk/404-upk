@@ -306,6 +306,8 @@ function setHead(title, actions = "") {
 
 let routeToken = 0;
 let routedOnce = false;
+// отрисовка, которая ещё идёт: её запоздавший ответ не должен перекрыть следующий раздел
+let rendering = Promise.resolve();
 
 async function route() {
   const token = ++routeToken;
@@ -336,6 +338,8 @@ async function route() {
     content.classList.remove("is-leaving");
     if (token !== routeToken) return;
   }
+  await Promise.race([rendering, new Promise((resolve) => setTimeout(resolve, 8000))]);
+  if (token !== routeToken) return;
   content.innerHTML = `<div class="stack"><div class="sk-h44 skeleton"></div><div class="sk-h320 skeleton"></div></div>`;
   window.scrollTo({ top: 0 });
   revealSection(content, Object.keys(PAGES).indexOf(key));
@@ -343,7 +347,9 @@ async function route() {
     const mod = await PAGES[key].load();
     const title = key === "tickets" && ctx.user.role === "executor" ? "Мои заявки" : PAGES[key].title;
     setHead(title);
-    const result = (await mod.render({ el: content, setHead: (actions) => setHead(title, actions), params, id })) || null;
+    const pending = Promise.resolve(mod.render({ el: content, setHead: (actions) => setHead(title, actions), params, id }));
+    rendering = pending.catch(() => {});
+    const result = (await pending) || null;
     if (token !== routeToken) {
       result?.destroy?.();
       return;

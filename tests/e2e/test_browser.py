@@ -726,3 +726,30 @@ def test_room_with_ticket_leads_to_another_problem(page):
     page.goto("/r/r106duni")
     page.get_by_role("button", name="У меня другая проблема").click()
     expect(page.locator("#message")).to_be_focused()
+
+
+def test_slow_section_does_not_overwrite_the_next_one(page):
+    """Быстрое переключение: запоздавший ответ прошлого раздела не должен заменить тот, что открыт сейчас."""
+    login_admin(page)
+    page.goto("/admin#/users")
+    page.locator("#u-add").wait_for()
+
+    held = []
+    page.route("**/api/staff/tickets*", lambda route: held.append(route))
+    page.goto("/admin#/tickets")
+    for _ in range(50):
+        if held:
+            break
+        page.wait_for_timeout(100)
+    assert held, "запрос списка заявок не дошёл до перехвата"
+
+    page.goto("/admin#/users")
+    page.wait_for_timeout(300)
+    for route in held:
+        route.continue_()
+    page.unroute("**/api/staff/tickets*")
+
+    expect(page.locator("#u-add")).to_be_visible()
+    page.wait_for_timeout(800)
+    expect(page.locator("#u-add")).to_be_visible()
+    expect(page.locator('.nav a[aria-current="page"]')).to_have_attribute("data-page", "users")
