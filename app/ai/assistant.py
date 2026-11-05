@@ -18,6 +18,7 @@ from .prompts import PHOTO_SYSTEM, system_prompt, user_prompt
 from .reply import KINDS, AssistantReply
 from .text import extract_room, mask_personal
 
+REPEATED_UNCLEAR_ANSWER = "Пока не могу понять, о какой проблеме речь. Напишите, что сломалось или не работает."
 model_budget = RateLimiter(limit=settings.model_requests_per_minute, window=60)
 
 log = logging.getLogger("upk.ai")
@@ -223,7 +224,9 @@ async def analyze(
     use_cache: bool = True,
 ) -> AssistantReply:
     text = re.sub(r"\s+", " ", message).strip()
-    context = [re.sub(r"\s+", " ", c).strip() for c in (context or []) if c.strip()][-3:]
+    earlier = [re.sub(r"\s+", " ", c).strip() for c in (context or []) if c.strip()][-3:]
+    # в заявку и в модель идут только сообщения по сути проблемы
+    context = [c for c in earlier if rules.is_relevant(c)]
     full_text = " ".join([*context, text])
 
     flag = safety.detect(text) or safety.detect(full_text)
@@ -239,11 +242,11 @@ async def analyze(
 
     if use_llm and client.enabled and resilience.breaker.is_open:
         # GigaChat недавно не ответил несколько раз подряд: не ждём таймаут, сразу отвечаем по правилам
-        reply = rules.analyze(full_text, articles, has_location)
+        reply = rules.analyze(full_text, articles, has_location, bool(earlier))
         reply.notice = FALLBACK_NOTICE
     elif use_llm and client.enabled and not _model_budget_left():
         # слишком много запросов разом: платная модель подождёт, отвечают правила
-        reply = rules.analyze(full_text, articles, has_location)
+        reply = rules.analyze(full_text, articles, has_location, bool(earlier))
         reply.notice = FALLBACK_NOTICE
     elif use_llm and client.enabled:
         categories = _categories(db)
@@ -267,20 +270,23 @@ async def analyze(
             )
             resilience.breaker.success()
             reply = _from_llm(_parse_json(raw), articles, {c.code for c in categories}, has_location, full_text)
-            reply = _reconcile(reply, rules.analyze(full_text, articles, has_location))
+            reply = _reconcile(reply, rules.analyze(full_text, articles, has_location, bool(earlier)))
         except (GigaChatError, ValueError, KeyError) as exc:
             # сбоем связи считается только ошибка GigaChat; кривой ответ модели предохранитель не включает
             if isinstance(exc, GigaChatError):
                 resilience.breaker.failure()
             log.warning("GigaChat недоступен, работаем по правилам: %s", exc)
-            reply = rules.analyze(full_text, articles, has_location)
+            reply = rules.analyze(full_text, articles, has_location, bool(earlier))
             reply.notice = FALLBACK_NOTICE
     else:
-        reply = rules.analyze(full_text, articles, has_location)
+        reply = rules.analyze(full_text, articles, has_location, bool(earlier))
         reply.notice = DEMO_NOTICE
 
     if reply.kind in ("fault", "danger") and reply.priority == "normal":
         reply.priority = rules.suggest_priority(reply.kind, reply.category, full_text)
+    if reply.kind == "unclear" and earlier:
+        # одна и та же фраза второй раз подряд выглядит как сбой
+        reply.answer = REPEATED_UNCLEAR_ANSWER
     reply = _apply_guards(reply, articles)
     # в кэш попадают только ответы модели: запасные ответы должны смениться настоящими, как только GigaChat вернётся
     if reply.notice is None and use_llm and client.enabled and use_cache:

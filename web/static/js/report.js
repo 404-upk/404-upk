@@ -463,7 +463,8 @@ async function ask(rawText) {
   setBusy(button, true);
   $("#message").value = "";
 
-  state.lastText = state.context.length ? [...state.context, text].join(". ") : text;
+  // прошлые сообщения в заявку собирает сервер: он отбрасывает посторонние фразы
+  state.lastText = text;
   addUserBubble(text);
   const typing = addTyping();
   try {

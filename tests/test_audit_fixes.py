@@ -101,3 +101,39 @@ def test_model_cannot_promise_deadlines_or_invent_people():
     assert safety.invents_person("Позвоните Шамилю Алиеву")
     assert not safety.invents_person("Обратитесь к сотруднику УПК")
     assert safety.is_unsafe_advice("Откройте крышку проектора")
+
+
+def _ask(client, message, context=()):
+    body = {"message": message, "location_id": _location_id(client), "context": list(context)}
+    response = client.post("/api/assistant", json=body)
+    assert response.status_code == 200
+    return response.json()
+
+
+def test_unwell_gets_a_clear_answer_without_a_ticket(client):
+    for text in ("Я умираю", "Мне плохо я умираю"):
+        reply = _ask(client, text)
+        assert reply["guard"] == "unwell"
+        assert "112" in reply["answer"]
+        assert not reply["suggest_ticket"]
+
+
+def test_unrelated_messages_stay_out_of_the_ticket(client):
+    reply = _ask(client, "проектор", ["Я умираю", "Мне плохо я умираю"])
+    assert reply["kind"] == "fault"
+    assert "умираю" not in reply["draft_title"].lower()
+    assert "умираю" not in reply["draft_description"].lower()
+
+
+def test_details_from_earlier_messages_are_kept(client):
+    reply = _ask(client, "в кабинете 305", ["Сломался стул"])
+    assert reply["kind"] == "fault"
+    assert "стул" in reply["draft_description"].lower()
+    assert reply["room_hint"] == "305"
+
+
+def test_second_unclear_answer_differs(client):
+    first = _ask(client, "ну вот так")
+    second = _ask(client, "ну вот так", ["ну вот так"])
+    assert first["kind"] == second["kind"] == "unclear"
+    assert first["answer"] != second["answer"]

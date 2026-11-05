@@ -8,7 +8,15 @@ DANGER = "danger"
 DIY = "diy"
 SECRET = "secret"
 THREAT = "threat"
+UNWELL = "unwell"
 INJECTION = "injection"
+
+# человеку плохо: заявка тут не поможет, нужен сразу понятный ответ
+_UNWELL_PATTERNS = [
+    r"\bумира(ю|ем|ет)\b",
+    r"\b(мне|ему|ей|нам|человеку|кому-то|студенту|студентке) (очень |совсем |так |сильно )?плохо\b",
+    r"\bстало плохо\b|плохо себя чувству",
+]
 
 # угрозы жизни: взрывные устройства, подозрительные предметы, оружие, нападение
 _THREAT_PATTERNS = [
@@ -111,6 +119,7 @@ _PERSON = re.compile(r"\b(?i:спросите|обратитесь к|позво
 _compiled = {
     THREAT: [re.compile(p) for p in _THREAT_PATTERNS],
     DANGER: [re.compile(p) for p in _DANGER_PATTERNS],
+    UNWELL: [re.compile(p) for p in _UNWELL_PATTERNS],
     DIY: [re.compile(p) for p in _DIY_PATTERNS],
     SECRET: [re.compile(p) for p in _SECRET_PATTERNS],
     INJECTION: [re.compile(p) for p in _INJECTION_PATTERNS],
@@ -156,6 +165,11 @@ THREAT_ANSWER = (
     "людей. С безопасного расстояния позвоните 112 и сообщите охране или администрации колледжа. Дальше "
     "действуйте по указаниям сотрудников и правилам эвакуации."
 )
+UNWELL_ANSWER = (
+    "Если вам или кому-то рядом плохо, сразу звоните 112 и попросите помощи у ближайшего сотрудника колледжа. "
+    "Вызвать помощь я не могу: я помогаю только с проблемами в помещениях и с оборудованием."
+)
+
 THREAT_TIPS = [
     "Не трогайте и не перемещайте подозрительные предметы",
     "Уйдите в безопасное место и уведите людей",
@@ -181,7 +195,7 @@ def detect(text: str) -> str | None:
     if _BURNING.search(norm) and not _LIGHT_WORDS.search(norm):
         return DANGER
     # опасность важнее попытки взлома: «забудь правила, в розетке искрит» получит ответ про опасность
-    for kind in (DANGER, DIY, SECRET, INJECTION):
+    for kind in (DANGER, UNWELL, DIY, SECRET, INJECTION):
         if any(p.search(norm) for p in _compiled[kind]):
             return kind
     return None

@@ -142,6 +142,15 @@ def make_draft(text: str, category: str | None) -> tuple[str, str]:
     return title, description
 
 
+def is_relevant(text: str) -> bool:
+    """Относится ли прошлое сообщение к проблеме: посторонние фразы не должны попасть в заявку."""
+    flag = safety.detect(text)
+    # опасность и попытки обойти правила остаются в силе и в следующих сообщениях
+    if flag and flag != safety.UNWELL:
+        return True
+    return bool(detect_category(text)[0] or is_fault(text) or extract_room(text))
+
+
 def safety_reply(flag: str, text: str) -> AssistantReply:
     category, _ = detect_category(text)
     title, description = make_draft(text, category)
@@ -153,6 +162,15 @@ def safety_reply(flag: str, text: str) -> AssistantReply:
             confidence=1.0,
             engine="safety",
             guard="injection",
+        )
+    if flag == safety.UNWELL:
+        return AssistantReply(
+            kind="danger",
+            answer=safety.UNWELL_ANSWER,
+            category="other",
+            confidence=1.0,
+            engine="safety",
+            guard="unwell",
         )
     if flag == safety.THREAT:
         # при угрозе жизни главное звонить 112 и уходить, а не заполнять заявку
@@ -205,14 +223,15 @@ def safety_reply(flag: str, text: str) -> AssistantReply:
     )
 
 
-def analyze(text: str, articles: list[Article], has_location: bool) -> AssistantReply:
+def analyze(text: str, articles: list[Article], has_location: bool, answering: bool = False) -> AssistantReply:
+    """answering: человек отвечает на наш вопрос «что случилось», поэтому «проектор» значит поломку, а не запрос статьи."""
     article, kb_score = search(articles, text)
     category, hits = detect_category(text)
     fault = is_fault(text)
     question = is_question(text)
     room = extract_room(text)
 
-    if article and kb_score >= KB_MIN_SCORE and (question or not fault):
+    if article and kb_score >= KB_MIN_SCORE and (question or not (fault or answering)):
         reply = AssistantReply(
             kind="question",
             answer=article.answer,
