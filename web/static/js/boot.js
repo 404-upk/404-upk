@@ -12,6 +12,8 @@
   } catch (e) {
     /* нет хранилища — останется тёмная тема */
   }
+  // своя полоса прокрутки (core.js): системная прячется сразу, чтобы страница не сдвигалась при загрузке
+  if (window.ResizeObserver) root.classList.add("has-ui-scroll");
   var intro = false;
   try {
     intro = !root.hasAttribute("data-no-intro") && location.pathname.indexOf("/r/") !== 0 && !sessionStorage.getItem("upk-intro") && !matchMedia("(prefers-reduced-motion: reduce)").matches;

@@ -512,7 +512,8 @@ export async function preparePhoto(file) {
   if (!file || preparedPhotos.has(file)) return file;
   let pic;
   try {
-    pic = await decodePhoto(file);
+    // браузер не справился за 6 секунд (очень большой снимок, редкий формат): фото остаётся как было
+    pic = await Promise.race([decodePhoto(file), new Promise((_, fail) => setTimeout(() => fail(new Error("timeout")), 6000))]);
   } catch {
     return file;
   }
@@ -1205,10 +1206,95 @@ function watchContextMenu() {
   window.addEventListener("scroll", () => closeCtx(false), { passive: true });
 }
 
+// ---------- своя полоса прокрутки страницы ----------
+// Системную полосу на iPhone оформить нельзя, на компьютере она серая. Вместо неё у правого края
+// своя: тонкая васильковая со свечением, появляется при прокрутке и гаснет, как на iPhone.
+// Мышью её можно тянуть и нажимать по ней, как обычную. Внутренние списки и окна оформлены в app.css.
+
+function watchScrollbar() {
+  const root = document.documentElement;
+  const bar = h('<div class="ui-scroll" aria-hidden="true"><i class="ui-scroll-thumb"></i></div>');
+  const thumb = bar.firstElementChild;
+  document.body.append(bar);
+  root.classList.add("has-ui-scroll");
+  let frame = 0;
+  let fade = 0;
+  let drag = null;
+  let geo = { track: 0, size: 0, max: 0 };
+
+  const measure = () => {
+    frame = 0;
+    const view = innerHeight;
+    const full = root.scrollHeight;
+    const max = Math.max(0, full - view);
+    bar.classList.toggle("is-none", max < 4);
+    if (max < 4) return;
+    const track = bar.clientHeight;
+    const size = Math.max(36, Math.round((track * view) / full));
+    geo = { track, size, max };
+    thumb.style.height = `${size}px`;
+    thumb.style.transform = `translateY(${Math.round(((track - size) * Math.min(scrollY, max)) / max)}px)`;
+  };
+  const schedule = () => {
+    if (!frame) frame = requestAnimationFrame(measure);
+  };
+  const show = () => {
+    bar.classList.add("is-on");
+    clearTimeout(fade);
+    fade = setTimeout(() => {
+      if (!drag && !bar.matches(":hover")) bar.classList.remove("is-on");
+    }, 1100);
+  };
+
+  addEventListener("scroll", () => {
+    schedule();
+    show();
+  }, { passive: true });
+  addEventListener("resize", schedule, { passive: true });
+  // высота страницы меняется без прокрутки: подгрузились заявки, раскрылся блок
+  new ResizeObserver(schedule).observe(document.body);
+  bar.addEventListener("pointerenter", show);
+  bar.addEventListener("pointerleave", show);
+
+  // перетаскивание ползунка и нажатие по дорожке — только мышью и пером, пальцем страницу листают как обычно
+  thumb.addEventListener("pointerdown", (e) => {
+    if (e.pointerType === "touch") return;
+    e.preventDefault();
+    drag = { y: e.clientY, from: scrollY };
+    try {
+      thumb.setPointerCapture(e.pointerId);
+    } catch {
+      /* без захвата тянется, пока мышь над полосой */
+    }
+    bar.classList.add("is-drag");
+  });
+  thumb.addEventListener("pointermove", (e) => {
+    if (!drag || geo.track <= geo.size) return;
+    const k = geo.max / (geo.track - geo.size);
+    scrollTo({ top: drag.from + (e.clientY - drag.y) * k, behavior: "instant" });
+  });
+  const stop = () => {
+    if (!drag) return;
+    drag = null;
+    bar.classList.remove("is-drag");
+    show();
+  };
+  thumb.addEventListener("pointerup", stop);
+  thumb.addEventListener("pointercancel", stop);
+  bar.addEventListener("pointerdown", (e) => {
+    if (e.target !== bar || e.pointerType === "touch") return;
+    // нажатие выше или ниже ползунка: на экран вверх или вниз
+    const r = thumb.getBoundingClientRect();
+    scrollBy({ top: (e.clientY < r.top ? -1 : 1) * innerHeight * 0.9, behavior: "smooth" });
+  });
+  schedule();
+}
+
 if (document.body) {
   watchTips();
   watchLinks();
   watchContextMenu();
+  if (window.ResizeObserver) watchScrollbar();
 }
 
 /**

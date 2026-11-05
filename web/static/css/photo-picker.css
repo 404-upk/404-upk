@@ -1,7 +1,7 @@
 /* ===== Своё окно для фото к заявке (photo-picker.js), загружается по требованию ===== */
 
 .pp-modal { width: min(580px, 100%); }
-.pp { display: flex; flex-direction: column; gap: 14px; }
+.pp { display: flex; flex-direction: column; gap: 14px; container-type: inline-size; }
 
 /* сцена: место для перетаскивания, видео с камеры или снимок */
 .pp-stage {
@@ -16,6 +16,13 @@
   isolation: isolate;
 }
 @media (max-width: 560px) { .pp-stage { aspect-ratio: 3 / 4; } }
+/* сцена всегда во всю ширину окна, ровно под кнопками: высота считается от ширины окна,
+   а не наоборот, иначе на невысоком экране сцена сужалась и прижималась влево */
+.pp-stage { width: 100%; }
+@supports (height: 1cqw) {
+  .pp-stage { aspect-ratio: auto; max-height: none; height: min(58vh, 75cqw); }
+  @media (max-width: 560px) { .pp-stage { height: min(52dvh, 120cqw); } }
+}
 
 /* место для перетаскивания: пунктир и бегущий по краю свет */
 .pp-drop {
@@ -114,6 +121,19 @@
 /* новое фото несут над предпросмотром: оно заменит показанное */
 .pp-stage[data-mode="shot"].is-over { box-shadow: inset 0 0 0 2px var(--primary), inset 0 0 50px -12px var(--primary); }
 .pp-file:has(input:focus-visible) { box-shadow: var(--ring); }
+
+/* камера и снимок: лист без стекла и без сдвига — Safari на iPhone иначе может не рисовать видео */
+.overlay.is-media { backdrop-filter: none; -webkit-backdrop-filter: none; background: color-mix(in srgb, var(--bg) 82%, #000); }
+:root .overlay.is-media > .modal { backdrop-filter: none; -webkit-backdrop-filter: none; background: var(--surface); transform: none; animation: none; }
+
+/* запасной путь на телефоне: системная камера */
+.pp-native {
+  align-self: center; display: inline-flex; align-items: center; gap: 6px;
+  margin-top: -4px; padding: 6px 10px; border: 0; border-radius: 999px;
+  background: transparent; color: var(--primary); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer;
+}
+.pp-native[hidden] { display: none; }
+.pp-native:active { background: var(--primary-soft); }
 
 /* кнопки под сценой */
 .pp-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; }

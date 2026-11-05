@@ -5,7 +5,7 @@
 // Любое выбранное фото сначала показывается здесь крупно, и только после «Прикрепить» уходит в заявку.
 // Загружается заранее, пока человек пишет сообщение (warm), на старте страницы не нужно.
 
-import { esc, icon, loadCss, openModal, preparePhoto } from "./core.js";
+import { chooseFileNative, esc, icon, loadCss, openModal, preparePhoto } from "./core.js";
 import { SPARK_PATH } from "./cursor.js";
 
 const COARSE = matchMedia("(pointer: coarse)");
@@ -71,7 +71,7 @@ export async function pickPhoto({ onFile, maxMb = 8 } = {}) {
           }</span>
           <span class="pp-over-text" aria-hidden="true">Отпустите, чтобы прикрепить</span>
         </div>
-        <video class="pp-video" playsinline muted></video>
+        <video class="pp-video" autoplay playsinline muted disablepictureinpicture></video>
         <span class="pp-corners" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
         <img class="pp-shot" alt="Выбранное фото">
         <span class="pp-flash" aria-hidden="true"></span>
@@ -88,6 +88,7 @@ export async function pickPhoto({ onFile, maxMb = 8 } = {}) {
         <button type="button" class="pp-shutter" aria-label="Сделать снимок"><i></i></button>
         <button type="button" class="btn btn-ghost btn-icon pp-flip${cameras > 1 ? "" : " is-off"}" aria-label="Другая камера"${cameras > 1 ? "" : ' tabindex="-1" aria-hidden="true"'}>${icon("refresh")}</button>
       </div>
+      ${phone ? `<button type="button" class="pp-native" data-for="camera" hidden>${icon("camera", "icon-sm")}Не видно картинку? Открыть камеру телефона</button>` : ""}
       <div class="pp-actions" data-for="shot" hidden>
         <button type="button" class="btn pp-retake">${icon("refresh")}<span>Переснять</span></button>
         <button type="button" class="btn btn-primary pp-use">${icon("check")}<span>Прикрепить</span></button>
@@ -114,6 +115,8 @@ export async function pickPhoto({ onFile, maxMb = 8 } = {}) {
       };
       const setMode = (mode) => {
         stage.dataset.mode = mode;
+        // видео и снимок: без стекла и сдвига у листа, иначе Safari на iPhone может не рисовать видео с камеры
+        overlay.classList.toggle("is-media", mode !== "drop");
         root.querySelectorAll("[data-for]").forEach((bar) => (bar.hidden = bar.dataset.for !== mode));
         root.querySelector(`[data-for="${mode}"] .btn-primary, [data-for="${mode}"] .pp-shutter`)?.focus({ preventScroll: true });
       };
@@ -182,18 +185,41 @@ export async function pickPhoto({ onFile, maxMb = 8 } = {}) {
         }
         // окно закрыли, пока браузер спрашивал разрешение
         if (!overlay.isConnected) return stopCamera();
+        // Safari на iPhone показывает видео с камеры только так: без звука, внутри страницы, с автозапуском
+        video.muted = true;
+        video.playsInline = true;
+        video.autoplay = true;
         video.srcObject = stream;
         const mode = stream.getVideoTracks()[0]?.getSettings().facingMode;
         // фронтальная камера и камера ноутбука показываются зеркально, как в зеркале
         video.classList.toggle("is-mirror", (mode || (phone ? facing : "user")) === "user");
+        if (video.readyState < 1) await new Promise((resolve) => video.addEventListener("loadedmetadata", resolve, { once: true }));
         await video.play().catch(() => {});
         say("");
+        // после разрешения браузер показывает все камеры: появляется кнопка смены
+        if (navigator.mediaDevices.enumerateDevices) {
+          const list = await navigator.mediaDevices.enumerateDevices().catch(() => []);
+          const flip = root.querySelector(".pp-flip");
+          if (list.filter((d) => d.kind === "videoinput").length > 1 && flip.classList.contains("is-off")) {
+            flip.classList.remove("is-off");
+            flip.removeAttribute("tabindex");
+            flip.removeAttribute("aria-hidden");
+          }
+        }
+        // картинки так и нет: ещё раз запускаем видео, потом предлагаем камеру телефона
+        setTimeout(async () => {
+          if (stage.dataset.mode !== "camera" || !stream) return;
+          if (video.paused || !video.videoWidth) await video.play().catch(() => {});
+          if (video.paused || !video.videoWidth) {
+            say("Камера включилась, но картинки нет. Нажмите «Открыть камеру телефона» ниже или выберите готовое фото.", true);
+          }
+        }, 2500);
       }
 
       function capture() {
         const w = video.videoWidth;
         const hgt = video.videoHeight;
-        if (!w || !hgt) return;
+        if (!w || !hgt) return say("Камера ещё не показывает картинку. Подождите секунду или откройте камеру телефона.", true);
         const canvas = document.createElement("canvas");
         canvas.width = w;
         canvas.height = hgt;
@@ -237,6 +263,13 @@ export async function pickPhoto({ onFile, maxMb = 8 } = {}) {
         startCamera();
       });
       root.querySelector(".pp-use").addEventListener("click", () => done(shot));
+      // запасной путь на телефоне: системная камера, снимок всё равно показывается здесь крупно
+      root.querySelector(".pp-native")?.addEventListener("click", () => {
+        stopCamera();
+        say("");
+        setMode("drop");
+        chooseFileNative((file) => preview(file, "file"), { capture: "environment" });
+      });
       // системное окно выбора файла открывается только прямым нажатием на «Выбрать файл» / «Из галереи»:
       // поле лежит внутри кнопки, так iOS Safari надёжно открывает своё меню и сообщает о выбранном фото
       input.addEventListener("click", () => say(""));
