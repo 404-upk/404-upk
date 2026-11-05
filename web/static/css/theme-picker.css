@@ -1,0 +1,130 @@
+/* Выбор темы: три карточки с мини-превью сайта. Загружается при первом открытии (core.js, themeToggle).
+   Цвета внутри превью постоянные: превью показывает свою тему, а не текущую. */
+
+.tpick {
+  position: fixed; z-index: 120;
+  width: min(452px, calc(100vw - 16px));
+  padding: 14px;
+  border: 1px solid var(--border-strong); border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  backdrop-filter: blur(16px) saturate(1.25);
+  box-shadow: var(--shadow-lg), 0 0 0 1px color-mix(in srgb, var(--primary) 12%, transparent);
+  transform-origin: 100% 0;
+  animation: tpick-in 0.34s var(--ease-out) both;
+}
+.tpick.is-up { transform-origin: 0 100%; }
+.tpick.is-leaving { animation: tpick-out 0.16s ease-in both; }
+@keyframes tpick-in { from { opacity: 0; transform: translateY(-8px) scale(0.96); } }
+@keyframes tpick-out { to { opacity: 0; transform: translateY(-6px) scale(0.97); } }
+
+.tpick-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; padding: 2px 4px 12px; }
+.tpick-title { display: inline-flex; align-items: center; gap: 7px; font-size: 11px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+.tpick-spark { width: 11px; height: 11px; fill: var(--primary); }
+.tpick-now { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.tpick-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.tpick-card {
+  position: relative;
+  display: flex; flex-direction: column; align-items: stretch; gap: 2px;
+  min-width: 0; padding: 7px 7px 10px;
+  border: 1px solid var(--border); border-radius: 14px;
+  background: var(--surface-2); color: var(--text);
+  font: inherit; text-align: left; cursor: pointer;
+  transition: transform 0.3s var(--ease-out), border-color 0.25s, box-shadow 0.3s, background 0.25s;
+  animation: tpick-card-in 0.5s var(--ease-out) both;
+}
+.tpick-card:nth-child(2) { animation-delay: 60ms; }
+.tpick-card:nth-child(3) { animation-delay: 120ms; }
+@keyframes tpick-card-in { from { opacity: 0; transform: translateY(10px) scale(0.97); } }
+.tpick-card:hover { transform: translateY(-3px); border-color: var(--border-strong); box-shadow: 0 14px 28px -16px rgba(0, 0, 0, 0.55); }
+.tpick-card:focus-visible { outline: none; border-color: var(--primary); box-shadow: var(--ring); }
+.tpick-card[aria-checked="true"] {
+  border-color: color-mix(in srgb, var(--primary) 80%, transparent);
+  background: color-mix(in srgb, var(--primary) 9%, var(--surface-2));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary) 55%, transparent), 0 12px 30px -14px color-mix(in srgb, var(--primary) 70%, transparent);
+}
+.tpick-name { margin-top: 8px; padding: 0 3px; font-size: 13.5px; font-weight: 600; line-height: 1.2; }
+.tpick-note { padding: 0 3px; font-size: 11.5px; color: var(--muted); }
+.tpick-mark {
+  position: absolute; top: 12px; right: 12px;
+  display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%;
+  background: var(--primary); color: var(--on-primary);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.35);
+  transform: scale(0); transition: transform 0.4s var(--spring-soft, var(--ease-out));
+}
+.tpick-mark .icon { width: 13px; height: 13px; stroke-width: 3; }
+.tpick-card[aria-checked="true"] .tpick-mark { transform: scale(1); }
+
+/* ---------- мини-превью ---------- */
+.tp-shot {
+  --bg: #0c1222; --surf: #141b2d; --ink: rgba(237, 240, 244, 0.85); --ink-2: rgba(237, 240, 244, 0.32); --line: rgba(237, 240, 244, 0.12); --acc: #6a86be; --door: rgba(237, 240, 244, 0.32);
+  position: relative; display: block; aspect-ratio: 4 / 3; overflow: hidden;
+  border-radius: 9px; border: 1px solid var(--line);
+  background: var(--bg);
+  transition: transform 0.45s var(--ease-out);
+}
+.tpick-card:hover .tp-shot { transform: scale(1.025); }
+.tp-dark {
+  background:
+    radial-gradient(1px 1px at 18% 70%, rgba(237, 240, 244, 0.8) 50%, transparent 51%),
+    radial-gradient(1px 1px at 46% 86%, rgba(237, 240, 244, 0.6) 50%, transparent 51%),
+    radial-gradient(1px 1px at 58% 22%, rgba(237, 240, 244, 0.7) 50%, transparent 51%),
+    radial-gradient(70% 60% at 28% 40%, rgba(106, 134, 190, 0.32), transparent 70%),
+    #0c1222;
+}
+.tp-light {
+  --bg: #edf0f4; --surf: #f9fafc; --ink: rgba(12, 18, 34, 0.85); --ink-2: rgba(12, 18, 34, 0.28); --line: rgba(12, 18, 34, 0.12); --acc: #4c68a6; --door: rgba(12, 18, 34, 0.22);
+  background: radial-gradient(80% 70% at 25% 30%, rgba(76, 104, 166, 0.16), transparent 70%), linear-gradient(180deg, #f4f6f9, #e6eaf0);
+}
+.tp-black {
+  --bg: #000; --surf: #0b0c0f; --ink: rgba(230, 232, 236, 0.85); --ink-2: rgba(230, 232, 236, 0.26); --line: rgba(230, 232, 236, 0.1); --door: rgba(230, 232, 236, 0.2);
+  background: #000;
+}
+.tp-shot > span { position: absolute; display: block; }
+.tp-top { left: 0; right: 0; top: 0; height: 15%; background: color-mix(in srgb, var(--surf) 85%, transparent); border-bottom: 1px solid var(--line); }
+.tp-top svg { position: absolute; left: 6%; top: 50%; width: 9px; height: 9px; margin-top: -4.5px; fill: var(--acc); transition: transform 0.6s var(--ease-out); }
+.tpick-card:hover .tp-top svg { transform: rotate(90deg) scale(1.15); }
+.tp-top i { position: absolute; right: 6%; top: 50%; width: 22%; height: 26%; margin-top: -2.5%; border-radius: 3px; background: var(--ink-2); }
+.tp-hero { left: 7%; top: 24%; width: 40%; height: 7%; border-radius: 3px; background: var(--ink); }
+.tp-sub { left: 7%; top: 35%; width: 31%; height: 4%; border-radius: 2px; background: var(--ink-2); }
+.tp-field { left: 7%; top: 46%; width: 49%; height: 28%; border-radius: 5px; background: var(--surf); border: 1px solid var(--line); }
+.tp-field i { position: absolute; right: 7%; bottom: 12%; width: 34%; height: 26%; border-radius: 3px; background: var(--acc); }
+.tp-side {
+  right: 6%; top: 22%; width: 31%; height: 62%;
+  display: grid !important; grid-template-columns: repeat(3, 1fr); gap: 6% 9%; align-content: end;
+  padding: 0 12% 14%;
+  border-radius: 6px; background: var(--surf); border: 1px solid var(--line);
+}
+.tp-side::before { content: ""; position: absolute; left: 22%; right: 22%; top: -9%; height: 12%; background: var(--surf); border: 1px solid var(--line); border-bottom: 0; clip-path: polygon(14% 0, 86% 0, 100% 100%, 0 100%); }
+.tp-side i { display: block; aspect-ratio: 0.72; border-radius: 1.5px; background: var(--door); }
+.tp-side i:nth-child(2) { background: var(--acc); box-shadow: 0 0 5px var(--acc); }
+.tp-side i:nth-child(6) { background: #ee6b6f; box-shadow: 0 0 5px #ee6b6f; }
+
+/* «Кромешная тьма»: всё почти не видно, пятно света ходит по превью и проявляет его */
+.tp-black > span:not(.tp-glow) { opacity: 0.5; }
+.tp-black .tp-glow {
+  position: absolute; left: -20%; top: -10%; width: 85%; aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(150, 175, 225, 0.38), rgba(106, 134, 190, 0.1) 55%, transparent);
+  mix-blend-mode: screen;
+  animation: tp-wander 7s ease-in-out infinite alternate;
+}
+.tpick-card:hover .tp-black .tp-glow { animation-duration: 2.4s; }
+@keyframes tp-wander {
+  0% { transform: translate(0, 10%); }
+  50% { transform: translate(55%, 35%); }
+  100% { transform: translate(25%, -5%); }
+}
+
+@media (max-width: 460px) {
+  .tpick { padding: 12px; }
+  .tpick-grid { gap: 8px; }
+  .tpick-name { font-size: 12.5px; }
+  .tpick-note { font-size: 11px; }
+  .tpick-now { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tpick, .tpick.is-leaving, .tpick-card, .tp-black .tp-glow { animation: none; }
+  .tpick-card, .tp-shot, .tp-top svg, .tpick-mark { transition: none; }
+}

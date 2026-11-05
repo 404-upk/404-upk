@@ -2,7 +2,7 @@
 // На широком экране коридор идёт слева направо, на телефоне сверху вниз, чтобы кабинеты были крупными.
 // Нажатие на кабинет открывает дверь и показывает сведения: тип, состояние, открытые заявки.
 
-import { api, esc, h, icon, leaveAndRemove } from "./core.js";
+import { api, esc, h, icon, leaveAndRemove, loadCss } from "./core.js";
 import { FLOORS, LOBBY, STATE_TEXT, TYPES, TYPE_ICON, floorRooms, roomNames, stateOf } from "./plan.js";
 
 const SHORT = { clear: "без заявок", open: "заявка", urgent: "срочно" };
@@ -95,7 +95,8 @@ function planHtml(f, states, here) {
  * Открывает план этажа. states — из planStates(), here — id выбранного помещения,
  * onPick(id) — заявитель выбрал помещение для обращения.
  */
-export function openFloor(floorNo, { states, here = null, room = null, onPick, pickLabel = "Это здесь" } = {}) {
+export async function openFloor(floorNo, { states, here = null, room = null, onPick, pickLabel = "Это здесь" } = {}) {
+  await loadCss("/static/css/floor-view.css");
   const opener = document.activeElement;
   const cells = new Map(FLOORS.flatMap((f) => floorRooms(f).map((c) => [c.n, c])));
   const overlay = h(`

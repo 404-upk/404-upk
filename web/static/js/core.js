@@ -585,8 +585,10 @@ export function themeToggle(button) {
     if (e.key === "Escape") {
       e.stopPropagation();
       close();
-    } else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-      list[(i + (e.key === "ArrowDown" ? 1 : -1) + list.length) % list.length].focus();
+    } else if (["ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight"].includes(e.key)) {
+      // карточки стоят в ряд: стрелки вправо и вниз — следующая, влево и вверх — предыдущая
+      const step = e.key === "ArrowDown" || e.key === "ArrowRight" ? 1 : -1;
+      list[(i + step + list.length) % list.length].focus();
     } else if (e.key === "Home") list[0].focus();
     else if (e.key === "End") list[list.length - 1].focus();
     else if (e.key === "Tab") {
@@ -608,18 +610,39 @@ export function themeToggle(button) {
     menu.style.top = `${up ? r.top - mh - 8 : r.bottom + 8}px`;
     menu.classList.toggle("is-up", up);
   }
-  const open = () => {
+  // мини-превью сайта в каждой теме: шапка со знаком, заголовок, поле ввода и блок колледжа
+  const preview = (id) => `
+    <span class="tp-shot tp-${id}" aria-hidden="true">
+      <span class="tp-top"><svg viewBox="0 0 24 24"><path d="${SPARK_PATH}"/></svg><i></i></span>
+      <span class="tp-hero"></span><span class="tp-sub"></span>
+      <span class="tp-field"><i></i></span>
+      <span class="tp-side"><i></i><i></i><i></i><i></i><i></i><i></i></span>
+      ${id === "black" ? '<span class="tp-glow"></span>' : ""}
+    </span>`;
+  let opening = false;
+  const open = async () => {
+    if (opening) return;
+    opening = true;
+    await loadCss("/static/css/theme-picker.css");
+    opening = false;
+    if (menu) return;
     const now = currentTheme();
     menu = h(`
-      <div class="theme-menu" role="menu" aria-label="Тема оформления">
-        <div class="theme-menu-title">Тема оформления</div>
-        ${THEMES.map(
-          (t) => `<button type="button" class="theme-opt" role="menuitemradio" aria-checked="${t.id === now}" data-theme-pick="${t.id}">
-            <span class="theme-swatch ts-${t.id}" aria-hidden="true"><i></i><i></i></span>
-            <span class="theme-opt-text"><b>${esc(t.name)}</b><small>${esc(t.note)}</small></span>
-            ${icon("check", "icon-sm theme-check")}
-          </button>`,
-        ).join("")}
+      <div class="tpick" role="menu" aria-label="Тема оформления">
+        <div class="tpick-head">
+          <span class="tpick-title"><svg class="tpick-spark" viewBox="0 0 24 24" aria-hidden="true"><path d="${SPARK_PATH}"/></svg>Тема оформления</span>
+          <span class="tpick-now">сейчас: ${esc(themeById(now).name)}</span>
+        </div>
+        <div class="tpick-grid">
+          ${THEMES.map(
+            (t) => `<button type="button" class="tpick-card" role="menuitemradio" aria-checked="${t.id === now}" data-theme-pick="${t.id}">
+              ${preview(t.id)}
+              <span class="tpick-name">${esc(t.name)}</span>
+              <span class="tpick-note">${esc(t.note)}</span>
+              <span class="tpick-mark">${icon("check", "icon-sm")}</span>
+            </button>`,
+          ).join("")}
+        </div>
       </div>`);
     document.body.append(menu);
     place();
@@ -631,7 +654,7 @@ export function themeToggle(button) {
     document.addEventListener("keydown", onKey, true);
     document.addEventListener("pointerdown", onDown, true);
     window.addEventListener("resize", place);
-    (menu.querySelector('[aria-checked="true"]') || items()[0]).focus();
+    (menu.querySelector('[aria-checked="true"]') || items()[0]).focus({ preventScroll: true });
   };
 
   button.addEventListener("click", () => (menu ? close() : open()));
@@ -643,6 +666,22 @@ export function themeToggle(button) {
     }
   });
   render();
+}
+
+// ---------- стили по требованию ----------
+// Стили редких окон (план этажа, выбор темы) грузятся при первом открытии, чтобы не утяжелять старт страницы.
+const cssLoading = {};
+export function loadCss(href) {
+  if (!cssLoading[href]) {
+    cssLoading[href] = new Promise((resolve) => {
+      const link = document.createElement("link");
+      link.rel = "stylesheet";
+      link.href = href;
+      link.onload = link.onerror = () => resolve();
+      document.head.append(link);
+    });
+  }
+  return cssLoading[href];
 }
 
 // ---------- подсказки при наведении ----------
