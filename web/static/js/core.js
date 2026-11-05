@@ -237,7 +237,11 @@ export const drafts = {
 /** Страница открывается без сети: оболочка сайта сохраняется на устройстве (только публичные страницы) */
 export function enableOffline() {
   if (!("serviceWorker" in navigator) || location.protocol === "file:") return;
-  navigator.serviceWorker.register("/sw.js").catch(() => {});
+  // копии для работы без сети качаются, когда страница открылась и браузер свободен, а не во время первой загрузки
+  const register = () => navigator.serviceWorker.register("/sw.js").catch(() => {});
+  const whenFree = () => (window.requestIdleCallback ? requestIdleCallback(register, { timeout: 4000 }) : setTimeout(register, 1500));
+  if (document.readyState === "complete") whenFree();
+  else window.addEventListener("load", whenFree, { once: true });
 }
 
 // ---------- даты ----------

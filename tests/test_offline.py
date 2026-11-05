@@ -26,3 +26,11 @@ def test_every_page_loads_page_transition():
     worker = (WEB_DIR / "sw.js").read_text(encoding="utf-8")
     for script in ["page-transition.js", "sound.js", "selection.js", "lift.js"]:
         assert f"/static/js/{script}" in worker, script
+
+
+def test_svg_is_compressed_but_fonts_are_not(client):
+    # SVG это текст и хорошо сжимается, а шрифты уже сжаты
+    svg = client.get("/static/img/lockup.svg", headers={"Accept-Encoding": "gzip"})
+    assert svg.headers.get("content-encoding") == "gzip"
+    font = client.get("/static/fonts/inter-400-lat.woff2", headers={"Accept-Encoding": "gzip"})
+    assert "content-encoding" not in font.headers

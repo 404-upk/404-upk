@@ -97,5 +97,6 @@ class CompressText:
 
     async def __call__(self, scope, receive, send) -> None:
         path = scope.get("path", "")
-        plain = scope["type"] != "http" or path.startswith(self.SKIP) or "/attachments/" in path
+        skip = path.startswith(self.SKIP) and not path.endswith(".svg")  # SVG это текст и сжимается хорошо
+        plain = scope["type"] != "http" or skip or "/attachments/" in path
         await (self.inner if plain else self.gzip)(scope, receive, send)

@@ -247,6 +247,7 @@ html:not(.is-revealed) .track-enter .tp-step, html:not(.is-revealed) .track-ente
 /* нажатие на фасад фокусирует сам svg, и браузер рисовал вокруг схемы свою белую рамку. У этажей своя подсветка */
 .pf:focus, .pf:focus-visible, .pf :focus, .pf :focus-visible { outline: none; }
 .pf text { font-family: inherit; }
+.pf.is-away, .pf.is-away * { animation-play-state: paused !important; }
 
 /* небо над крышей: узор из фирменных звёзд */
 .pf-sky-line { fill: none; stroke: var(--primary); stroke-opacity: 0.34; stroke-width: 0.55; stroke-linecap: round; stroke-linejoin: round; }

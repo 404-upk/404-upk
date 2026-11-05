@@ -453,6 +453,8 @@ export function bindPlan(root, states, { onOpenFloor } = {}) {
   const info = root.querySelector(".pl-info");
   if (!svg || !info) return;
   const cells = new Map(FLOORS.flatMap((f) => floorRooms(f).map((c) => [c.n, c])));
+  // вне экрана схема не тратит кадры на свои анимации
+  new IntersectionObserver(([entry]) => svg.classList.toggle("is-away", !entry.isIntersecting)).observe(svg);
 
   const describe = (n) => {
     const cell = cells.get(n);
