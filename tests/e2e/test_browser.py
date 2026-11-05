@@ -582,12 +582,13 @@ def test_admin_section_opens_with_spark(page):
 
 
 def test_sound_is_quiet_and_can_be_switched_off(page):
-    """Звук не перегружен и не пуст, выключатель работает и запоминается."""
+    """Звук звёздный: высокий, не перегруженный и не пустой; выключатель работает и запоминается."""
     page.goto("/")
     for kind, limit in (("intro", 0.6), ("forward", 0.3), ("back", 0.3), ("section", 0.25)):
         result = page.evaluate("(kind) => import('/static/js/sound.js').then((m) => m.measureSound(kind))", kind)
         assert 0.01 < result["peak"] < limit, (kind, result)
         assert result["envelope"][-1] < result["peak"] / 4, (kind, result)
+        assert result["pitchHz"] > 1000, (kind, result)
 
     button = page.locator(".sound-btn")
     expect(button).to_have_attribute("aria-pressed", "true")
