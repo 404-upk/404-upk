@@ -204,7 +204,12 @@ body {
   font-feature-settings: "cv11", "ss03";
 }
 
-::selection { background: var(--primary); color: var(--on-primary); }
+/* Выделение текста: в тёмных темах текст загорается в акцентном свете, в светлых вокруг него белое сияние.
+   Цвета заданы прямо здесь: значения переменных внутри ::selection браузеры подставляют по-разному */
+::selection { background: rgba(106, 134, 190, 0.55); color: #ffffff; text-shadow: 0 0 10px rgba(142, 166, 216, 0.9); }
+:root[data-theme="black"] ::selection { background: rgba(106, 134, 190, 0.42); color: #ffffff; text-shadow: 0 0 12px rgba(142, 166, 216, 0.95); }
+:root[data-theme="light"] ::selection { background: rgba(76, 104, 166, 0.26); color: #0c1222; text-shadow: 0 0 8px rgba(255, 255, 255, 0.85); }
+:root[data-theme="sky"] ::selection { background: rgba(39, 64, 122, 0.24); color: #0b1a38; text-shadow: 0 0 8px rgba(255, 255, 255, 0.95); }
 
 h1, h2, h3, h4 {
   margin: 0;
@@ -1451,6 +1456,24 @@ html.is-scroll-drag, html.is-scroll-drag * { -webkit-user-select: none; user-sel
 
 /* Поле пароля без type="password" (SECRET_FIELD в core.js): символы скрыты */
 [data-secret] { -webkit-text-security: disc; }
+
+/* ===== Искры по краям выделения (selection.js) ===== */
+.sel-spark { position: fixed; top: 0; left: 0; z-index: 124; width: 0; height: 0; pointer-events: none; opacity: 0; transition: opacity 0.14s ease; }
+.sel-spark.is-on { opacity: 1; }
+.sel-spark svg {
+  display: block; width: var(--size); height: var(--size); margin: calc(var(--size) / -2) 0 0 calc(var(--size) / -2);
+  fill: color-mix(in srgb, var(--primary) 45%, var(--text));
+  filter: drop-shadow(0 0 3px var(--primary));
+  transform-origin: center;
+}
+.sel-spark.is-start { --size: 11px; }
+.sel-spark.is-end { --size: 15px; }
+.sel-spark.is-on svg { animation: sel-pop 0.42s cubic-bezier(0.34, 1.56, 0.64, 1) both, sel-twinkle 2.6s ease-in-out 0.42s infinite; }
+.sel-spark.is-start.is-on svg { animation-delay: 0s, 1.1s; }
+@keyframes sel-pop { from { opacity: 0; transform: scale(0) rotate(-90deg); } }
+@keyframes sel-twinkle { 50% { opacity: 0.55; transform: scale(0.72) rotate(45deg); } }
+@media (prefers-reduced-motion: reduce) { .sel-spark.is-on svg { animation: none; } }
+@media print { .sel-spark { display: none; } }
 
 /* ===== Своё перетаскивание (lift.js) ===== */
 img, a { -webkit-user-drag: none; }

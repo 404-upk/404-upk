@@ -19,10 +19,10 @@ const clamp = (value, low, high) => Math.min(high, Math.max(low, value));
 // плавное приближение, которое не зависит от частоты кадров
 const toward = (rate, dt) => 1 - Math.exp(-rate * dt);
 
-function sparks(cx, cy, radius) {
+export function sparks(cx, cy, radius, count = SPARKS) {
   const turn = Math.random() * 45;
-  for (let i = 0; i < SPARKS; i += 1) {
-    const angle = ((turn + (i * 360) / SPARKS) * Math.PI) / 180;
+  for (let i = 0; i < count; i += 1) {
+    const angle = ((turn + (i * 360) / count) * Math.PI) / 180;
     const far = radius + 16 + Math.random() * 22;
     const bit = document.createElement("div");
     bit.className = "cursor-bit";

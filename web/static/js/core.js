@@ -2,6 +2,7 @@
 
 import { SPARK_PATH } from "./cursor.js";
 import { liftable } from "./lift.js";
+import "./selection.js";
 import "./caret.js";
 import "./select.js";
 

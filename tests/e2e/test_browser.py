@@ -527,3 +527,29 @@ def test_floor_plan_stairs_match_the_floor(page):
         "(els) => els.map((e) => Math.round(e.getBoundingClientRect().top))"
     )
     assert len(tops) == 5 and len(set(tops)) == 1, tops
+
+
+def test_text_selection_has_own_color_and_sparks(page):
+    """У выделения свой цвет в каждой теме, края держат две искры; без выделения искр нет."""
+    page.goto("/")
+    title = page.locator("h1").first
+    color = "(el) => getComputedStyle(el, '::selection').backgroundColor"
+    assert "106, 134, 190" in title.evaluate(color)
+
+    title.evaluate("(el) => getSelection().selectAllChildren(el)")
+    sparks = page.locator(".sel-spark.is-on")
+    expect(sparks).to_have_count(2)
+    start = page.locator(".sel-spark.is-start").bounding_box()
+    box = title.bounding_box()
+    assert abs(start["x"] - box["x"]) < 3
+
+    page.evaluate("getSelection().removeAllRanges()")
+    expect(sparks).to_have_count(0)
+
+    # в поле ввода браузер не отдаёт координаты выделения: только цвет, искр нет
+    page.fill("#message", "Сломался проектор")
+    page.locator("#message").evaluate("(el) => { el.focus(); el.select(); }")
+    expect(sparks).to_have_count(0)
+
+    page.evaluate("document.documentElement.dataset.theme = 'sky'")
+    assert "39, 64, 122" in title.evaluate(color)
