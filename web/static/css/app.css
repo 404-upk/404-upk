@@ -587,6 +587,7 @@ hr.sep { border: 0; border-top: 1px solid var(--border); margin: 4px 0; }
   font-weight: 600;
   letter-spacing: -0.01em;
 }
+.brand { min-height: 24px; }
 .brand:hover { text-decoration: none; }
 /* знак 404 без подложки, как в бренд-гайде */
 .brand-mark { display: grid; place-items: center; color: var(--text); }
@@ -946,7 +947,7 @@ body:has(> .page) > .footer { width: 100%; }
   transition: top 0.15s ease;
 }
 .skip-link:focus { top: 12px; }
-main:focus { outline: none; }
+main:focus, [tabindex="-1"]:focus { outline: none; }
 .footer a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
 .footer a:hover { color: var(--text); }
 .prose h2 { font-size: 18px; margin: 26px 0 8px; }
@@ -1544,3 +1545,31 @@ html.is-lifting, html.is-lifting * { user-select: none; cursor: grabbing; }
 @keyframes qr-frame { to { transform: scale(1.035); } }
 @keyframes qr-scan { to { transform: translateY(500%); } }
 @media print { .qr-lift, .img-lift, .link-lift { display: none; } }
+
+/* ===== Доступность ===== */
+/* На сенсорном экране зона нажатия больше самой кнопки: проще попасть пальцем и в перчатках, внешне ничего не меняется.
+   :where не перебивает кнопки, которые расположены абсолютно */
+@media (pointer: coarse) {
+  :where(.tab, .btn-sm, .nav a, .t-link, .segmented button) { position: relative; }
+  .tab::after, .btn-sm::after, .nav a::after, .t-link::after, .segmented button::after { content: ""; position: absolute; inset: -5px -2px; }
+}
+/* Увеличение 400% на обычном экране: шапка умещается в 320 пикселей */
+@media (max-width: 340px) {
+  .topbar-inner { gap: 4px; padding-left: 10px; padding-right: 10px; }
+  .topbar-inner > .btn:not(.btn-icon) { padding-left: 8px; padding-right: 8px; }
+}
+/* Человек попросил больше контраста в настройках системы: границы и второстепенный текст заметно сильнее */
+@media (prefers-contrast: more) {
+  :root, :root[data-theme="dark"], :root[data-theme="black"] {
+    --border: rgba(237, 240, 244, 0.5);
+    --border-strong: rgba(237, 240, 244, 0.75);
+    --muted: rgba(237, 240, 244, 0.9);
+    --faint: rgba(237, 240, 244, 0.85);
+  }
+  :root[data-theme="light"], :root[data-theme="sky"] {
+    --border: rgba(12, 18, 34, 0.5);
+    --border-strong: rgba(12, 18, 34, 0.75);
+    --muted: rgba(12, 18, 34, 0.9);
+    --faint: rgba(12, 18, 34, 0.85);
+  }
+}

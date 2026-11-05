@@ -167,4 +167,6 @@ function start() {
   document.documentElement.addEventListener("mouseleave", hide);
 }
 
-if (matchMedia("(hover: hover) and (pointer: fine)").matches) start();
+// в режимах высокой контрастности остаётся системный указатель: человек настроил его под себя
+const ownPointer = matchMedia("(hover: hover) and (pointer: fine)").matches && !matchMedia("(forced-colors: active), (prefers-contrast: more)").matches;
+if (ownPointer) start();

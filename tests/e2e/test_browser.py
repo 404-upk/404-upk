@@ -608,8 +608,56 @@ def test_phone_header_keeps_all_buttons_whole(phone):
     phone.goto("/")
     link = phone.locator(".topbar").get_by_role("link", name="Мои заявки")
     expect(link).to_be_visible()
-    assert link.evaluate("(el) => el.scrollWidth <= el.clientWidth + 1")
+    # меряем сам текст: невидимая зона нажатия для пальца увеличивает scrollWidth, но ничего не обрезает
+    fits = "(el) => { const r = document.createRange(); r.selectNodeContents(el); return r.getBoundingClientRect().width <= el.clientWidth + 1; }"
+    assert link.evaluate(fits)
     for selector in (".sound-btn", "#theme"):
         box = phone.locator(selector).bounding_box()
         assert box["x"] + box["width"] <= 360
     assert phone.evaluate("document.documentElement.scrollWidth <= window.innerWidth + 1")
+
+
+def test_report_page_fits_400_percent_zoom(browser, base_url):
+    """Увеличение 400% на обычном экране: 320 пикселей без прокрутки вбок, все кнопки шапки на месте."""
+    ctx = browser.new_context(base_url=base_url, viewport={"width": 320, "height": 640}, reduced_motion="reduce")
+    ctx.add_init_script("try { sessionStorage.setItem('upk-intro', '1') } catch (e) {}")
+    page = ctx.new_page()
+    page.goto(f"/r/{QR_214}")
+    expect(page.locator("#place")).to_be_visible()
+    assert page.evaluate("document.documentElement.scrollWidth <= window.innerWidth + 1")
+    for selector in (".sound-btn", "#theme"):
+        box = page.locator(selector).bounding_box()
+        assert box["x"] + box["width"] <= 320
+    ctx.close()
+
+
+def test_focus_is_not_lost_after_sending_a_ticket(page):
+    """После отправки заявки фокус на заголовке результата: программа чтения с экрана сообщает, что заявка принята."""
+    page.goto(f"/r/{QR_214}")
+    page.fill("#message", "В кабинете не работает проектор, экран не включается")
+    page.click("#ask-btn")
+    expect(page.locator("#d-desc")).to_be_visible()
+    page.fill("#d-title", "Не включается проектор")
+    page.click("#submit-btn")
+    expect(page.locator(".ticket-number")).to_be_visible()
+    expect(page.locator("#done-title")).to_be_focused()
+
+
+def test_panel_keyboard_and_screen_reader_paths(page):
+    """В панели есть переход к содержимому, текущий раздел отмечен, при смене раздела фокус переходит в него."""
+    login_admin(page)
+    page.goto("/admin#/tickets")
+    expect(page.locator("#list")).to_be_visible()
+    skip = page.locator(".skip-link")
+    expect(skip).to_have_attribute("href", "#content")
+    skip.focus()
+    page.keyboard.press("Enter")
+    expect(page.locator("#content")).to_be_focused()
+    assert "#/tickets" in page.url
+
+    link = page.get_by_role("link", name="База знаний")
+    link.click()
+    expect(link).to_have_attribute("aria-current", "page")
+    expect(page.locator(".card[data-id]").first).to_be_visible()
+    expect(page.locator("#content")).to_be_focused()
+    expect(page.locator("#content")).to_have_attribute("aria-label", "База знаний")

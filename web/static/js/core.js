@@ -704,7 +704,7 @@ function soundButton() {
     const on = soundOn();
     b.innerHTML = icon(on ? "volume" : "volumeOff");
     b.setAttribute("aria-pressed", String(on));
-    b.setAttribute("aria-label", on ? "Звук включён. Выключить" : "Звук выключен. Включить");
+    b.setAttribute("aria-label", "Звук");
     b.dataset.tip = on ? "Звук включён" : "Звук выключен";
   };
   b.addEventListener("click", () => setSound(!soundOn()));
@@ -870,6 +870,7 @@ function adoptTitle(el) {
   el.dataset.tip = text;
   // подсказка не должна пропасть для экранных читалок
   if (!el.getAttribute("aria-label") && !el.textContent.trim()) el.setAttribute("aria-label", text);
+  else if (el.getAttribute("aria-label") !== text && el.textContent.trim() !== text) el.setAttribute("aria-description", text);
 }
 
 function hideTip() {
@@ -882,7 +883,7 @@ function showTip(el) {
   const text = el.dataset.tip;
   if (!text || !el.isConnected) return;
   if (!tipEl) {
-    tipEl = h('<div class="ui-tip" role="tooltip"></div>');
+    tipEl = h('<div class="ui-tip" aria-hidden="true"></div>');
     document.body.append(tipEl);
   }
   tipEl.textContent = text;

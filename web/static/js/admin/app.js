@@ -68,7 +68,7 @@ function offerToSavePassword(id, password) {
 function renderLogin(message = "") {
   const demo = ctx.meta?.demo_logins;
   root.innerHTML = `
-    <div class="login-wrap login-split">
+    <main class="login-wrap login-split">
       <section class="login-aside" aria-label="О панели">
         <a class="brand" href="/">${BRAND("Цифровой помощник колледжа")}</a>
         <div class="login-aside-body">
@@ -79,7 +79,7 @@ function renderLogin(message = "") {
         </div>
       </section>
       <form class="card login-card" id="l-form" novalidate autocomplete="off">
-        <div class="stack-sm"><div class="eyebrow">Для сотрудников</div><h2>Вход в панель</h2>
+        <div class="stack-sm"><div class="eyebrow">Для сотрудников</div><h2 role="heading" aria-level="1">Вход в панель</h2>
           <p class="small muted">Заявители входить не должны: им хватает QR-кода и кода отслеживания.</p></div>
         ${message ? `<div class="notice notice-danger">${icon("alert")}<div>${esc(message)}</div></div>` : ""}
         <div class="field"><label for="l-nick">Логин</label>
@@ -95,7 +95,7 @@ function renderLogin(message = "") {
             : ""
         }
       </form>
-    </div>`;
+    </main>`;
   api("/api/campus")
     .then((campus) => {
       const box = $("#login-map");
@@ -167,9 +167,9 @@ function renderLogin(message = "") {
 
 function renderPasswordChange(message = "") {
   root.innerHTML = `
-    <div class="login-wrap">
+    <main class="login-wrap">
       <form class="card login-card" id="pwd" novalidate autocomplete="off">
-        <div class="stack-sm"><div class="eyebrow">Первый вход</div><h2>Задайте свой пароль</h2>
+        <div class="stack-sm"><div class="eyebrow">Первый вход</div><h2 role="heading" aria-level="1">Задайте свой пароль</h2>
           <p class="small muted">${esc(ctx.user.name)}, у вас временный пароль. Пока вы его не замените, панель закрыта.
           Новый пароль: не короче 12 символов, без логина и не из простых.</p></div>
         ${message ? `<div class="notice notice-danger">${icon("alert")}<div>${esc(message)}</div></div>` : ""}
@@ -181,7 +181,7 @@ function renderPasswordChange(message = "") {
           <input class="input" id="p-again" ${SECRET_FIELD} required></div>
         <button class="btn btn-primary btn-lg" type="submit" id="p-btn">Сохранить и войти</button>
       </form>
-    </div>`;
+    </main>`;
   const form = $("#pwd");
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -257,6 +257,15 @@ function renderLayout() {
     </div>`;
 
   themeToggle($("#theme"));
+  // переход к содержимому мимо меню; обычная ссылка #content сменила бы раздел панели
+  const content = $("#content");
+  content.tabIndex = -1;
+  const skip = h('<a class="skip-link" href="#content">Перейти к содержанию</a>');
+  skip.addEventListener("click", (e) => {
+    e.preventDefault();
+    content.focus();
+  });
+  root.prepend(skip);
   rise(root, ".sidebar .brand, .sidebar .nav-title, .sidebar .nav a, .sidebar-foot", { step: 26, delay: 40, dur: 800 });
   rise(root, ".main-head", { delay: 80, dur: 800 });
   $("#logout").addEventListener("click", async () => {
@@ -296,12 +305,17 @@ function setHead(title, actions = "") {
 }
 
 let routeToken = 0;
+let routedOnce = false;
 
 async function route() {
   const token = ++routeToken;
   const { page, id, params } = parseHash();
   const key = allowed(page) ? page : "tickets";
-  document.querySelectorAll(".nav a").forEach((a) => a.classList.toggle("active", a.dataset.page === key));
+  document.querySelectorAll(".nav a").forEach((a) => {
+    a.classList.toggle("active", a.dataset.page === key);
+    if (a.dataset.page === key) a.setAttribute("aria-current", "page");
+    else a.removeAttribute("aria-current");
+  });
   moveNavIndicator();
 
   // открытие карточки поверх уже открытого списка не перерисовывает список
@@ -337,6 +351,10 @@ async function route() {
     cleanup = result;
     if (cleanup) cleanup.page = key;
     rise(content, ":scope > *", { step: 80, dur: 900 });
+    // новый раздел: клавиатура и программа чтения с экрана переходят в него, а не остаются в меню
+    content.setAttribute("aria-label", title);
+    if (routedOnce && !id && (document.activeElement === document.body || document.activeElement?.closest(".nav"))) content.focus({ preventScroll: true });
+    routedOnce = true;
   } catch (err) {
     if (err instanceof ApiError && err.status === 401) {
       renderLogin("Сессия закончилась, войдите снова");

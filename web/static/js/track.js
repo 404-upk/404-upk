@@ -62,7 +62,7 @@ function renderLookup(error = "") {
     ${
       mine.length
         ? `<section class="my-tickets">
-            <h3 class="u-mb8">Мои заявки на этом устройстве</h3>
+            <h2 class="h3 u-mb8">Мои заявки на этом устройстве</h2>
             <div class="card">${mine
               .map(
                 (t) => `<a class="my-ticket" href="/t/${esc(t.code)}">
@@ -144,7 +144,7 @@ function statusBlock() {
   if (data.status === "need_info") {
     return `
       <section class="u-border-warn card card-pad stack">
-        <div class="row">${icon("help")}<h3>Сотруднику нужно уточнение</h3></div>
+        <div class="row">${icon("help")}<h2 class="h3">Сотруднику нужно уточнение</h2></div>
         ${data.need_info_question ? `<div class="notice notice-warn">${icon("message")}<div class="pre">${esc(data.need_info_question)}</div></div>` : ""}
         ${replyForm("Ваш ответ")}
       </section>`;
@@ -188,6 +188,8 @@ function replyForm(label) {
 }
 
 let shownStatus = null;
+
+let opened = false;
 
 function render() {
   const d = data;
@@ -248,13 +250,13 @@ function render() {
       </section>
 
       <section class="card card-pad stack">
-        <h3>Ответы сотрудников</h3>
+        <h2 class="h3">Ответы сотрудников</h2>
         ${comments}
         ${d.can_reply && d.status !== "need_info" ? replyForm("Дополнить заявку") : ""}
       </section>
 
       <section class="card card-pad stack">
-        <h3>История</h3>
+        <h2 class="h3">История</h2>
         <ul class="timeline">${history}</ul>
       </section>
 
@@ -287,6 +289,11 @@ function render() {
     hero.classList.add("status-flash");
     ambient.pulseAt(hero.querySelector(".tp-step.current, .tp-step.final") || hero, 1);
     toast(`Статус заявки: ${d.status_label}`);
+  }
+  // код отслеживания отправлен: форма исчезла, фокус переходит на заявку
+  if (!opened) {
+    opened = true;
+    if (document.activeElement === document.body) app.focus?.({ preventScroll: true });
   }
 }
 

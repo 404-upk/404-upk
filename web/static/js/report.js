@@ -1006,7 +1006,7 @@ async function showDone(res, joined) {
   app.innerHTML = `
     <section class="card done-card">
       <div class="ignite" aria-hidden="true"><i class="ray"></i><i class="ray"></i><i class="ray"></i><i class="ray"></i>${spark()}</div>
-      <h2>${joined ? "Вы присоединились к заявке" : "Заявка зарегистрирована"}</h2>
+      <h2 role="heading" aria-level="1" tabindex="-1" id="done-title">${joined ? "Вы присоединились к заявке" : "Заявка зарегистрирована"}</h2>
       <p class="u-maxw440 muted">${
         joined
           ? "Теперь вы следите за той же заявкой. Чем больше людей сообщили, тем быстрее её замечают."
@@ -1051,6 +1051,8 @@ async function showDone(res, joined) {
   ambient.pulseAt(app.querySelector(".ignite"), 1);
   ambient.spread(0.22);
   scramble(app.querySelector(".ticket-number"), { duration: 1100, delay: 340 });
+  // кнопки отправки больше нет: фокус переходит на заголовок, и программа чтения с экрана сообщает, что заявка принята
+  $("#done-title")?.focus({ preventScroll: true });
   const codeEl = app.querySelector(".code-box .grow");
   if (codeEl) scramble(codeEl, { duration: 1300, delay: 520 });
 }
@@ -1084,7 +1086,7 @@ function renderExtras() {
     ${
       mine.length
         ? `<section class="my-tickets">
-            <div class="u-mb8 row between"><h3>Мои заявки</h3><a class="small" href="/track">Все</a></div>
+            <div class="u-mb8 row between"><h2 class="h3">Мои заявки</h2><a class="small" href="/track">Все</a></div>
             <div class="card">${mine
               .map(
                 (t) => `<a class="my-ticket" href="/t/${esc(t.code)}">

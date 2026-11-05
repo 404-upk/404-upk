@@ -52,7 +52,7 @@
 .print-card h2 { margin: 0; font-size: calc(var(--mm) * var(--title)); line-height: 1.18; color: #111; }
 .print-card b { font-size: calc(var(--mm) * var(--text) * 1.05); color: #111; }
 .print-card p { margin: 0; font-size: calc(var(--mm) * var(--text)); line-height: 1.35; color: #444; }
-.print-card .print-url { font-size: calc(var(--mm) * var(--text) * 0.85); color: #777; overflow-wrap: anywhere; }
+.print-card .print-url { font-size: calc(var(--mm) * var(--text) * 0.85); color: #737373; overflow-wrap: anywhere; }
 .print-qr { flex: none; width: calc(var(--mm) * var(--qr)); height: calc(var(--mm) * var(--qr)); }
 
 @media (max-width: 900px) {
