@@ -2,11 +2,14 @@ import json
 import logging
 import re
 
+from fastapi import HTTPException
+from fastapi.concurrency import run_in_threadpool
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..config import settings
 from ..models import Category, Location
+from ..security import RateLimiter
 from ..services.uploads import normalize_image
 from . import resilience, rules, safety
 from .gigachat import GigaChatError, client
@@ -14,6 +17,8 @@ from .knowledge import Article, load_articles
 from .prompts import PHOTO_SYSTEM, system_prompt, user_prompt
 from .reply import KINDS, AssistantReply
 from .text import extract_room, mask_personal
+
+model_budget = RateLimiter(limit=settings.model_requests_per_minute, window=60)
 
 log = logging.getLogger("upk.ai")
 
@@ -93,9 +98,13 @@ def _from_llm(data: dict, articles: list[Article], codes: set[str], has_location
         reply.answer = UNKNOWN_ANSWER
         reply.tips = []
         reply.guard = "no_source"
+    elif kind == "question":
+        # модель выбирает статью, но текст берётся из базы: так ответ нельзя выдумать
+        reply.answer = by_id[kb_ids[0]].answer[:1200]
 
     if kind == "unknown":
-        reply.answer = reply.answer or UNKNOWN_ANSWER
+        reply.answer = UNKNOWN_ANSWER
+        reply.tips = []
 
     if kind == "unclear" and not reply.clarify_question:
         reply.clarify_question = "Что именно случилось и где? Например: «В кабинете 214 не работает проектор»."
@@ -150,6 +159,14 @@ def _reconcile(model: AssistantReply, rule: AssistantReply) -> AssistantReply:
     return model
 
 
+def _model_budget_left() -> bool:
+    try:
+        model_budget.check("all")
+    except HTTPException:
+        return False
+    return True
+
+
 def _apply_guards(reply: AssistantReply, articles: list[Article]) -> AssistantReply:
     if reply.engine == "safety":
         return reply
@@ -168,7 +185,11 @@ def _apply_guards(reply: AssistantReply, articles: list[Article]) -> AssistantRe
         reply.tips = []
         reply.guard = "fake_action"
         return reply
-    if any(safety.is_unsafe_advice(t) for t in texts):
+    # текст статьи проверен людьми, а всё, что написала модель, проверяем на сроки и выдуманных людей
+    written = reply.tips if reply.kind == "question" else texts
+    if any(safety.is_unsafe_advice(t) for t in texts) or any(
+        safety.promises_deadline(t) or safety.invents_person(t) for t in written
+    ):
         reply.answer = safety.SAFE_FALLBACK_ANSWER
         reply.tips = []
         reply.suggest_ticket = True
@@ -220,6 +241,10 @@ async def analyze(
         # GigaChat недавно не ответил несколько раз подряд: не ждём таймаут, сразу отвечаем по правилам
         reply = rules.analyze(full_text, articles, has_location)
         reply.notice = FALLBACK_NOTICE
+    elif use_llm and client.enabled and not _model_budget_left():
+        # слишком много запросов разом: платная модель подождёт, отвечают правила
+        reply = rules.analyze(full_text, articles, has_location)
+        reply.notice = FALLBACK_NOTICE
     elif use_llm and client.enabled:
         categories = _categories(db)
         try:
@@ -269,7 +294,7 @@ async def analyze_photo(db: Session, data: bytes) -> dict:
             "available": False,
             "notice": "Распознавание фото включается вместе с GigaChat. Сейчас фото просто прикрепится к заявке.",
         }
-    jpeg, _, _ = normalize_image(data)
+    jpeg, _, _ = await run_in_threadpool(normalize_image, data)
     categories = _categories(db)
     codes = {c.code for c in categories}
     file_id = None

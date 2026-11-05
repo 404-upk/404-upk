@@ -156,7 +156,9 @@ export function leave(el, { duration = 260, y = -10 } = {}) {
     easing: IN,
     fill: "forwards",
   });
-  return anim.finished.then(() => anim).catch(() => null);
+  // при скрытой вкладке анимация не идёт, а экран дальше всё равно должен появиться
+  const timeout = new Promise((resolve) => setTimeout(resolve, duration + 150));
+  return Promise.race([anim.finished, timeout]).then(() => anim).catch(() => null);
 }
 
 /** Появление блоков ниже первого экрана, когда до них докрутили */

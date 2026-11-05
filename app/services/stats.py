@@ -4,6 +4,7 @@ from datetime import timedelta
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from ..config import settings
 from ..models import AiLog, Category, Location, Ticket, utcnow
 from .tickets import CLOSED_STATUSES, STATUS_LABELS
 
@@ -55,14 +56,17 @@ def build_stats(db: Session, days: int = 14) -> dict:
         if lid in locations
     ]
 
-    start = (now - timedelta(days=days - 1)).date()
+    # дни считаются по местному времени, в базе время UTC
+    shift = timedelta(hours=settings.utc_offset_hours)
+    start = (now + shift - timedelta(days=days - 1)).date()
     daily = {start + timedelta(days=i): {"created": 0, "closed": 0} for i in range(days)}
     for t in tickets:
-        d = t.created_at.date()
+        d = (t.created_at + shift).date()
         if d in daily:
             daily[d]["created"] += 1
-        if t.closed_at and t.closed_at.date() in daily:
-            daily[t.closed_at.date()]["closed"] += 1
+        closed_day = (t.closed_at + shift).date() if t.closed_at else None
+        if closed_day in daily:
+            daily[closed_day]["closed"] += 1
 
     # одна и та же проблема в одном месте за 30 дней
     month_ago = now - timedelta(days=30)

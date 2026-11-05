@@ -2,7 +2,7 @@
 name = "upk-helper"
 version = "1.0.0"
 description = "Цифровой помощник колледжа: заявки по QR-коду, ИИ-помощник и панель УПК"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 
 [tool.ruff]
 line-length = 120

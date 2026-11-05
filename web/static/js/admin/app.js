@@ -17,7 +17,7 @@ const PAGES = {
   map: { title: "Карта помещений", icon: "map", load: () => import("./map.js"), manage: true },
   locations: { title: "Помещения и QR", icon: "qr", load: () => import("./locations.js"), manage: true },
   kb: { title: "База знаний", icon: "book", load: () => import("./kb.js"), manage: true },
-  ai: { title: "Проверка ИИ", icon: "bot", load: () => import("./ai.js"), manage: true },
+  ai: { title: "Экзамен для ИИ", icon: "bot", load: () => import("./ai.js"), manage: true },
   users: { title: "Сотрудники", icon: "users", load: () => import("./users.js"), admin: true },
   profile: { title: "Профиль", icon: "user", load: () => import("./profile.js"), hidden: true },
 };

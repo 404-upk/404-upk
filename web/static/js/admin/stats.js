@@ -108,12 +108,14 @@ export async function render({ el, setHead }) {
 
   async function load() {
     const s = await api(`/api/staff/stats?days=${days}`);
+    const meta = await api("/api/meta").catch(() => null);
     const ai = s.ai;
     const aiShare = ai.total ? Math.round((ai.answered_only / ai.total) * 100) : 0;
     const avg = s.avg_resolution_hours;
     const avgText = avg == null ? "-" : avg < 24 ? `${String(avg).replace(".", ",")} ч` : `${(avg / 24).toFixed(1).replace(".", ",")} дн`;
 
     el.innerHTML = `
+      ${meta?.demo_data ? `<div class="notice">${icon("info")}<div>На стенде демо-данные: заявки и журнал ИИ заполнены заранее, расчёты настоящие.</div></div>` : ""}
       <div class="kpis">
         ${kpi("Всего заявок", s.total, `${s.open} ${plural(s.open, "открыта", "открыты", "открыто")}`, "clipboard")}
         ${kpi("Решено", s.resolved, `отклонено: ${s.rejected}`, "checkCircle")}

@@ -245,7 +245,8 @@ def test_seo_tags_use_public_url(client):
     assert "%PUBLIC_URL%" not in html
     for tag in ('rel="canonical"', 'property="og:image"', "application/ld+json", 'name="description"'):
         assert tag in html
-    assert f'href="{settings.public_url}/"' in html
+    # адрес не настроен, поэтому он берётся из запроса, а не остаётся localhost
+    assert 'href="http://testserver/"' in html
 
 
 def test_og_image_exists(client):

@@ -11,6 +11,7 @@ import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 
 from app import security  # noqa: E402
+from app.ai import assistant as assistant_module
 from app.ai import resilience  # noqa: E402
 from app.config import settings  # noqa: E402
 from app.main import app  # noqa: E402
@@ -32,9 +33,11 @@ def _reset_limits():
         security.lookup_limiter,
         security.assistant_limiter,
         security.ticket_limiter,
+        security.join_limiter,
         security.track_limiter,
     ):
         limiter.reset()
+    assistant_module.model_budget.reset()
     resilience.breaker.reset()
     resilience.cache.clear()
 

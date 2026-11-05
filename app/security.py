@@ -93,10 +93,11 @@ class RateLimiter:
 
 login_limiter = RateLimiter(limit=10, window=300)
 login_ip_limiter = RateLimiter(limit=40, window=300)  # перебор разных логинов с одного адреса
-lookup_limiter = RateLimiter(limit=120, window=300)
-assistant_limiter = RateLimiter(limit=30, window=300)
-ticket_limiter = RateLimiter(limit=10, window=600)
-track_limiter = RateLimiter(limit=60, window=300)
+lookup_limiter = RateLimiter(limit=settings.rate_lookup, window=300)
+assistant_limiter = RateLimiter(limit=settings.rate_assistant, window=300)
+ticket_limiter = RateLimiter(limit=settings.rate_tickets, window=600)
+join_limiter = RateLimiter(limit=settings.rate_joins, window=600)
+track_limiter = RateLimiter(limit=settings.rate_track, window=300)
 
 
 def create_session(db: Session, user: User, response: Response) -> None:

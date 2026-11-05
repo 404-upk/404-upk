@@ -64,7 +64,7 @@ export async function render({ el, setHead }) {
           <div class="campus-legend">
             <span><i class="dot"></i>без заявок</span>
             <span><i class="dot open"></i>есть заявка</span>
-            <span><i class="dot urgent"></i>критичная</span>
+            <span><i class="dot urgent"></i>срочная</span>
           </div>
         </div>
         <div class="campus-meter" aria-hidden="true"><i data-css-pct="${index}"></i></div>

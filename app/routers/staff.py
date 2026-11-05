@@ -5,6 +5,7 @@ from fastapi.responses import FileResponse, Response
 from sqlalchemy import case, func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
+from ..config import settings
 from ..db import get_db, lower
 from ..models import ROLE_ADMIN, ROLE_EXECUTOR, ROLE_STAFF, Attachment, Category, Location, Ticket, User, utcnow
 from ..schemas import CommentIn, TicketUpdateIn
@@ -16,6 +17,11 @@ from ..services.telegram import bot
 from ..services.uploads import attachment_path
 
 router = APIRouter(prefix="/api/staff", tags=["Панель УПК"])
+
+
+def _local_midnight(day: date) -> datetime:
+    return datetime.combine(day, datetime.min.time()) - timedelta(hours=settings.utc_offset_hours)
+
 
 PRIORITY_RANK = {"critical": 0, "high": 1, "normal": 2, "low": 3}
 
@@ -71,11 +77,10 @@ class Filters:
         elif self.assignee.isdigit():
             stmt = stmt.where(Ticket.assignee_id == int(self.assignee))
         if self.date_from:
-            stmt = stmt.where(Ticket.created_at >= datetime.combine(self.date_from, datetime.min.time()))
+            # дата в фильтре местная, а в базе время UTC
+            stmt = stmt.where(Ticket.created_at >= _local_midnight(self.date_from))
         if self.date_to:
-            stmt = stmt.where(
-                Ticket.created_at < datetime.combine(self.date_to + timedelta(days=1), datetime.min.time())
-            )
+            stmt = stmt.where(Ticket.created_at < _local_midnight(self.date_to + timedelta(days=1)))
         return stmt
 
 

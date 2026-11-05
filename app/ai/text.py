@@ -15,7 +15,12 @@ STOP_WORDS = set(
 _CARD = re.compile(r"(?<!\d)(?:\d[ -]?){15,18}\d(?!\d)")
 _PHONE = re.compile(r"(?<!\d)(?:\+7|7|8)[\s(-]*\d{3}[\s)-]*\d{3}[\s-]*\d{2}[\s-]*\d{2}(?!\d)")
 _EMAIL = re.compile(r"[\w.+-]+@[\w-]+\.[\w.-]+")
-_SECRET = re.compile(r"(парол[ьяюе]|password|pass|логин)(\s*[:=]\s*)\S+", re.IGNORECASE)
+_PASSPORT = re.compile(r"(?<!\d)\d{2}\s?\d{2}\s?\d{6}(?!\d)")
+_SHORT_PHONE = re.compile(r"(?<![\d-])\d{2,3}-\d{2}-\d{2}(?![\d-])")
+_FULL_NAME = re.compile(r"\b[А-ЯЁ][а-яё]+\s+(?:[А-ЯЁ][а-яё]+(?:ович|евич|ична|овна|евна)\b|[А-ЯЁ]\.\s?[А-ЯЁ]\.)")
+_SECRET = re.compile(
+    r"(парол[ьяюе]|password|pass|логин)(\s*[:=]\s*|\s+(?:это\s+)?)(?!(?:от|для|не|на|и|у|в|к|с)\b)\S+", re.IGNORECASE
+)
 
 
 def mask_personal(text: str) -> str:
@@ -23,6 +28,9 @@ def mask_personal(text: str) -> str:
     text = _CARD.sub("[номер скрыт]", text)
     text = _PHONE.sub("[телефон скрыт]", text)
     text = _EMAIL.sub("[почта скрыта]", text)
+    text = _PASSPORT.sub("[номер скрыт]", text)
+    text = _SHORT_PHONE.sub("[телефон скрыт]", text)
+    text = _FULL_NAME.sub("[имя скрыто]", text)
     return _SECRET.sub(r"\1\2[скрыто]", text)
 
 
@@ -44,11 +52,14 @@ def meaningful_words(text: str) -> list[str]:
     return [w for w in words(text) if w not in STOP_WORDS and len(w) > 2]
 
 
-_ROOM = re.compile(r"(?:кабинет\w*|каб\.?|аудитори\w*|ауд\.?|комнат\w*|в|во)\s*№?\s*(\d{1,4}[а-яa-z]?)\b")
+_ROOM_NAMED = re.compile(r"(?:кабинет\w*|каб\.?|аудитори\w*|ауд\.?|комнат\w*)\s*№?\s*(\d{1,4}[а-яa-z]?)\b")
+# просто «в 214» считаем кабинетом только при трёхзначном номере: «в 2 часа» и «в 15 минут» это время
+_ROOM_SHORT = re.compile(r"\bво?\s*№?\s*(\d{3}[а-яa-z]?)\b(?!\s*(?:час|мин|сек|дн|ден|год|лет|руб))")
 
 
 def extract_room(text: str) -> str | None:
-    match = _ROOM.search(normalize(text))
+    clean = normalize(text)
+    match = _ROOM_NAMED.search(clean) or _ROOM_SHORT.search(clean)
     return match.group(1) if match else None
 
 

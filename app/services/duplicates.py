@@ -46,7 +46,7 @@ def find_similar(
     for t in rows:
         score = similarity(text, f"{t.title} {t.description}")
         if category and t.category_id == category.id:
-            score += 0.35
+            score += 0.15
         if score >= MIN_SCORE:
             scored.append((min(score, 1.0), t))
     scored.sort(key=lambda x: x[0], reverse=True)

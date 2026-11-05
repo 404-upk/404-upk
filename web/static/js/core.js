@@ -569,3 +569,8 @@ if (document.body) {
   applyCssData(document.body);
   new MutationObserver((records) => records.forEach((r) => r.addedNodes.forEach(applyCssData))).observe(document.body, { childList: true, subtree: true });
 }
+
+// Последний рубеж: ошибка, которую никто не обработал, не должна пройти молча
+const SOMETHING_WRONG = "Что-то пошло не так. Обновите страницу и попробуйте ещё раз.";
+window.addEventListener("unhandledrejection", () => toast(SOMETHING_WRONG, "error"));
+window.addEventListener("error", () => toast(SOMETHING_WRONG, "error"));

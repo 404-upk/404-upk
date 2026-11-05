@@ -11,7 +11,11 @@ router = APIRouter(include_in_schema=False)
 
 
 def page(name: str, request: Request, status_code: int = 200) -> Response:
-    html = (WEB_DIR / name).read_text(encoding="utf-8").replace("%PUBLIC_URL%", settings.public_url)
+    # адрес не настроен: берём его из запроса, чтобы превью ссылки не вело на localhost
+    public_url = (
+        str(request.base_url).rstrip("/") if settings.public_url == "http://localhost:8000" else settings.public_url
+    )
+    html = (WEB_DIR / name).read_text(encoding="utf-8").replace("%PUBLIC_URL%", public_url)
     etag = f'"{hashlib.sha256(html.encode()).hexdigest()[:20]}"'
     headers = {"Cache-Control": "no-cache", "ETag": etag}
     if status_code == 200 and request.headers.get("if-none-match") == etag:

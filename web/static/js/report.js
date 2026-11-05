@@ -383,6 +383,7 @@ function renderPhotoSlot() {
     status = `<span class="small muted row"><span class="spinner"></span> ИИ смотрит на фото…</span>`;
   } else if (state.photoAi?.available && state.photoAi.description) {
     status = `<span class="small">${icon("sparkles", "icon-sm")} На фото: ${esc(state.photoAi.description)}</span>`;
+    if (state.photoAi.danger) status += ` <span class="small">${icon("alert", "icon-sm")} Похоже на опасную ситуацию: ничего не трогайте и отправьте заявку.</span>`;
   } else if (state.photoAi?.notice) {
     status = `<span class="small muted">${esc(state.photoAi.notice)}</span>`;
   } else {
@@ -728,6 +729,7 @@ function renderDraft() {
           <label for="d-contact">Как к вам обращаться <span class="faint">(необязательно)</span></label>
           <input class="input" id="d-contact" maxlength="120" value="${esc(d.contact)}" placeholder="Имя или группа, если сотруднику нужно будет уточнить детали">
         </div>
+        <p class="small muted">Отправляя заявку, вы соглашаетесь с <a href="/privacy" target="_blank" rel="noopener">обработкой данных</a>. Имя указывать необязательно.</p>
         <div id="d-error"></div>
         <button class="btn btn-primary btn-lg btn-block" type="submit" id="submit-btn">${icon("send")} Отправить заявку</button>
         <button class="btn btn-ghost btn-block" type="button" data-cancel>Отмена</button>

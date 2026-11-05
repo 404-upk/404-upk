@@ -44,9 +44,22 @@ class Settings:
         self.trust_proxy = _env_bool("TRUST_PROXY")
         self.max_upload_mb = int(os.getenv("MAX_UPLOAD_MB", "8"))
 
+        # лимиты на один адрес: в общей сети (зал, Wi-Fi колледжа) все выглядят одним адресом, поэтому они настраиваются
+        self.rate_tickets = int(os.getenv("RATE_TICKETS_PER_10MIN", "30"))
+        self.rate_joins = int(os.getenv("RATE_JOINS_PER_10MIN", "30"))
+        self.rate_assistant = int(os.getenv("RATE_ASSISTANT_PER_5MIN", "60"))
+        self.rate_track = int(os.getenv("RATE_TRACK_PER_5MIN", "300"))
+        self.rate_lookup = int(os.getenv("RATE_LOOKUP_PER_5MIN", "300"))
+        # сколько запросов в минуту уходит в GigaChat со всех адресов вместе; сверх этого отвечают правила
+        self.model_requests_per_minute = int(os.getenv("MODEL_REQUESTS_PER_MINUTE", "60"))
+        # сдвиг местного времени от UTC для выгрузки, фильтров и статистики
+        self.utc_offset_hours = int(os.getenv("UTC_OFFSET_HOURS", "3"))
+
         # сколько дней хранить тексты обращений к ИИ и контакты заявителей после закрытия заявки; 0 — не удалять
         self.ai_log_retention_days = int(os.getenv("AI_LOG_RETENTION_DAYS", "90"))
         self.contact_retention_days = int(os.getenv("CONTACT_RETENTION_DAYS", "90"))
+        # через сколько дней после закрытия удалять фото, описание и комментарии заявки; 0 — не удалять
+        self.ticket_retention_days = int(os.getenv("TICKET_RETENTION_DAYS", "365"))
 
         self.gigachat_auth_key = os.getenv("GIGACHAT_AUTH_KEY", "").strip()
         self.gigachat_scope = os.getenv("GIGACHAT_SCOPE", "GIGACHAT_API_PERS")
@@ -62,6 +75,10 @@ class Settings:
 
         self.seed_demo = _env_bool("SEED_DEMO", True)
         self.show_demo_logins = _env_bool("SHOW_DEMO_LOGINS", True)
+        # какие демо-логины видны на странице входа; пароль администратора по умолчанию не показывается
+        self.demo_logins_shown = {
+            x.strip() for x in os.getenv("DEMO_LOGINS_SHOWN", "upk,electric").split(",") if x.strip()
+        }
         self.demo_admin_password = os.getenv("DEMO_ADMIN_PASSWORD", "upk-admin-2026")
         self.demo_staff_password = os.getenv("DEMO_STAFF_PASSWORD", "upk-staff-2026")
         self.demo_executor_password = os.getenv("DEMO_EXECUTOR_PASSWORD", "upk-exec-2026")

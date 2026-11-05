@@ -28,7 +28,7 @@
 .sidebar .brand > span:last-child { flex-basis: 100%; }
 
 .nav { display: flex; flex-direction: column; gap: 2px; }
-.nav-title { font-size: 11px; font-weight: 600; color: var(--faint); text-transform: uppercase; letter-spacing: 0.14em; padding: 14px 12px 6px; }
+.nav-title { font-size: 12px; font-weight: 600; color: var(--faint); text-transform: uppercase; letter-spacing: 0.14em; padding: 14px 12px 6px; }
 .nav a {
   display: flex;
   align-items: center;
@@ -67,7 +67,7 @@
   background: linear-gradient(135deg, var(--primary), color-mix(in srgb, var(--primary) 55%, var(--text)));
   flex: none;
 }
-.avatar-sm { width: 26px; height: 26px; font-size: 11px; }
+.avatar-sm { width: 26px; height: 26px; font-size: 12px; }
 .me b { display: block; font-size: 13.5px; line-height: 1.2; }
 .me span { font-size: 12px; color: var(--muted); }
 
@@ -149,7 +149,7 @@
 .table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 14px; }
 .table th {
   text-align: left;
-  font-size: 11.5px;
+  font-size: 12px;
   font-weight: 700;
   color: var(--faint);
   text-transform: uppercase;
@@ -204,7 +204,7 @@
 .drawer-body { flex: 1; overflow-y: auto; padding: 18px 20px 40px; display: flex; flex-direction: column; gap: 14px; }
 .drawer h2 { font-size: 21px; }
 .kv { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px 18px; }
-.kv dt { font-size: 11.5px; color: var(--faint); font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 2px; }
+.kv dt { font-size: 12px; color: var(--faint); font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 2px; }
 .kv dd { margin: 0; font-size: 14px; }
 .ai-strip { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding: 10px 12px; border-radius: var(--radius-sm); background: var(--violet-soft); font-size: 13px; }
 .ai-strip .icon { color: var(--violet); }
@@ -253,14 +253,14 @@
 .legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12.5px; color: var(--muted); }
 .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
 .chart svg { width: 100%; height: auto; display: block; }
-.chart text { fill: var(--faint); font-size: 11px; font-family: var(--font); }
+.chart text { fill: var(--faint); font-size: 12px; font-family: var(--font); }
 .chart .gridline { stroke: var(--border); }
 .chart-tip { position: fixed; z-index: 70; pointer-events: none; background: var(--surface-3); border: 1px solid var(--border-strong); color: var(--text); padding: 7px 10px; border-radius: 8px; font-size: 12.5px; box-shadow: var(--shadow-lg); }
 
 /* ===== Карта ===== */
 .map-floor { display: grid; grid-template-columns: 76px 1fr; gap: 12px; align-items: stretch; }
 .floor-label { display: flex; flex-direction: column; justify-content: center; align-items: center; border-radius: var(--radius-sm); background: var(--surface-3); font-weight: 800; font-size: 20px; color: var(--muted); }
-.floor-label span { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+.floor-label span { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
 .rooms { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; padding: 10px; border-radius: var(--radius); border: 1px dashed var(--border-strong); }
 .room {
   position: relative;

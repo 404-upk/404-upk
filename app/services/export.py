@@ -2,10 +2,12 @@
 
 import csv
 import io
+from datetime import datetime, timedelta
 
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 
+from ..config import settings
 from ..models import Ticket
 from . import tickets as ts
 
@@ -25,19 +27,28 @@ EXPORT_COLUMNS = [
 ]
 
 
+def safe_cell(value: str) -> str:
+    """Текст заявки пишет кто угодно: Excel не должен выполнить его как формулу."""
+    return f"'{value}" if value.startswith(("=", "+", "-", "@", "\t", "\r")) else value
+
+
+def local_time(value: datetime) -> str:
+    return (value + timedelta(hours=settings.utc_offset_hours)).strftime("%d.%m.%Y %H:%M")
+
+
 def ticket_row(t: Ticket) -> list:
     return [
         t.public_number,
-        t.created_at.strftime("%d.%m.%Y %H:%M"),
-        t.title,
-        t.description,
+        local_time(t.created_at),
+        safe_cell(t.title),
+        safe_cell(t.description),
         t.category.name,
-        t.place,
+        safe_cell(t.place),
         ts.STATUS_LABELS[t.status],
         ts.PRIORITY_LABELS.get(t.priority, t.priority),
         t.assignee.name if t.assignee else "",
         t.reports_count,
-        t.closed_at.strftime("%d.%m.%Y %H:%M") if t.closed_at else "",
+        local_time(t.closed_at) if t.closed_at else "",
         t.rating or "",
     ]
 

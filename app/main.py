@@ -7,7 +7,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import func, select, text
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import DataError, SQLAlchemyError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from .ai import resilience
@@ -39,9 +39,11 @@ async def lifespan(_: FastAPI):
             log.info("База заполнена начальными данными")
     if not gigachat.enabled:
         log.warning("GIGACHAT_AUTH_KEY не задан: ИИ работает в демо-режиме на правилах")
-    await bot.start()
+    # Telegram необязателен: его сетевая проверка не должна задерживать запуск сайта
+    telegram_start = asyncio.create_task(bot.start())
     retention = asyncio.create_task(retention_loop())
     yield
+    telegram_start.cancel()
     retention.cancel()
     await bot.stop()
     await gigachat.close()
@@ -72,12 +74,23 @@ async def http_error(request: Request, exc: StarletteHTTPException):
 @app.exception_handler(RequestValidationError)
 async def validation_error(_: Request, exc: RequestValidationError):
     fields = []
+    errors = []
     for err in exc.errors():
-        loc = [str(p) for p in err.get("loc", []) if p not in ("body", "query", "path")]
-        if loc:
-            fields.append(loc[-1])
+        loc = [str(p) for p in err.get("loc", [])]
+        errors.append({"type": err.get("type"), "loc": loc, "msg": str(err.get("msg", ""))})
+        names = [p for p in loc if p not in ("body", "query", "path")]
+        if names:
+            fields.append(names[-1])
     detail = "Проверьте заполнение полей" + (f": {', '.join(sorted(set(fields)))}" if fields else "")
-    return JSONResponse({"detail": detail, "errors": exc.errors()}, status_code=422)
+    # сырой ввод наружу не отдаём: в нём бывают байты, которые нельзя сериализовать
+    return JSONResponse({"detail": detail, "errors": errors}, status_code=422)
+
+
+@app.exception_handler(OverflowError)
+@app.exception_handler(DataError)
+async def out_of_range(_: Request, __: Exception):
+    # число не помещается в поле базы (SQLite и PostgreSQL сообщают об этом по-разному)
+    return JSONResponse({"detail": "Слишком большое число в запросе"}, status_code=400)
 
 
 @app.exception_handler(Exception)

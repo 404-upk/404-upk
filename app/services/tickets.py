@@ -3,7 +3,7 @@ import time
 from datetime import datetime
 
 from fastapi import HTTPException
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -146,7 +146,7 @@ def create_ticket(
         if found:
             return found[0], found[1], False
 
-    for _ in range(3):
+    for attempt in range(8):
         code = new_tracking_code()
         ticket = Ticket(
             number=(db.scalar(select(func.max(Ticket.number))) or 0) + 1,
@@ -175,6 +175,8 @@ def create_ticket(
                 found = find_by_request_id(db, client_request_id)
                 if found:
                     return found[0], found[1], False
+            # номер заняла параллельная заявка: пробуем следующий
+            time.sleep(0.02 * (attempt + 1))
             continue
         _remember_code(client_request_id, code)
         return ticket, code, True
@@ -184,7 +186,10 @@ def create_ticket(
 def join_ticket(db: Session, ticket: Ticket) -> str:
     code = new_tracking_code()
     db.add(Tracker(ticket=ticket, token_hash=hash_token(code), is_reporter=False))
-    ticket.reports_count += 1
+    # считает сама база: параллельные присоединения не должны терять обновления
+    db.execute(update(Ticket).where(Ticket.id == ticket.id).values(reports_count=Ticket.reports_count + 1))
+    db.flush()
+    db.refresh(ticket, ["reports_count"])
     _log(db, ticket, "joined", new=str(ticket.reports_count), actor_label="Заявитель")
     db.commit()
     return code
@@ -214,6 +219,10 @@ def change_status(db: Session, ticket: Ticket, new_status: str, actor: User, not
     old = ticket.status
     ticket.status = new_status
     ticket.closed_at = utcnow() if new_status in CLOSED_STATUSES else None
+    if old == "resolved":
+        # заявку открыли снова: прежняя оценка относится к прошлому решению
+        ticket.rating = None
+        ticket.rating_comment = None
     if new_status in NOTE_REQUIRED:
         _log(db, ticket, "status", actor, old, new_status, note)
     else:
@@ -283,6 +292,8 @@ def rate_ticket(db: Session, ticket: Ticket, rating: int, comment: str | None) -
         raise HTTPException(400, "Оценить можно только решённую заявку")
     if not 1 <= rating <= 5:
         raise HTTPException(400, "Оценка от 1 до 5")
+    if ticket.rating is not None:
+        raise HTTPException(400, "Оценка уже поставлена")
     ticket.rating = rating
     ticket.rating_comment = (comment or "").strip() or None
     _log(db, ticket, "rated", new=str(rating), actor_label="Заявитель")

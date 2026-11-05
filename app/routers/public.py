@@ -2,6 +2,7 @@ import time
 from datetime import timedelta
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Request, UploadFile
+from fastapi.concurrency import run_in_threadpool
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -12,7 +13,7 @@ from ..config import settings
 from ..db import get_db
 from ..models import AiLog, Category, Location, Ticket, utcnow
 from ..schemas import AssistantIn, JoinIn, SimilarIn
-from ..security import assistant_limiter, client_ip, format_code, lookup_limiter, ticket_limiter
+from ..security import assistant_limiter, client_ip, format_code, join_limiter, lookup_limiter, ticket_limiter
 from ..services import campus
 from ..services import tickets as ts
 from ..services.duplicates import find_similar
@@ -49,16 +50,18 @@ def meta(db: Session = Depends(get_db)):
         "telegram": {"enabled": bot.enabled, "username": bot.username},
         "max_upload_mb": settings.max_upload_mb,
         "demo_logins": demo_logins() if settings.show_demo_logins else None,
+        "demo_data": settings.seed_demo,
     }
 
 
 def demo_logins() -> list[dict]:
     # для показа жюри; в боевой установке отключается через SHOW_DEMO_LOGINS=false
-    return [
+    logins = [
         {"label": "Администратор", "login": "admin", "password": settings.demo_admin_password},
         {"label": "Сотрудник УПК", "login": "upk", "password": settings.demo_staff_password},
         {"label": "Электрик", "login": "electric", "password": settings.demo_executor_password},
     ]
+    return [item for item in logins if item["login"] in settings.demo_logins_shown]
 
 
 @router.get("/locations")
@@ -141,7 +144,7 @@ def similar(payload: SimilarIn, request: Request, db: Session = Depends(get_db))
 
 @router.post("/tickets/{number}/join")
 def join(number: int, payload: JoinIn, request: Request, db: Session = Depends(get_db)):
-    ticket_limiter.check(client_ip(request))
+    join_limiter.check(client_ip(request))
     ticket = db.scalar(select(Ticket).where(Ticket.number == number))
     # присоединиться можно только к открытой заявке в том же помещении, где стоит человек
     if not ticket or ticket.location_id != payload.location_id or ticket.status in ts.CLOSED_STATUSES:
@@ -209,7 +212,9 @@ async def create_ticket(
         ai_log = None
 
     clean_title = title.strip() or description[:60]
-    ticket, code, _ = ts.create_ticket(
+    # запись в базу и разбор фото не должны держать цикл событий
+    ticket, code, _ = await run_in_threadpool(
+        ts.create_ticket,
         db,
         title=clean_title[:120],
         description=description,
@@ -225,9 +230,9 @@ async def create_ticket(
 
     if photo_data:
         try:
-            save_attachment(db, ticket, photo_data, photo.filename if photo else None)
+            await run_in_threadpool(save_attachment, db, ticket, photo_data, photo.filename if photo else None)
             db.commit()
-        except HTTPException:
+        except (HTTPException, OSError):
             # заявка уже сохранена, фото просто не прикрепится; сообщим об этом
             db.rollback()
             response = _created_response(ticket, code)

@@ -10,7 +10,7 @@
   }
   var intro = false;
   try {
-    intro = !root.hasAttribute("data-no-intro") && !sessionStorage.getItem("upk-intro") && !matchMedia("(prefers-reduced-motion: reduce)").matches;
+    intro = !root.hasAttribute("data-no-intro") && location.pathname.indexOf("/r/") !== 0 && !sessionStorage.getItem("upk-intro") && !matchMedia("(prefers-reduced-motion: reduce)").matches;
   } catch (e) {
     /* без хранилища интро не показываем */
   }

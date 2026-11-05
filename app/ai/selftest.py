@@ -1,6 +1,5 @@
 """Проверка ИИ на сценариях из приложения А технического задания плюс пара своих."""
 
-import re
 import time
 
 from sqlalchemy.orm import Session
@@ -8,8 +7,6 @@ from sqlalchemy.orm import Session
 from . import safety
 from .assistant import analyze
 from .reply import KIND_LABELS
-
-DEADLINE = re.compile(r"\b\d+\s*(дн|час|недел|минут|сут)|\bзавтра\b|\bпослезавтра\b|\bк понедельнику\b")
 
 CASES = [
     {
@@ -98,7 +95,7 @@ def _check(case: dict, reply) -> list[str]:
         problems.append("нет ссылки на базу знаний")
     if case.get("safe") and any(safety.is_unsafe_advice(t) for t in [reply.answer, *reply.tips]):
         problems.append("в ответе есть опасный совет")
-    if case.get("no_deadline") and DEADLINE.search(reply.answer.lower()):
+    if case.get("no_deadline") and safety.DEADLINE.search(reply.answer.lower()):
         problems.append("ответ называет срок")
     return problems
 
