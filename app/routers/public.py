@@ -6,7 +6,7 @@ from fastapi.concurrency import run_in_threadpool
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..ai import assistant
+from ..ai import assistant, rules
 from ..ai.gigachat import client as gigachat
 from ..ai.text import mask_personal
 from ..config import settings
@@ -175,7 +175,6 @@ async def create_ticket(
     location_id: int | None = Form(None),
     location_note: str = Form("", max_length=160),
     contact: str = Form("", max_length=120),
-    priority: str = Form("", max_length=10),
     client_request_id: str = Form("", max_length=64),
     analysis_id: int | None = Form(None),
     source: str = Form("manual", max_length=10),
@@ -224,7 +223,8 @@ async def create_ticket(
         contact=contact.strip() or None,
         source="qr" if source == "qr" and location else "manual",
         client_request_id=request_id,
-        priority=priority,
+        # приоритет считает сервер: форму может отправить кто угодно и с любым значением
+        priority=rules.suggest_priority(ai_log.kind, ai_log.category_code, ai_log.message) if ai_log else "",
         ai={"kind": ai_log.kind, "engine": ai_log.engine, "confidence": ai_log.confidence} if ai_log else None,
     )
 

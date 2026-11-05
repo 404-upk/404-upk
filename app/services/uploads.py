@@ -12,7 +12,7 @@ from ..models import Attachment, Ticket
 ALLOWED_TYPES = {"image/jpeg", "image/png", "image/webp", "image/heic", "image/heif", ""}
 MAX_SIDE = 1600
 
-Image.MAX_IMAGE_PIXELS = 40_000_000
+Image.MAX_IMAGE_PIXELS = 50_000_000
 
 
 async def read_image(upload: UploadFile | None) -> bytes | None:
@@ -33,6 +33,9 @@ def normalize_image(data: bytes) -> tuple[bytes, int, int]:
     """Перекодирует фото в JPEG: убирает EXIF (там бывает геолокация), поворачивает и уменьшает."""
     try:
         img = Image.open(io.BytesIO(data))
+        # Pillow отказывает только при двойном превышении, а распаковка такого файла съела бы почти всю память службы
+        if img.width * img.height > Image.MAX_IMAGE_PIXELS:
+            raise HTTPException(400, "Фото слишком большое, выберите поменьше")
         img.load()
     except (UnidentifiedImageError, OSError, Image.DecompressionBombError) as exc:
         raise HTTPException(400, "Не получилось открыть фото. Попробуйте другой файл в формате JPG или PNG") from exc

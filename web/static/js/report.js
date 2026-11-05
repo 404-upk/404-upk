@@ -980,7 +980,6 @@ async function submit() {
   if (state.location) form.append("location_id", state.location.id);
   else form.append("location_note", state.locationNote.trim());
   form.append("contact", (d.contact || "").trim());
-  form.append("priority", d.priority);
   form.append("client_request_id", d.requestId);
   form.append("source", state.fromQr ? "qr" : "manual");
   if (d.analysisId) form.append("analysis_id", d.analysisId);

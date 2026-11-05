@@ -283,3 +283,49 @@ def test_models_match_migrations():
     with engine.connect() as connection:
         context = MigrationContext.configure(connection, opts={"compare_type": True})
         assert compare_metadata(context, Base.metadata) == []
+
+
+def test_public_form_cannot_set_priority(client):
+    from .conftest import login
+
+    created = client.post(
+        "/api/tickets", data={"description": "Не работает проектор", "location_note": "2 этаж", "priority": "critical"}
+    )
+    assert created.status_code == 201, created.text
+    login(client)
+    assert client.get(f"/api/staff/tickets/{created.json()['id']}").json()["priority"] != "critical"
+
+
+def test_priority_comes_from_assistant_analysis(client):
+    from .conftest import login
+
+    message = "Не работает проектор, экран не включается"
+    reply = client.post("/api/assistant", json={"message": message, "location_id": None, "context": []}).json()
+    created = client.post(
+        "/api/tickets",
+        data={
+            "description": message,
+            "location_note": "2 этаж",
+            "analysis_id": reply["analysis_id"],
+            "priority": "low",
+        },
+    )
+    assert created.status_code == 201, created.text
+    login(client)
+    assert client.get(f"/api/staff/tickets/{created.json()['id']}").json()["priority"] == reply["priority"]
+
+
+def test_oversized_image_is_refused_before_unpacking():
+    import io
+    import warnings
+
+    from PIL import Image
+
+    from app.services.uploads import normalize_image
+
+    buffer = io.BytesIO()
+    Image.new("1", (7200, 7200)).save(buffer, "PNG")
+    with warnings.catch_warnings(), pytest.raises(HTTPException) as refused:
+        warnings.simplefilter("ignore")
+        normalize_image(buffer.getvalue())
+    assert refused.value.status_code == 400
