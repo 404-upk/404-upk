@@ -233,53 +233,134 @@ html:not(.is-revealed) .track-enter .tp-step, html:not(.is-revealed) .track-ente
 
 /* ---------- панель: карта помещений ---------- */
 .campus-card { padding: 18px 20px 22px; }
-.campus-card .plan { width: 100%; max-width: 760px; margin: 0 auto; }
+.campus-card .plan { width: 100%; max-width: 860px; margin: 0 auto; }
 .campus-kpi { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
 
 /* ===== Схема колледжа: здание в разрезе ===== */
+/* Линии васильковые, как знак и созвездия на фоне сайта: здание «нарисовано светом», а не серым контуром. */
 .plan { position: relative; margin: 0 -4px; }
-.pf { display: block; width: 100%; height: auto; overflow: visible; user-select: none; -webkit-tap-highlight-color: transparent; }
+.pf {
+  --pf-line: color-mix(in srgb, var(--primary) 62%, var(--text));
+  display: block; width: 100%; height: auto; overflow: visible;
+  user-select: none; -webkit-tap-highlight-color: transparent;
+}
+/* нажатие на фасад фокусирует сам svg, и браузер рисовал вокруг схемы свою белую рамку. У этажей своя подсветка */
+.pf:focus, .pf:focus-visible, .pf :focus, .pf :focus-visible { outline: none; }
 .pf text { font-family: inherit; }
 
-/* контуры здания: мягкие заливки вместо множества линий */
-.pf-body { fill: color-mix(in srgb, var(--surface-2) 55%, transparent); stroke: var(--text); stroke-opacity: 0.22; stroke-width: 1.2; }
-.pf-well { fill: color-mix(in srgb, var(--text) 3%, transparent); }
-.pf-cornice { fill: none; stroke: var(--text); stroke-opacity: 0.3; stroke-width: 2; stroke-linecap: round; }
-.pf-attic { fill: color-mix(in srgb, var(--surface-2) 75%, transparent); stroke: var(--text); stroke-opacity: 0.22; stroke-width: 1.2; stroke-linejoin: round; }
-/* эмблема университета контуром */
-.pf-emblem-disc { fill: color-mix(in srgb, var(--primary) 12%, var(--surface)); stroke: var(--primary); stroke-width: 1; }
+/* небо над крышей: два созвездия из фирменных звёзд */
+.pf-const { fill: none; stroke: var(--primary); stroke-opacity: 0.34; stroke-width: 0.55; stroke-linecap: round; stroke-linejoin: round; }
+.pf-star {
+  fill: var(--pf-line);
+  filter: drop-shadow(0 0 1.5px var(--primary));
+  transform-box: fill-box; transform-origin: center;
+  animation: pf-twinkle 5.2s ease-in-out infinite;
+  animation-delay: calc(var(--i, 0) * -1.3s);
+}
+@keyframes pf-twinkle {
+  0%, 100% { opacity: 0.9; transform: scale(1) rotate(0deg); }
+  50% { opacity: 0.25; transform: scale(0.5) rotate(45deg); }
+}
+
+/* фасад: заливка светлее к крыше, контур и карнизы светятся мягким васильковым */
+.pfg-body stop:first-child { stop-color: color-mix(in srgb, var(--primary) 15%, var(--surface-2)); stop-opacity: 0.85; }
+.pfg-body stop:last-child { stop-color: var(--surface-2); stop-opacity: 0.5; }
+.pf-body-line { fill: none; stroke: var(--pf-line); stroke-opacity: 0.5; stroke-width: 1.2; }
+.pf-well { fill: color-mix(in srgb, var(--primary) 6%, transparent); }
+.pf-cornice { fill: none; stroke: var(--pf-line); stroke-opacity: 0.6; stroke-width: 2; stroke-linecap: round; }
+.pf-attic { fill: color-mix(in srgb, var(--primary) 9%, var(--surface-2)); fill-opacity: 0.9; }
+.pf-attic-line { fill: none; stroke: var(--pf-line); stroke-opacity: 0.5; stroke-width: 1.2; stroke-linejoin: round; }
+.pf-slab { stroke: var(--pf-line); stroke-opacity: 0.3; stroke-width: 1.5; stroke-linecap: round; }
+.pf-ground { fill: none; stroke-width: 1.2; stroke-linecap: round; }
+.pfg-ground stop { stop-color: var(--pf-line); stop-opacity: 0; }
+.pfg-ground stop:nth-child(2) { stop-opacity: 0.6; }
+/* отсвет под зданием */
+.pfg-halo stop { stop-color: var(--primary); stop-opacity: 0; }
+.pfg-halo stop:first-child { stop-opacity: 0.16; }
+
+/* эмблема университета контуром, надпись по кругу медленно вращается, за ней мягкий свет */
+.pf-emblem-disc { fill: color-mix(in srgb, var(--primary) 14%, var(--surface)); stroke: var(--primary); stroke-width: 1; }
 .pf-emblem-ring { fill: none; stroke: var(--primary); stroke-opacity: 0.7; stroke-width: 0.7; }
-.pf-emblem-text { fill: none; stroke: var(--primary); stroke-opacity: 0.5; stroke-width: 1.4; stroke-dasharray: 1.3 1.1; }
+.pf-emblem-text {
+  fill: none; stroke: var(--primary); stroke-opacity: 0.55; stroke-width: 1.4; stroke-dasharray: 1.3 1.1;
+  transform-box: fill-box; transform-origin: center;
+  animation: pf-spin 48s linear infinite;
+}
 .pf-emblem-line { fill: none; stroke: var(--text); stroke-opacity: 0.85; stroke-width: 0.75; stroke-linecap: round; stroke-linejoin: round; }
-.pf-handrail { fill: none; stroke: var(--text); stroke-opacity: 0.28; stroke-width: 0.8; stroke-linecap: round; }
-.pf-stair-front { fill: color-mix(in srgb, var(--text) 6%, transparent); }
-.pf-treads { stroke: var(--text); stroke-opacity: 0.32; stroke-width: 0.9; stroke-linecap: round; }
-.pf-slab { stroke: var(--text); stroke-opacity: 0.18; stroke-width: 1.5; stroke-linecap: round; }
-.pf-ground { fill: none; stroke: var(--text); stroke-opacity: 0.22; stroke-width: 1.2; stroke-linecap: round; }
-.pf-entry { font-size: 8.5px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; fill: var(--muted); text-anchor: middle; }
-.pf-label { font-size: 9.5px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; fill: var(--muted); transition: fill 0.3s; }
+.pfg-emblem stop { stop-color: var(--primary); stop-opacity: 0; }
+.pfg-emblem stop:first-child { stop-opacity: 0.45; }
+.pf-emblem-glow { transform-box: fill-box; transform-origin: center; animation: pf-breathe 5.5s ease-in-out infinite; }
+@keyframes pf-spin { to { transform: rotate(360deg); } }
+@keyframes pf-breathe { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.45; transform: scale(0.86); } }
+
+/* луч света раз в несколько секунд проходит по зданию слева направо */
+.pf-scan-g { pointer-events: none; }
+.pfg-scan stop { stop-color: var(--primary); stop-opacity: 0; }
+.pfg-scan stop:nth-child(2) { stop-opacity: 0.14; }
+.pf-scan { animation: pf-scan 11s cubic-bezier(0.45, 0, 0.25, 1) 2.4s infinite backwards; }
+@keyframes pf-scan { 0% { transform: translateX(0); } 55%, 100% { transform: translateX(530px); } }
 
 /* лестницы в разрезе: ступени, косоур, площадки, перила */
-.pf-steps { fill: color-mix(in srgb, var(--text) 7%, transparent); stroke: var(--text); stroke-opacity: 0.3; stroke-width: 0.8; stroke-linejoin: round; }
-.pf-landing { stroke: var(--text); stroke-opacity: 0.3; stroke-width: 1.6; stroke-linecap: round; }
-.pf-rail { fill: none; stroke: var(--text); stroke-opacity: 0.3; stroke-width: 0.8; }
+.pf-steps { fill: color-mix(in srgb, var(--primary) 9%, transparent); stroke: var(--pf-line); stroke-opacity: 0.4; stroke-width: 0.8; stroke-linejoin: round; }
+.pf-landing { stroke: var(--pf-line); stroke-opacity: 0.4; stroke-width: 1.6; stroke-linecap: round; }
+.pf-rail { fill: none; stroke: var(--pf-line); stroke-opacity: 0.4; stroke-width: 0.8; }
+.pf-handrail { fill: none; stroke: var(--pf-line); stroke-opacity: 0.38; stroke-width: 0.8; stroke-linecap: round; }
+.pf-stair-front { fill: color-mix(in srgb, var(--primary) 9%, transparent); }
+.pf-treads { stroke: var(--pf-line); stroke-opacity: 0.42; stroke-width: 0.9; stroke-linecap: round; }
 
-/* этаж: подсветка при наведении, фокус с клавиатуры */
+/* вход: свет из дверей на землю и стрелка, которая зовёт внутрь */
+.pfg-spill stop { stop-color: var(--primary); stop-opacity: 0; }
+.pfg-spill stop:first-child { stop-opacity: 0.5; }
+.pf-spill { pointer-events: none; transform-box: fill-box; transform-origin: center; animation: pf-breathe 4s ease-in-out infinite; }
+.pf-entry-arrow {
+  fill: none; stroke: var(--primary); stroke-width: 1.3; stroke-linecap: round; stroke-linejoin: round;
+  animation: pf-arrow 2.4s ease-in-out infinite;
+}
+@keyframes pf-arrow {
+  0% { opacity: 0; transform: translateY(3px); }
+  45% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-3px); }
+}
+.pf-entry { font-size: 8.5px; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; fill: var(--muted); text-anchor: middle; }
+
+/* подпись этажа: цифра, «этаж» и огонёк, если на этаже есть заявки */
+.pf-tag-hit { fill: transparent; }
+.pf-tag-n { font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; fill: var(--muted); text-anchor: middle; transition: fill 0.3s; }
+.pf-tag-t { font-size: 5.6px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; fill: var(--faint); text-anchor: middle; transition: fill 0.3s; }
+.pf-tag-bar { stroke: var(--pf-line); stroke-opacity: 0.2; stroke-width: 1.4; stroke-linecap: round; transition: stroke 0.3s, stroke-opacity 0.3s; }
+.pf-tag-dot { fill: var(--primary); filter: drop-shadow(0 0 2px var(--primary)); }
+.pf-tag-dot.is-urgent { fill: var(--red); filter: drop-shadow(0 0 2px var(--red)); animation: pl-alert 1.6s ease-in-out infinite; }
+
+/* этаж: подсветка при наведении, по этажу пробегает блик, фокус с клавиатуры */
 .pf-floor { cursor: pointer; outline: none; }
 .pf-floor-bg { fill: transparent; stroke: transparent; stroke-width: 1.2; transition: fill 0.35s, stroke 0.35s; }
-/* этаж под курсором: мягкая заливка основным цветом и рамка, подпись этажа загорается */
-.pf-floor.is-hot .pf-floor-bg { fill: color-mix(in srgb, var(--primary) 10%, transparent); stroke: color-mix(in srgb, var(--primary) 55%, transparent); }
+.pf-floor.is-hot .pf-floor-bg { fill: color-mix(in srgb, var(--primary) 9%, transparent); stroke: color-mix(in srgb, var(--primary) 60%, transparent); }
 .pf-floor:focus-visible .pf-floor-bg { stroke: var(--primary); stroke-width: 1.6; }
-.pf-floor.is-hot .pf-label { fill: var(--primary); }
-.pf.has-hot .pf-floor:not(.is-hot) .pf-room { opacity: 0.55; }
+.pf-glint { opacity: 0; pointer-events: none; }
+.pfg-glint stop { stop-color: var(--primary); stop-opacity: 0; }
+.pfg-glint stop:nth-child(2) { stop-opacity: 0.2; }
+.pf-floor.is-hot .pf-glint { animation: pf-glint 1.1s var(--ease-out) both; }
+@keyframes pf-glint {
+  from { opacity: 0; transform: translateX(0); }
+  20% { opacity: 1; }
+  to { opacity: 0; transform: translateX(334px); }
+}
+.pf-floor.is-hot .pf-tag-n { fill: var(--primary); }
+.pf-floor.is-hot .pf-tag-t { fill: var(--text); }
+.pf-floor.is-hot .pf-tag-bar { stroke: var(--primary); stroke-opacity: 1; filter: drop-shadow(0 0 3px var(--primary)); }
+.pf.has-hot .pf-floor:not(.is-hot) .pf-room { opacity: 0.5; }
 
 /* кабинет: номер, дверь, лампа над дверью, свет из-под двери */
 .pf-room { --c: var(--node); transition: opacity 0.3s; }
 .pf-room.is-open { --c: var(--primary); }
 .pf-room.is-urgent { --c: var(--red); }
-.pf-hit { fill: transparent; transition: fill 0.25s; }
-.pf-room.is-here .pf-hit { stroke: var(--primary); stroke-width: 1.2; }
-.pf-num { font-size: 8.5px; font-weight: 600; font-variant-numeric: tabular-nums; fill: var(--faint); text-anchor: middle; transition: fill 0.25s; }
+.pf-hit { fill: transparent; stroke: transparent; stroke-width: 1; transition: fill 0.25s, stroke 0.25s; }
+.pf-room.is-here .pf-hit { stroke: var(--primary); stroke-width: 1.2; filter: drop-shadow(0 0 3px var(--primary)); }
+.pf-num {
+  font-size: 8.5px; font-weight: 600; font-variant-numeric: tabular-nums; fill: var(--faint); text-anchor: middle;
+  transform-box: fill-box; transform-origin: center;
+  transition: fill 0.25s, transform 0.4s var(--ease-out);
+}
 .pf-room.is-open .pf-num, .pf-room.is-urgent .pf-num { fill: var(--text); }
 .pfg-clear stop:first-child { stop-color: color-mix(in srgb, var(--node) 70%, transparent); }
 .pfg-open stop:first-child { stop-color: var(--primary); }
@@ -287,27 +368,42 @@ html:not(.is-revealed) .track-enter .tp-step, html:not(.is-revealed) .track-ente
 .pfg-clear stop:last-child, .pfg-open stop:last-child, .pfg-urgent stop:last-child { stop-color: var(--bg); }
 .pf-icon { fill: none; stroke: #fff; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; opacity: 0; transition: opacity 0.3s 0.12s; overflow: visible; }
 .pf-door {
-  fill: var(--surface-3);
-  stroke: var(--text); stroke-opacity: 0.28; stroke-width: 0.8;
+  fill: color-mix(in srgb, var(--primary) 7%, var(--surface-3));
+  stroke: var(--pf-line); stroke-opacity: 0.5; stroke-width: 0.8;
   transform-box: fill-box; transform-origin: 0 50%;
-  transition: transform 0.6s var(--ease-out), fill 0.6s;
+  transition: transform 0.6s var(--ease-out), fill 0.6s, stroke-opacity 0.3s;
 }
 .pf-door-r { transform-origin: 100% 50%; }
-.pf-lamp { fill: color-mix(in srgb, var(--text) 16%, transparent); }
-.pf-sill { stroke: color-mix(in srgb, var(--text) 22%, transparent); stroke-width: 1.4; stroke-linecap: round; }
+.pf-lamp { fill: color-mix(in srgb, var(--pf-line) 28%, transparent); }
+.pf-sill { stroke: color-mix(in srgb, var(--pf-line) 38%, transparent); stroke-width: 1.4; stroke-linecap: round; }
 .pf-room.is-open .pf-lamp, .pf-room.is-urgent .pf-lamp { fill: var(--c); filter: drop-shadow(0 0 2.5px var(--c)); }
 .pf-room.is-open .pf-sill, .pf-room.is-urgent .pf-sill { stroke: var(--c); filter: drop-shadow(0 0 2px var(--c)); }
+.pf-room.is-open .pf-door, .pf-room.is-urgent .pf-door { stroke: var(--c); stroke-opacity: 0.6; }
 .pf-room.is-urgent .pf-lamp, .pf-room.is-urgent .pf-sill { animation: pl-alert 1.6s ease-in-out infinite; }
 @keyframes pl-alert { 50% { opacity: 0.35; } }
+/* ореол лампы дышит, у срочной заявки от лампы расходятся кольца */
+.pf-light { pointer-events: none; }
+.pfg-lamp-open stop, .pfg-lamp-urgent stop { stop-color: var(--primary); stop-opacity: 0; }
+.pfg-lamp-urgent stop { stop-color: var(--red); }
+.pfg-lamp-open stop:first-child { stop-opacity: 0.5; }
+.pfg-lamp-urgent stop:first-child { stop-opacity: 0.55; }
+.pf-glow { transform-box: fill-box; transform-origin: center; animation: pf-breathe 3.6s ease-in-out infinite; }
+.pf-room.is-urgent .pf-glow { animation-duration: 1.6s; }
+.pf-ripple {
+  fill: none; stroke: var(--red); stroke-width: 0.8; vector-effect: non-scaling-stroke;
+  transform-box: fill-box; transform-origin: center;
+  animation: pf-ripple 1.8s var(--ease-out) infinite;
+}
+@keyframes pf-ripple { from { opacity: 0.9; transform: scale(1); } to { opacity: 0; transform: scale(4.5); } }
 /* дверь открывается внутрь кабинета */
 .pf-room.is-demo .pf-door { transform: skewY(-14deg) scaleX(0.3); fill: color-mix(in srgb, var(--surface-3) 70%, var(--text)); }
 .pf-room.is-demo .pf-door-r { transform: skewY(14deg) scaleX(0.3); }
 .pf-room.is-demo .pf-icon { opacity: 1; }
-.pf-room.is-demo .pf-hit { fill: color-mix(in srgb, var(--text) 6%, transparent); }
+.pf-room.is-demo .pf-hit { fill: color-mix(in srgb, var(--primary) 10%, transparent); stroke: color-mix(in srgb, var(--primary) 45%, transparent); }
 /* двери открываются при наведении только там, где есть мышь; на телефоне касание сразу открывает этаж */
 @media (hover: hover) {
-  .pf-room:hover .pf-hit { fill: color-mix(in srgb, var(--text) 6%, transparent); }
-  .pf-room:hover .pf-num { fill: var(--text); }
+  .pf-room:hover .pf-hit { fill: color-mix(in srgb, var(--primary) 10%, transparent); stroke: color-mix(in srgb, var(--primary) 45%, transparent); }
+  .pf-room:hover .pf-num { fill: var(--text); transform: translateY(-1px); }
   .pf-room:hover .pf-door { transform: skewY(-14deg) scaleX(0.3); fill: color-mix(in srgb, var(--surface-3) 70%, var(--text)); }
   .pf-room:hover .pf-door-r { transform: skewY(14deg) scaleX(0.3); }
   .pf-room:hover .pf-icon { opacity: 1; }
@@ -318,15 +414,45 @@ html:not(.is-revealed) .track-enter .tp-step, html:not(.is-revealed) .track-ente
   .pf-floor:active .pf-floor-bg { fill: color-mix(in srgb, var(--primary) 10%, transparent); stroke: color-mix(in srgb, var(--primary) 55%, transparent); }
 }
 
-/* первое появление: этажи снизу вверх */
-.plan.is-enter .pf-floor { animation: pl-slab-in 0.7s var(--ease-out) both; }
-.plan.is-enter .pf-floor[data-floor="1"] { animation-delay: 420ms; }
-.plan.is-enter .pf-floor[data-floor="2"] { animation-delay: 540ms; }
-.plan.is-enter .pf-floor[data-floor="3"] { animation-delay: 660ms; }
-.plan.is-enter .pf-stairs { animation: pl-fade 1.2s var(--ease-out) 600ms both; }
+/* первое появление: контур здания прорисовывается линией, этажи поднимаются снизу вверх,
+   в кабинетах слева направо «включается свет», лампы с заявками мигают, как при включении */
+.plan.is-enter .pf-draw { stroke-dasharray: 1 1; animation: pf-draw 1.6s var(--ease-io) 200ms backwards; }
+.plan.is-enter .pf-const { stroke-dasharray: 1 1; animation: pf-draw 2.4s var(--ease-out) 1.3s backwards; }
+.plan.is-enter .pf-sky { animation: pl-fade 1.6s var(--ease-out) 1.1s backwards; }
+.plan.is-enter .pf-body, .plan.is-enter .pf-attic, .plan.is-enter .pf-well, .plan.is-enter .pf-halo,
+.plan.is-enter .pf-slab, .plan.is-enter .pf-ground { animation: pl-fade 1.2s var(--ease-out) 600ms backwards; }
+/* у ореола эмблемы и света у входа после появления продолжается своё «дыхание» */
+.plan.is-enter .pf-emblem { animation: pf-pop 0.9s var(--spring) 900ms backwards; transform-box: fill-box; transform-origin: center; }
+.plan.is-enter .pf-emblem-glow { animation: pf-pop 0.9s var(--spring) 900ms backwards, pf-breathe 5.5s ease-in-out 1.8s infinite; }
+.plan.is-enter .pf-floor { animation: pl-slab-in 0.7s var(--ease-out) backwards; }
+.plan.is-enter .pf-floor[data-floor="1"] { --fd: 560ms; animation-delay: 420ms; }
+.plan.is-enter .pf-floor[data-floor="2"] { --fd: 700ms; animation-delay: 540ms; }
+.plan.is-enter .pf-floor[data-floor="3"] { --fd: 840ms; animation-delay: 660ms; }
+.plan.is-enter .pf-room { animation: pf-room-in 0.55s var(--ease-out) backwards; animation-delay: calc(var(--fd, 600ms) + var(--i, 0) * 24ms); }
+.plan.is-enter .pf-room:not(.is-clear) .pf-light { animation: pf-flicker 0.9s linear backwards; animation-delay: calc(var(--fd, 600ms) + var(--i, 0) * 24ms + 700ms); }
+.plan.is-enter .pf-stairs { animation: pl-fade 1.2s var(--ease-out) 600ms backwards; }
+.plan.is-enter .pf-entry { animation: pl-fade 1s var(--ease-out) 1.2s backwards; }
+.plan.is-enter .pf-spill { animation: pl-fade 1s var(--ease-out) 1.2s backwards, pf-breathe 4s ease-in-out 2.2s infinite; }
+.plan.is-enter .pf-entry-arrow { animation-delay: 1.6s; animation-fill-mode: backwards; }
 html:not(.is-revealed) .plan.is-enter * { animation-play-state: paused; }
 @keyframes pl-slab-in { from { opacity: 0; transform: translateY(6px); } }
 @keyframes pl-fade { from { opacity: 0; } }
+@keyframes pf-draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+@keyframes pf-pop { from { opacity: 0; transform: scale(0.4) rotate(-40deg); } }
+@keyframes pf-room-in { from { opacity: 0; transform: translateY(3px); } }
+@keyframes pf-flicker {
+  0% { opacity: 0; }
+  10% { opacity: 1; }
+  16% { opacity: 0.15; }
+  28% { opacity: 1; }
+  34% { opacity: 0.4; }
+  48%, 100% { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pf-star, .pf-emblem-text, .pf-emblem-glow, .pf-spill, .pf-entry-arrow, .pf-glow, .pf-tag-dot.is-urgent { animation: none; }
+  .pf-scan-g, .pf-ripple, .pf-glint { display: none; }
+}
 
 /* строка под схемой */
 .pl-info { display: flex; align-items: center; min-height: 58px; font-size: 13px; line-height: 1.35; }

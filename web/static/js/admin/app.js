@@ -1,4 +1,4 @@
-import { $, ApiError, api, errorBlock, esc, h, icon, leaveAndRemove, setBusy, themeToggle, toast } from "../core.js";
+import { $, ApiError, api, errorBlock, esc, h, icon, leaveAndRemove, nameHashLinks, setBusy, themeToggle, toast } from "../core.js";
 import { can, ctx, initials, loadAssignees, loadLocations, parseHash } from "./ctx.js";
 import { ambient, startAmbient } from "../ambient.js";
 import { campusBadge, spark } from "../campus.js";
@@ -20,6 +20,15 @@ const PAGES = {
   users: { title: "Сотрудники", icon: "users", load: () => import("./users.js"), admin: true },
   profile: { title: "Профиль", icon: "user", load: () => import("./profile.js"), hidden: true },
 };
+
+// подсказка у ссылок внутри панели называет раздел, а не показывает адрес вида #/tickets/12
+nameHashLinks((hash) => {
+  const [path, query = ""] = hash.replace(/^#\/?/, "").split("?");
+  const [key, id] = path.split("/");
+  if (key === "tickets" && id) return "Карточка заявки";
+  if (key === "tickets" && /(^|&)location=\d/.test(query)) return "Заявки по помещению";
+  return PAGES[key]?.title || null;
+});
 
 const root = $("#root");
 let cleanup = null;

@@ -68,8 +68,7 @@ export async function render({ el, setHead }) {
           </div>
         </div>
         <div class="campus-meter" aria-hidden="true"><i data-css-pct="${index}"></i></div>
-        <div id="floors">${planHtml(states, { enter: first })}</div>
-        <div class="small muted">Нажмите на помещение, чтобы открыть его заявки, или на этаж, чтобы посмотреть его план.</div>
+        <div id="floors">${planHtml(states, { enter: first, hint: "Наведите на кабинет, чтобы узнать о нём. Нажмите на кабинет, чтобы открыть его заявки, или на этаж, чтобы посмотреть его план" })}</div>
       </section>
       ${
         attention.length

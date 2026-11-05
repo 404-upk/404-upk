@@ -2,8 +2,11 @@
 // Лестницы: по бокам на всех этажах, посередине с 1 на 2 этаж, на 1 этаже посередине вход.
 // Состояние кабинета берётся из /api/campus: без заявок, есть заявка, срочная заявка.
 // Наведение открывает дверь кабинета, нажатие открывает план этажа во весь экран (floor-view.js).
+// Оформление в цветах знака 404: васильковые линии, созвездия над крышей, свет ламп над дверями,
+// при первом показе контур здания прорисовывается, а в кабинетах по очереди «включается свет».
 
 import { esc } from "./core.js";
+import { SPARK_PATH } from "./cursor.js";
 import { REDUCED } from "./motion.js";
 
 export const TYPES = {
@@ -209,6 +212,19 @@ function rail(a, b, y) {
   return `<path class="pf-rail" d="M${f1(a + 2)} ${f1(y)}H${f1(b - 2)}${posts.join("")}"/>`;
 }
 
+/**
+ * Лампа над дверью и её свет: ореол, у срочной заявки ещё и расходящееся кольцо.
+ * У кабинета без заявок лампа погашена и света нет. (cx, cy) — центр лампы, lw — её ширина.
+ */
+function lampLight(state, cx, cy, rx, lw = 5) {
+  const lit = state === "clear" ? "" : `<ellipse class="pf-glow" cx="${f1(cx)}" cy="${f1(cy)}" rx="${f1(rx)}" ry="7" fill="url(#pfg-lamp-${esc(state)})"/>`;
+  const ring = state === "urgent" ? `<circle class="pf-ripple" cx="${f1(cx)}" cy="${f1(cy)}" r="2.6"/>` : "";
+  return `<g class="pf-light">${lit}${ring}<rect class="pf-lamp" x="${f1(cx - lw / 2)}" y="${f1(cy - 0.9)}" width="${lw}" height="1.8" rx="0.9"/></g>`;
+}
+
+/** Порядок появления кабинета при первом показе: слева направо по этажу */
+const order = (x) => Math.max(0, Math.round((x - X0) / 19));
+
 function roomSvg(cell, x, w, y, states, here) {
   const info = stateOf(states, cell.n);
   const dw = cell.w > 1 ? Math.min(28, w * 0.42) : Math.min(16, w * 0.46);
@@ -217,15 +233,32 @@ function roomSvg(cell, x, w, y, states, here) {
   const dx = cx - dw / 2;
   const dy = y + ROW - dh - 1;
   const isHere = here != null && info.id === here;
-  return `<g class="pf-room is-${esc(info.state)}${isHere ? " is-here" : ""}" data-n="${esc(cell.n)}">
+  return `<g class="pf-room is-${esc(info.state)}${isHere ? " is-here" : ""}" data-n="${esc(cell.n)}" data-css-i="${order(x)}">
     <rect class="pf-hit" x="${f1(x)}" y="${f1(y)}" width="${f1(w)}" height="${ROW}" rx="4"/>
+    ${lampLight(info.state, cx, dy - 3.1, dw / 2 + 7)}
     <text class="pf-num" x="${f1(cx)}" y="${f1(y + 9)}">${esc(cell.n)}</text>
     <rect class="pf-inside" x="${f1(dx)}" y="${f1(dy)}" width="${f1(dw)}" height="${dh}" fill="url(#pfg-${esc(info.state)})"/>
     <svg class="pf-icon" x="${f1(cx - 5.5)}" y="${f1(dy + dh / 2 - 5.5)}" width="11" height="11" viewBox="0 0 24 24">${TYPE_ICON[cell.type]}</svg>
-    <rect class="pf-door" x="${f1(dx)}" y="${f1(dy)}" width="${f1(dw)}" height="${dh}"/>
-    <rect class="pf-lamp" x="${f1(cx - 2.5)}" y="${f1(dy - 4)}" width="5" height="1.8" rx="0.9"/>
+    <rect class="pf-door" x="${f1(dx)}" y="${f1(dy)}" width="${f1(dw)}" height="${dh}" rx="0.8"/>
     <path class="pf-sill" d="M${f1(dx - 1.5)} ${f1(y + ROW - 0.5)}H${f1(dx + dw + 1.5)}"/>
   </g>`;
+}
+
+/** Фирменная четырёхлучевая звезда в точке (x, y), size — размах лучей */
+function star(x, y, size, i) {
+  const k = size / 24;
+  return `<g transform="translate(${f1(x - size / 2)} ${f1(y - size / 2)}) scale(${k.toFixed(3)})"><path class="pf-star" data-css-i="${i}" d="${SPARK_PATH}"/></g>`;
+}
+
+/** Созвездие над крышей, как на фоне сайта: тонкие линии и мерцающие звёзды */
+function constellation(points, from) {
+  const line = points.map(([x, y]) => `${x} ${y}`).join("L");
+  return `<path class="pf-const" pathLength="1" d="M${line}"/>${points.map(([x, y, s], i) => star(x, y, s, from + i)).join("")}`;
+}
+
+/** Скруглённый прямоугольник контуром: путь нужен, чтобы контур здания прорисовывался при появлении */
+function roundRect(x, y, w, h, r) {
+  return `M${x + r} ${y}H${x + w - r}Q${x + w} ${y} ${x + w} ${y + r}V${y + h - r}Q${x + w} ${y + h} ${x + w - r} ${y + h}H${x + r}Q${x} ${y + h} ${x} ${y + h - r}V${y + r}Q${x} ${y} ${x + r} ${y}Z`;
 }
 
 function rowSvg(cells, x0, x1, y, states, here) {
@@ -253,12 +286,29 @@ function partRanges(f) {
   ];
 }
 
-/** Разметка схемы. states — из planStates(), here — id помещения, выбранного заявителем. */
-export function planHtml(states, { here = null, enter = false } = {}) {
+/** Подпись этажа слева: крупная цифра, под ней «этаж», рядом огонёк, если на этаже есть заявки */
+function floorTag(n, y0, worst) {
+  const mid = y0 + FH / 2;
+  return `<g class="pf-label">
+    <rect class="pf-tag-hit" x="0" y="${f1(y0 + 1)}" width="${X0 - 1}" height="${FH - 2}"/>
+    <path class="pf-tag-bar" d="M27 ${f1(y0 + 16)}V${f1(y0 + FH - 16)}"/>
+    <text class="pf-tag-n" x="13" y="${f1(mid + 3)}">${n}</text>
+    <text class="pf-tag-t" x="13" y="${f1(mid + 12)}">этаж</text>
+    ${worst === "clear" ? "" : `<circle class="pf-tag-dot is-${worst}" cx="21" cy="${f1(mid - 9)}" r="2"/>`}
+  </g>`;
+}
+
+/**
+ * Разметка схемы. states — из planStates(), here — id помещения, выбранного заявителем,
+ * hint — строка под схемой, пока ни на что не навели.
+ */
+export function planHtml(states, { here = null, enter = false, hint = null } = {}) {
   const floors = FLOORS.map((f) => {
     const y0 = floorTop(f.floor);
     const ranges = partRanges(f);
-    const open = floorRooms(f).filter((c) => stateOf(states, c.n).state !== "clear").length;
+    const marks = floorRooms(f).map((c) => stateOf(states, c.n).state);
+    const open = marks.filter((s) => s !== "clear").length;
+    const worst = marks.includes("urgent") ? "urgent" : open ? "open" : "clear";
     const rooms = f.parts
       .map((p, i) => {
         const [xa, xb] = ranges[i];
@@ -271,12 +321,12 @@ export function planHtml(states, { here = null, enter = false } = {}) {
       const lobby = stateOf(states, LOBBY.n);
       const isHere = here != null && lobby.id === here;
       center = `${straightStair(G - 31, y0 + 2)}
-        <g class="pf-room pf-lobby is-${esc(lobby.state)}${isHere ? " is-here" : ""}" data-n="${LOBBY.n}">
+        <g class="pf-room pf-lobby is-${esc(lobby.state)}${isHere ? " is-here" : ""}" data-n="${LOBBY.n}" data-css-i="${order(CX)}">
           <rect class="pf-hit" x="${f1(CX - CW / 2 + 2)}" y="${f1(G - 32)}" width="${CW - 4}" height="32" rx="4"/>
+          ${lampLight(lobby.state, CX, G - 28.6, 16, 6)}
           <rect class="pf-inside" x="${f1(CX - 11)}" y="${f1(G - 25)}" width="22" height="25" fill="url(#pfg-${esc(lobby.state)})"/>
           <rect class="pf-door pf-door-l" x="${f1(CX - 11)}" y="${f1(G - 25)}" width="11" height="25"/>
           <rect class="pf-door pf-door-r" x="${f1(CX)}" y="${f1(G - 25)}" width="11" height="25"/>
-          <rect class="pf-lamp" x="${f1(CX - 3)}" y="${f1(G - 29.5)}" width="6" height="1.8" rx="0.9"/>
         </g>`;
     } else if (f.center === "arrive") {
       center = rail(CX - CW / 2, CX + CW / 2, y0 + FH - 14);
@@ -284,7 +334,8 @@ export function planHtml(states, { here = null, enter = false } = {}) {
     const label = `${f.floor} этаж: ${open ? `помещений с заявками ${open}` : "заявок нет"}. Открыть план этажа`;
     return `<g class="pf-floor" data-floor="${f.floor}" tabindex="0" role="button" aria-label="${esc(label)}">
       <rect class="pf-floor-bg" x="${X0 + 1}" y="${f1(y0 + 1)}" width="${X1 - X0 - 2}" height="${FH - 2}" rx="3"/>
-      <text class="pf-label" x="0" y="${f1(y0 + FH / 2 + 3)}">${f.floor} эт</text>
+      <rect class="pf-glint" x="${X0 + 1}" y="${f1(y0 + 1)}" width="110" height="${FH - 2}" fill="url(#pfg-glint)"/>
+      ${floorTag(f.floor, y0, worst)}
       ${rooms}${center}
     </g>`;
   }).join("");
@@ -293,29 +344,55 @@ export function planHtml(states, { here = null, enter = false } = {}) {
   const sideStairs = [1, 2]
     .map((n) => `${stairFloor(X0, X0 + SW, floorTop(n) + FH, floorTop(n))}${stairFloor(X1 - SW, X1, floorTop(n) + FH, floorTop(n), true)}`)
     .join("");
+  const body = roundRect(X0, TOP, X1 - X0, G - TOP, 5);
+  const attic = `M${CX - 72} ${TOP - 4}L${CX - 50} ${TOP - 36}H${CX + 50}L${CX + 72} ${TOP - 4}Z`;
+  // крыша и контур здания прорисовываются линией при первом показе (pathLength=1 для анимации штриха)
   const facade = `
-    <path class="pf-attic" d="M${CX - 72} ${TOP - 4}L${CX - 50} ${TOP - 36}H${CX + 50}L${CX + 72} ${TOP - 4}Z"/>
-    <path class="pf-cornice" d="M${CX - 55} ${TOP - 36}H${CX + 55}"/>
+    <g class="pf-sky" aria-hidden="true">
+      ${constellation([[44, 30, 6], [86, 14, 8], [132, 34, 5], [160, 16, 6]], 0)}
+      ${constellation([[352, 20, 6], [392, 36, 5], [424, 12, 8], [462, 28, 6]], 4)}
+    </g>
+    <ellipse class="pf-halo" cx="${CX}" cy="${G}" rx="${(X1 - X0) / 2 + 20}" ry="14" fill="url(#pfg-halo)"/>
+    <path class="pf-attic" d="${attic}"/>
+    <path class="pf-attic-line pf-draw" pathLength="1" d="${attic}"/>
+    <path class="pf-cornice pf-draw" pathLength="1" d="M${CX - 55} ${TOP - 36}H${CX + 55}"/>
+    <circle class="pf-emblem-glow" cx="${CX}" cy="${TOP - 19}" r="20" fill="url(#pfg-emblem)"/>
     ${emblem(CX, TOP - 19, 10.5)}
-    <rect class="pf-body" x="${X0}" y="${TOP}" width="${X1 - X0}" height="${G - TOP}" rx="5"/>
+    <path class="pf-body" d="${body}" fill="url(#pfg-body)"/>
+    <g class="pf-scan-g" clip-path="url(#pf-clip)" aria-hidden="true">
+      <rect class="pf-scan" x="${X0 - 80}" y="${TOP}" width="80" height="${G - TOP}" fill="url(#pfg-scan)"/>
+    </g>
+    <path class="pf-body-line pf-draw" pathLength="1" d="${body}"/>
     <rect class="pf-well" x="${X0 + 3}" y="${floorTop(2) + 3}" width="${SW - 5}" height="${2 * FH - 6}" rx="4"/>
     <rect class="pf-well" x="${X1 - SW + 2}" y="${floorTop(2) + 3}" width="${SW - 5}" height="${2 * FH - 6}" rx="4"/>
     <rect class="pf-well" x="${CX - CW / 2 + 3}" y="${floorTop(1) + 3}" width="${CW - 6}" height="${FH - 6}" rx="4"/>
-    <path class="pf-cornice" d="M${X0 - 6} ${TOP - 2}H${X1 + 6}"/>
+    <path class="pf-cornice pf-draw" pathLength="1" d="M${X0 - 6} ${TOP - 2}H${X1 + 6}"/>
     <path class="pf-slab" d="M${X0 + 4} ${floorTop(2)}H${X1 - 4}M${X0 + 4} ${floorTop(1)}H${f1(CX - 15)}M${f1(CX + 15)} ${floorTop(1)}H${X1 - 4}"/>
-    <path class="pf-ground" d="M2 ${G}H${W - 2}M${CX - 20} ${G + 4}H${CX + 20}"/>
-    <text class="pf-entry" x="${CX}" y="${G + 18}">Вход</text>`;
+    <path class="pf-ground" d="M2 ${G}H${W - 2}" stroke="url(#pfg-ground)"/>
+    <ellipse class="pf-spill" cx="${CX}" cy="${G + 1}" rx="34" ry="6" fill="url(#pfg-spill)"/>
+    <path class="pf-entry-arrow" d="M${CX - 4} ${G + 11}l4 -3.5l4 3.5"/>
+    <text class="pf-entry" x="${CX}" y="${G + 21}">Вход</text>`;
 
   const grad = (s) => `<radialGradient id="pfg-${s}" class="pfg-${s}" cx="50%" cy="100%" r="110%"><stop offset="0"/><stop offset="1"/></radialGradient>`;
+  const glow = (id) => `<radialGradient id="${id}" class="${id}"><stop offset="0"/><stop offset="1"/></radialGradient>`;
+  const band = (id, x1, x2) =>
+    `<linearGradient id="${id}" class="${id}" x1="${x1}" x2="${x2}" y1="0" y2="0"><stop offset="0"/><stop offset="0.5"/><stop offset="1"/></linearGradient>`;
   return `<div class="plan${enter && !REDUCED ? " is-enter" : ""}">
-    <svg class="pf" viewBox="0 0 ${W} ${H}" role="group" aria-label="Схема колледжа: 3 этажа">
-      <defs>${grad("clear")}${grad("open")}${grad("urgent")}</defs>
+    <svg class="pf" viewBox="0 0 ${W} ${H}" role="group" aria-label="Схема колледжа: 3 этажа" focusable="false">
+      <defs>
+        ${grad("clear")}${grad("open")}${grad("urgent")}
+        ${glow("pfg-lamp-open")}${glow("pfg-lamp-urgent")}${glow("pfg-emblem")}${glow("pfg-spill")}${glow("pfg-halo")}
+        ${band("pfg-scan", 0, 1)}${band("pfg-glint", 0, 1)}
+        <linearGradient id="pfg-ground" class="pfg-ground" gradientUnits="userSpaceOnUse" x1="0" x2="${W}" y1="0" y2="0"><stop offset="0"/><stop offset="0.5"/><stop offset="1"/></linearGradient>
+        <linearGradient id="pfg-body" class="pfg-body" x1="0" x2="0" y1="0" y2="1"><stop offset="0"/><stop offset="1"/></linearGradient>
+        <clipPath id="pf-clip"><path d="${body}"/></clipPath>
+      </defs>
       ${facade}
       <g class="pf-stairs" aria-hidden="true">${sideStairs}</g>
       ${floors}
     </svg>
   </div>
-  <div class="pl-info" aria-live="polite"><span class="pl-hint">${hintText()}</span></div>`;
+  <div class="pl-info" aria-live="polite"><span class="pl-hint"${hint ? " data-fixed" : ""}>${esc(hint || hintText())}</span></div>`;
 }
 
 /**
@@ -607,7 +684,7 @@ function bindTutorial(root, svg, { onOpenFloor, light }) {
     // блок перерисовали: старый обработчик больше не нужен
     if (!help.isConnected) return HOVER_MQ.removeEventListener("change", onMode);
     const hint = root.querySelector(".pl-hint");
-    if (hint) hint.textContent = hintText();
+    if (hint && !hint.hasAttribute("data-fixed")) hint.textContent = hintText();
     if (!box) return;
     const current = steps[step]?.show;
     steps = pickSteps();

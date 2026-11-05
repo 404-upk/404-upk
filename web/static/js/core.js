@@ -761,6 +761,202 @@ function watchTips() {
   window.addEventListener("scroll", hideTip, { passive: true, capture: true });
 }
 
+// ---------- куда ведёт ссылка ----------
+// Браузер при наведении на ссылку показывает внизу слева свою серую строку с полным адресом.
+// Вместо неё своя подсказка в стиле сайта: что откроется и короткий адрес. Пока мышь над ссылкой,
+// адрес лежит в data-href, поэтому системная строка не появляется. На нажатие любой кнопкой, Enter
+// и перетаскивание адрес возвращается на место до того, как браузер их обработает: новая вкладка,
+// Ctrl + клик, средняя кнопка и «Копировать адрес ссылки» работают как обычно.
+
+const LINK_NAMES = [
+  [/^\/$/, "Страница заявителя"],
+  [/^\/track\/?$/, "Отслеживание заявки"],
+  [/^\/t\//, "Ход заявки"],
+  [/^\/r\//, "Форма заявки"],
+  [/^\/privacy\/?$/, "Обработка данных"],
+  [/^\/admin\/qr-print\/?$/, "Печать QR-кодов"],
+  [/\/qr\.png$/, "QR-код помещения"],
+  [/\/export\.(xlsx|csv)$/, "Выгрузка заявок"],
+  [/^\/admin\/?$/, "Панель УПК"],
+];
+const FILE_LINK = /\.(xlsx|csv|png|jpe?g|pdf|zip)$/i;
+
+let hashNames = null;
+let linkEl = null;
+let linkBox = null;
+let linkHide = 0;
+let linkX = 0;
+let linkY = 0;
+
+/** Страница называет свои разделы для подсказки: панель передаёт названия из меню (#/tickets → «Заявки») */
+export function nameHashLinks(fn) {
+  hashNames = fn;
+}
+
+/** Адрес ссылки, даже если он сейчас спрятан в data-href */
+export function linkHref(a) {
+  const raw = a?.getAttribute("href") ?? a?.dataset.href;
+  if (raw == null) return "";
+  try {
+    return new URL(raw, location.href).href;
+  } catch {
+    return "";
+  }
+}
+
+function linkInfo(a) {
+  let url;
+  try {
+    url = new URL(a.getAttribute("href") ?? a.dataset.href, location.href);
+  } catch {
+    return null;
+  }
+  if (url.protocol === "mailto:") return { name: "Написать письмо", path: decodeURIComponent(url.pathname), kind: "mail" };
+  if (url.protocol === "tel:") return { name: "Позвонить", path: url.pathname, kind: "tel" };
+  // javascript:, data: и прочее остаётся браузеру
+  if (!/^https?:$/.test(url.protocol)) return null;
+  const same = url.origin === location.origin;
+  let name = null;
+  if (same) {
+    if (url.hash.startsWith("#/") && hashNames) name = hashNames(url.hash);
+    if (!name) name = LINK_NAMES.find(([re]) => re.test(url.pathname))?.[1] || null;
+    if (!name && url.hash && url.pathname === location.pathname) name = "На этой странице";
+  } else if (/(^|\.)t\.me$/.test(url.hostname)) {
+    name = "Telegram";
+  }
+  let path = same ? url.pathname + url.search + url.hash : url.host + url.pathname.replace(/\/$/, "") + url.search;
+  try {
+    path = decodeURI(path);
+  } catch {
+    /* адрес с битой кодировкой показываем как есть */
+  }
+  const file = a.hasAttribute("download") || (same && FILE_LINK.test(url.pathname));
+  const tab = a.target === "_blank";
+  return { name, path, kind: file ? "file" : !same ? "away" : tab ? "tab" : "here", flag: file ? "файл" : tab ? "новая вкладка" : "" };
+}
+
+function stashHref(a) {
+  if (!a.hasAttribute("href")) return;
+  a.dataset.href = a.getAttribute("href");
+  a.removeAttribute("href");
+  // без href ссылка перестала бы быть ссылкой для клавиатуры и экранных читалок, это временно возвращается
+  if (!a.hasAttribute("tabindex")) {
+    a.setAttribute("tabindex", "0");
+    a.dataset.hrefTab = "";
+  }
+  if (!a.hasAttribute("role")) {
+    a.setAttribute("role", "link");
+    a.dataset.hrefRole = "";
+  }
+}
+
+function restoreHref(a) {
+  if (!a || a.dataset.href === undefined) return;
+  // если адрес за это время поставили заново (выгрузка с фильтрами), остаётся новый
+  if (!a.hasAttribute("href")) a.setAttribute("href", a.dataset.href);
+  delete a.dataset.href;
+  if (a.dataset.hrefTab !== undefined) {
+    a.removeAttribute("tabindex");
+    delete a.dataset.hrefTab;
+  }
+  if (a.dataset.hrefRole !== undefined) {
+    a.removeAttribute("role");
+    delete a.dataset.hrefRole;
+  }
+}
+
+const LINK_ICON = { here: null, tab: "external", away: "external", file: "download", mail: "send", tel: "info" };
+
+function showLink(info, x, y) {
+  clearTimeout(linkHide);
+  if (!linkBox) {
+    linkBox = h('<div class="ui-link" aria-hidden="true"><span class="ui-link-ic"></span><span class="ui-link-text"></span><span class="ui-link-flag"></span></div>');
+    document.body.append(linkBox);
+  }
+  const ic = LINK_ICON[info.kind];
+  linkBox.querySelector(".ui-link-ic").innerHTML = ic ? icon(ic, "icon-sm") : `<svg class="spark" viewBox="0 0 24 24"><path d="${SPARK_PATH}"/></svg>`;
+  linkBox.querySelector(".ui-link-text").innerHTML = `${info.name ? `<b>${esc(info.name)}</b>` : ""}<span class="ui-link-url">${esc(info.path)}</span>`;
+  const flag = linkBox.querySelector(".ui-link-flag");
+  flag.textContent = info.flag || "";
+  flag.hidden = !info.flag;
+  linkBox.classList.toggle("is-away", info.kind !== "here");
+  // подсказка уходит направо, если мышь в её углу, как у браузера
+  linkBox.classList.remove("is-right");
+  const r = linkBox.getBoundingClientRect();
+  linkBox.classList.toggle("is-right", x < r.width + 40 && y > innerHeight - r.height - 48);
+  // новая ссылка — текст въезжает заново
+  linkBox.classList.remove("is-swap");
+  void linkBox.offsetWidth;
+  linkBox.classList.add("is-on", "is-swap");
+}
+
+function hideLink() {
+  clearTimeout(linkHide);
+  // между соседними ссылками подсказка не мигает: прячется с небольшой задержкой
+  linkHide = setTimeout(() => linkBox?.classList.remove("is-on"), 90);
+}
+
+function leaveLink() {
+  if (!linkEl) return;
+  restoreHref(linkEl);
+  linkEl = null;
+  hideLink();
+}
+
+function watchLinks() {
+  document.addEventListener("pointerover", (e) => {
+    if (e.pointerType !== "mouse") return;
+    const a = e.target.closest?.("a[href], a[data-href]");
+    if (a === linkEl) return;
+    leaveLink();
+    const info = a && linkInfo(a);
+    if (!info) return;
+    linkEl = a;
+    linkX = e.clientX;
+    linkY = e.clientY;
+    stashHref(a);
+    showLink(info, linkX, linkY);
+  });
+  document.addEventListener("pointerout", (e) => {
+    if (linkEl && !linkEl.contains(e.relatedTarget)) leaveLink();
+  });
+  // нажатие: адрес на место раньше, чем браузер решит, что делать со ссылкой
+  document.addEventListener(
+    "pointerdown",
+    () => {
+      if (!linkEl) return;
+      restoreHref(linkEl);
+      hideLink();
+    },
+    true,
+  );
+  document.addEventListener(
+    "keydown",
+    (e) => {
+      if (e.key === "Enter" && e.target?.dataset?.href !== undefined) restoreHref(e.target);
+    },
+    true,
+  );
+  // после нажатия мышь может остаться над ссылкой: адрес снова прячется, подсказка возвращается
+  // (кроме правой кнопки: там уже открыто меню)
+  const again = (e) =>
+    setTimeout(() => {
+      if (!linkEl) return;
+      if (!linkEl.isConnected) {
+        linkEl = null;
+        return;
+      }
+      if (!linkEl.matches(":hover")) return;
+      stashHref(linkEl);
+      const info = e.type === "contextmenu" ? null : linkInfo(linkEl);
+      if (info) showLink(info, linkX, linkY);
+    }, 0);
+  for (const type of ["click", "auxclick", "contextmenu", "dragend", "keyup"]) document.addEventListener(type, again);
+  window.addEventListener("blur", leaveLink);
+  window.addEventListener("pagehide", leaveLink);
+  document.addEventListener("visibilitychange", leaveLink);
+}
+
 // ---------- своё меню по правой кнопке ----------
 // В полях ввода, на телефоне и с зажатым Shift остаётся меню браузера:
 // там нужны «Вставить», проверка орфографии и инструменты разработчика.
@@ -780,7 +976,8 @@ function closeCtx(focusBack = true) {
 function openCtx(e) {
   closeCtx(false);
   hideTip();
-  const link = e.target.closest?.("a[href]");
+  // адрес берётся сразу: пока мышь над ссылкой, он может быть спрятан в data-href
+  const link = linkHref(e.target.closest?.("a[href], a[data-href]"));
   const selected = String(window.getSelection?.() || "").trim();
   const nav = window.navigation;
   const items = [];
@@ -788,8 +985,8 @@ function openCtx(e) {
     items.push({ label, action, hint, disabled, ic });
   if (selected) add("Копировать", () => copyText(selected), { hint: "Ctrl+C", ic: "copy" });
   if (link) {
-    add("Открыть в новой вкладке", () => window.open(link.href, "_blank", "noopener"), { ic: "external" });
-    add("Скопировать адрес ссылки", () => copyText(link.href), { ic: "copy" });
+    add("Открыть в новой вкладке", () => window.open(link, "_blank", "noopener"), { ic: "external" });
+    add("Скопировать адрес ссылки", () => copyText(link), { ic: "copy" });
   }
   if (items.length) items.push("sep");
   add("Назад", () => history.back(), { hint: "Alt+←", disabled: nav ? !nav.canGoBack : false, ic: "arrowLeft" });
@@ -886,6 +1083,7 @@ function watchContextMenu() {
 
 if (document.body) {
   watchTips();
+  watchLinks();
   watchContextMenu();
 }
 

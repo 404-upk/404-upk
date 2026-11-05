@@ -1101,6 +1101,57 @@ html.can-drop .cursor-ring.is-on i { border-width: 2px; animation-duration: 0.7s
 .ui-tip.is-above { transform: translateY(3px); }
 .ui-tip.is-on { opacity: 1; transform: none; }
 
+/* ===== Куда ведёт ссылка (вместо серой строки адреса браузера) ===== */
+.ui-link {
+  position: fixed; z-index: 131; left: 14px; bottom: 14px;
+  display: flex; align-items: center; gap: 9px;
+  max-width: min(560px, calc(100vw - 28px));
+  padding: 5px 12px 5px 6px;
+  border: 1px solid color-mix(in srgb, var(--primary) 34%, var(--border-strong));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface) 90%, transparent);
+  backdrop-filter: blur(14px) saturate(1.2);
+  -webkit-backdrop-filter: blur(14px) saturate(1.2);
+  box-shadow: var(--shadow), 0 0 0 4px color-mix(in srgb, var(--primary) 7%, transparent), 0 12px 30px -14px color-mix(in srgb, var(--primary) 55%, transparent);
+  color: var(--text); font-size: 12.5px; line-height: 1.3;
+  pointer-events: none; overflow: hidden;
+  opacity: 0; transform: translateY(10px) scale(0.97); transform-origin: 0 100%;
+  transition: opacity 0.18s ease, transform 0.38s var(--ease-out);
+}
+.ui-link.is-right { left: auto; right: 14px; transform-origin: 100% 100%; }
+.ui-link.is-on { opacity: 1; transform: none; }
+/* по нижнему краю пробегает свет, как по шкале состояния колледжа */
+.ui-link::after {
+  content: ""; position: absolute; left: 16px; right: 16px; bottom: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--primary), transparent);
+  opacity: 0; transform: scaleX(0);
+}
+.ui-link.is-swap::after { animation: ui-link-beam 0.9s var(--ease-out) both; }
+.ui-link-ic {
+  flex: none; display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%;
+  color: var(--primary);
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--primary) 28%, transparent), transparent);
+}
+.ui-link-ic .spark { display: block; width: 12px; height: 12px; filter: drop-shadow(0 0 4px var(--primary)); }
+.ui-link-ic .spark path { fill: currentColor; }
+.ui-link-ic .icon { width: 14px; height: 14px; }
+.ui-link.is-swap .ui-link-ic > * { animation: ui-link-spin 0.6s var(--ease-out) both; }
+.ui-link-text { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.ui-link-text b { flex: none; font-weight: 600; white-space: nowrap; }
+.ui-link-url { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font-family: var(--mono); font-size: 11.5px; }
+.ui-link.is-swap .ui-link-text { animation: ui-link-text 0.34s var(--ease-out) both; }
+.ui-link-flag { flex: none; padding: 2px 8px; border-radius: 999px; background: var(--primary-soft); color: var(--primary); font-size: 11px; font-weight: 600; white-space: nowrap; }
+.ui-link-flag[hidden] { display: none; }
+@keyframes ui-link-beam { 0% { opacity: 0; transform: scaleX(0); } 30% { opacity: 1; } 100% { opacity: 0; transform: scaleX(1); } }
+@keyframes ui-link-spin { from { opacity: 0; transform: scale(0.4) rotate(-90deg); } }
+@keyframes ui-link-text { from { opacity: 0; transform: translateX(-6px); } }
+/* пока адрес спрятан в data-href, ссылка выглядит и ведёт себя как ссылка */
+a[data-href] { cursor: pointer; }
+@media (prefers-reduced-motion: reduce) {
+  .ui-link { transition: none; }
+  .ui-link::after, .ui-link.is-swap .ui-link-ic > *, .ui-link.is-swap .ui-link-text { animation: none; }
+}
+
 /* ===== Меню по правой кнопке ===== */
 .ctx-menu {
   position: fixed; z-index: 125;
@@ -1136,7 +1187,7 @@ html.can-drop .cursor-ring.is-on i { border-width: 2px; animation-duration: 0.7s
 .theme-swatch.is-mini i:last-child { right: 4px; bottom: 4px; width: 5px; height: 5px; }
 .ctx-item[aria-checked="true"] .theme-check { opacity: 1; }
 @media (prefers-reduced-motion: reduce) { .ui-tip { transition: none; } .ctx-menu, .ctx-menu.is-leaving { animation: none; } }
-@media print { .ui-tip, .ctx-menu { display: none !important; } }
+@media print { .ui-tip, .ui-link, .ctx-menu { display: none !important; } }
 
 /* ===== Свой курсор ввода в полях (caret.js) ===== */
 .has-ui-caret { caret-color: transparent !important; }
