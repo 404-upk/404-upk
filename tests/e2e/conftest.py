@@ -149,3 +149,5 @@ def login_admin(page):
     if page.locator("#l-nick").count():
         submit_admin_login(page)
         _admin_cookies[:] = page.context.cookies()
+    # первый раздел должен дорисоваться: иначе его запоздавший ответ перекроет раздел, на который тест перейдёт дальше
+    page.locator("#content .skeleton").first.wait_for(state="detached")
