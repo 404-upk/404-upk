@@ -40,6 +40,6 @@ class AssistantReply:
 
     def to_dict(self) -> dict:
         data = asdict(self)
-        data["kind_label"] = KIND_LABELS.get(self.kind, self.kind)
+        data["kind_label"] = "Помощник" if self.guard == "smalltalk" else KIND_LABELS.get(self.kind, self.kind)
         data["engine_label"] = ENGINE_LABELS.get(self.engine, self.engine)
         return data

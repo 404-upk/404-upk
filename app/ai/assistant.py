@@ -16,7 +16,7 @@ from .gigachat import GigaChatError, client
 from .knowledge import Article, load_articles
 from .prompts import PHOTO_SYSTEM, system_prompt, user_prompt
 from .reply import KINDS, AssistantReply
-from .text import extract_room, mask_personal
+from .text import extract_room, mask_personal, understand
 
 REPEATED_UNCLEAR_ANSWER = "Пока не могу понять, о какой проблеме речь. Напишите, что сломалось или не работает."
 model_budget = RateLimiter(limit=settings.model_requests_per_minute, window=60)
@@ -26,10 +26,7 @@ log = logging.getLogger("upk.ai")
 DEMO_NOTICE = "Демо-режим: GigaChat не подключён, ответ подготовлен по встроенным правилам и базе знаний."
 FALLBACK_NOTICE = "GigaChat сейчас не ответил, поэтому ответ подготовлен по встроенным правилам."
 
-UNKNOWN_ANSWER = (
-    "Проверенной информации по этому вопросу у меня нет, поэтому не буду гадать. "
-    "Обратитесь к ответственному сотруднику УПК или оставьте обращение, и вам ответит человек."
-)
+UNKNOWN_ANSWER = rules.UNKNOWN_ANSWER
 ASKS_PLACE = re.compile(r"укажите[^.]*(кабинет|мест|помещени)")
 
 LOW_CONFIDENCE_ANSWER = (
@@ -134,21 +131,25 @@ def _from_llm(data: dict, articles: list[Article], codes: set[str], has_location
     return reply
 
 
-def _reconcile(model: AssistantReply, rule: AssistantReply) -> AssistantReply:
+def _reconcile(model: AssistantReply, rule: AssistantReply, text: str) -> AssistantReply:
     """Правила и база знаний страхуют модель там, где они надёжнее её."""
     # в базе знаний есть готовый ответ, а модель его не нашла или не сослалась на него
     if rule.kind == "question" and rule.sources and not (model.kind == "question" and model.sources):
         rule.engine = "rules"
         return rule
-    # сообщение слишком размытое: лучше переспросить, чем гадать
-    if rule.kind == "unclear" and model.kind in ("fault", "unknown"):
+    # сообщение слишком размытое: лучше переспросить, чем гадать.
+    # Но опечатку или жаргон модель понимает лучше правил, и её уверенный ответ о поломке оставляем
+    if rule.kind == "unclear" and (
+        model.kind == "unknown"
+        or (model.kind == "fault" and (rules.is_vague(text) or model.confidence < settings.ai_min_confidence))
+    ):
         rule.engine = "rules"
         return rule
     # правила уверенно видят проблему, которую модель не распознала
     if rule.kind == "fault" and rule.confidence >= 0.6 and model.kind in ("unknown", "unclear"):
         rule.engine = "rules"
         return rule
-    if model.kind == "fault" and not model.category and rule.category:
+    if model.kind == "fault" and model.category in (None, "other") and rule.category:
         model.category = rule.category
     # место уже известно, а модель всё равно его переспрашивает
     if model.kind == "fault" and "place" not in model.missing and ASKS_PLACE.search(model.answer.lower()):
@@ -229,9 +230,12 @@ async def analyze(
     context = [c for c in earlier if rules.is_relevant(c)]
     full_text = " ".join([*context, text])
 
-    flag = safety.detect(text) or safety.detect(full_text)
+    # опечатка не должна обходить проверку безопасности
+    flag = safety.detect(text) or safety.detect(full_text) or safety.detect(understand(full_text))
     if flag:
         return rules.safety_reply(flag, full_text)
+    if small := rules.smalltalk(text):
+        return small
 
     articles = load_articles(db)
     has_location = location is not None
@@ -270,7 +274,7 @@ async def analyze(
             )
             resilience.breaker.success()
             reply = _from_llm(_parse_json(raw), articles, {c.code for c in categories}, has_location, full_text)
-            reply = _reconcile(reply, rules.analyze(full_text, articles, has_location, bool(earlier)))
+            reply = _reconcile(reply, rules.analyze(full_text, articles, has_location, bool(earlier)), full_text)
         except (GigaChatError, ValueError, KeyError) as exc:
             # сбоем связи считается только ошибка GigaChat; кривой ответ модели предохранитель не включает
             if isinstance(exc, GigaChatError):
@@ -288,6 +292,8 @@ async def analyze(
         # одна и та же фраза второй раз подряд выглядит как сбой
         reply.answer = REPEATED_UNCLEAR_ANSWER
     reply = _apply_guards(reply, articles)
+    if reply.kind == "fault" and reply.engine == "gigachat" and not reply.guard:
+        rules.polish_fault(reply, full_text)
     # в кэш попадают только ответы модели: запасные ответы должны смениться настоящими, как только GigaChat вернётся
     if reply.notice is None and use_llm and client.enabled and use_cache:
         resilience.cache.put(cache_key, reply)

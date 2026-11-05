@@ -638,7 +638,7 @@ function addAiCard(reply) {
   if (reply.kind === "question") {
     actions = `<div class="row-wrap"><button class="btn btn-soft btn-sm" data-act="ticket">Не помогло, оформить заявку</button>
       <button class="btn btn-ghost btn-sm" data-act="thanks">${icon("check", "icon-sm")} Спасибо, помогло</button></div>`;
-  } else if (reply.kind === "unknown" || reply.kind === "secret") {
+  } else if (reply.kind === "unknown" || reply.kind === "secret" || (reply.kind === "unclear" && reply.clarify_question && reply.guard !== "injection")) {
     actions = `<div class="row-wrap"><button class="btn btn-soft btn-sm" data-act="ticket">Оставить обращение сотруднику</button></div>`;
   }
 

@@ -36,7 +36,7 @@ def mask_personal(text: str) -> str:
 
 def normalize(text: str) -> str:
     text = text.lower().replace("ё", "е")
-    text = re.sub(r"wi[\s-]?fi|вай[\s-]?фай", " wifi ", text)
+    text = re.sub(r"wi[\s-]?fi|вай[\s-]?фа\w*|вифи\w*", " wifi ", text)
     return re.sub(r"\s+", " ", text).strip()
 
 
@@ -72,3 +72,71 @@ def short_title(text: str, limit: int = 60) -> str:
     if len(clean) > limit:
         clean = clean[:limit].rsplit(" ", 1)[0]
     return clean[:1].upper() + clean[1:] if clean else ""
+
+
+# разговорные слова, которых нет в правилах
+_SLANG = {
+    "клава": "клавиатура",
+    "клаву": "клавиатура",
+    "клавы": "клавиатура",
+    "кондей": "кондиционер",
+    "кондея": "кондиционер",
+    "кондер": "кондиционер",
+    "инет": "интернет",
+    "инета": "интернет",
+    "инете": "интернет",
+    "инэт": "интернет",
+    "толчок": "туалет",
+    "толчка": "туалет",
+    "толчке": "туалет",
+    "сортир": "туалет",
+    "сортире": "туалет",
+    "телик": "телевизор",
+    "телика": "телевизор",
+    "течот": "течет",
+    "врубается": "включается",
+}
+# слова, в которых чаще всего ошибаются; короче шести букв не берём: «жалко» не должно стать «жарко»
+_KNOWN_WORDS = frozenset(
+    """
+    проектор принтер компьютер ноутбук монитор клавиатура колонки микрофон телевизор интернет роутер розетка
+    проводка провода выключатель светильник лампочка батарея кондиционер отопление вентиляция туалет унитаз
+    раковина канализация грязно сломался сломалась сломалось сломан сломано работает работают включается
+    выключается печатает показывает подключается закрывается открывается холодно холодная холодный протекает
+    шатается заклинило
+    """.split()
+)
+
+
+def _distance_within(a: str, b: str, limit: int) -> bool:
+    """Расстояние Дамерау-Левенштейна не больше limit: перепутанные соседние буквы считаются одной ошибкой."""
+    if abs(len(a) - len(b)) > limit:
+        return False
+    before, row = None, list(range(len(b) + 1))
+    for i, ca in enumerate(a, 1):
+        current = [i]
+        for j, cb in enumerate(b, 1):
+            cost = min(row[j] + 1, current[j - 1] + 1, row[j - 1] + (ca != cb))
+            if before is not None and i > 1 and j > 1 and ca == b[j - 2] and a[i - 2] == cb:
+                cost = min(cost, before[j - 2] + 1)
+            current.append(cost)
+        before, row = row, current
+    return row[-1] <= limit
+
+
+def _fix_word(word: str) -> str:
+    if word in _SLANG:
+        return _SLANG[word]
+    if len(word) < 6 or word in _KNOWN_WORDS:
+        return word
+    for known in _KNOWN_WORDS:
+        # две ошибки допускаем только в длинном слове с верной первой буквой
+        limit = 2 if len(word) >= 8 and word[0] == known[0] else 1
+        if _distance_within(word, known, limit):
+            return known
+    return word
+
+
+def understand(text: str) -> str:
+    """Текст для распознавания: исправлены частые опечатки и жаргон. В заявку идёт исходный текст человека."""
+    return re.sub(r"[а-я]+", lambda m: _fix_word(m.group(0)), normalize(text))
