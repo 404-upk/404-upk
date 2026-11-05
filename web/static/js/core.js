@@ -1206,95 +1206,305 @@ function watchContextMenu() {
   window.addEventListener("scroll", () => closeCtx(false), { passive: true });
 }
 
-// ---------- своя полоса прокрутки страницы ----------
-// Системную полосу на iPhone оформить нельзя, на компьютере она серая. Вместо неё у правого края
-// своя: тонкая васильковая со свечением, появляется при прокрутке и гаснет, как на iPhone.
-// Мышью её можно тянуть и нажимать по ней, как обычную. Внутренние списки и окна оформлены в app.css.
+// ---------- звёздные полосы прокрутки ----------
+// Системные полосы прокрутки спрятаны везде: у страницы, окон, списков, боковой панели, полей.
+// Вместо них свои «звёздные»: дорожка — пунктир из звёздной пыли, ползунок светится, в середине
+// фирменная искра 404, она поворачивается при прокрутке, за ней тянется след из мелких звёзд.
+// Появляются при прокрутке и при наведении, гаснут сами, как на iPhone.
+// Тянуть ползунок мышью можно, и курсор сайта при этом не замирает: системную полосу браузер
+// тянет сам и перестаёт сообщать странице, где мышь, а свою тянем мы.
 
-function watchScrollbar() {
-  const root = document.documentElement;
-  const bar = h('<div class="ui-scroll" aria-hidden="true"><i class="ui-scroll-thumb"></i></div>');
-  const thumb = bar.firstElementChild;
-  document.body.append(bar);
-  root.classList.add("has-ui-scroll");
-  let frame = 0;
-  let fade = 0;
-  let drag = null;
-  let geo = { track: 0, size: 0, max: 0 };
+const STAR = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${SPARK_PATH}"/></svg>`;
+const BAR = 14; // ширина полосы под мышь, видимая часть тоньше
+const MIN_THUMB = 40;
+const MAX_DUST = 12;
+const starBars = new Map(); // прокручиваемый элемент → { y, x }
+let dust = 0;
 
-  const measure = () => {
-    frame = 0;
-    const view = innerHeight;
-    const full = root.scrollHeight;
-    const max = Math.max(0, full - view);
-    bar.classList.toggle("is-none", max < 4);
-    if (max < 4) return;
-    const track = bar.clientHeight;
-    const size = Math.max(36, Math.round((track * view) / full));
-    geo = { track, size, max };
-    thumb.style.height = `${size}px`;
-    thumb.style.transform = `translateY(${Math.round(((track - size) * Math.min(scrollY, max)) / max)}px)`;
-  };
-  const schedule = () => {
-    if (!frame) frame = requestAnimationFrame(measure);
-  };
-  const show = () => {
-    bar.classList.add("is-on");
-    clearTimeout(fade);
-    fade = setTimeout(() => {
-      if (!drag && !bar.matches(":hover")) bar.classList.remove("is-on");
-    }, 1100);
-  };
+const pageScroller = () => document.scrollingElement || document.documentElement;
 
-  addEventListener("scroll", () => {
-    schedule();
-    show();
-  }, { passive: true });
-  addEventListener("resize", schedule, { passive: true });
-  // высота страницы меняется без прокрутки: подгрузились заявки, раскрылся блок
-  new ResizeObserver(schedule).observe(document.body);
-  bar.addEventListener("pointerenter", show);
-  bar.addEventListener("pointerleave", show);
+// проверка «блок прокручивается» при движении мыши: стиль читается не чаще раза в секунду на блок
+const scrollCache = new WeakMap();
+function canScroll(el, axis) {
+  if (el === pageScroller()) return axis === "y" ? el.scrollHeight > innerHeight + 2 : el.scrollWidth > innerWidth + 2;
+  const over = axis === "y" ? el.scrollHeight - el.clientHeight : el.scrollWidth - el.clientWidth;
+  if (over < 2) return false;
+  const now = performance.now();
+  let hit = scrollCache.get(el);
+  if (!hit || now - hit.t > 1000) scrollCache.set(el, (hit = { t: now, style: getComputedStyle(el) }));
+  const value = hit.style[axis === "y" ? "overflowY" : "overflowX"];
+  return value === "auto" || value === "scroll";
+}
 
-  // перетаскивание ползунка и нажатие по дорожке — только мышью и пером, пальцем страницу листают как обычно
-  thumb.addEventListener("pointerdown", (e) => {
-    if (e.pointerType === "touch") return;
-    e.preventDefault();
-    drag = { y: e.clientY, from: scrollY };
-    try {
-      thumb.setPointerCapture(e.pointerId);
-    } catch {
-      /* без захвата тянется, пока мышь над полосой */
+class StarBar {
+  constructor(el, axis) {
+    this.el = el;
+    this.axis = axis;
+    this.page = el === pageScroller();
+    this.node = h(`<div class="ui-scroll is-${axis}${this.page ? " is-page" : ""}" aria-hidden="true">
+      <i class="ui-scroll-thumb"><span class="ui-scroll-star">${STAR}</span></i></div>`);
+    this.thumb = this.node.firstElementChild;
+    document.body.append(this.node);
+    this.on = false;
+    this.drag = null;
+    this.frame = 0;
+    this.fade = 0;
+    this.last = this.pos();
+    this.trail = 0;
+    this.geo = null;
+    this.bindDrag();
+  }
+
+  pos() {
+    if (this.page) return this.axis === "y" ? scrollY : scrollX;
+    return this.axis === "y" ? this.el.scrollTop : this.el.scrollLeft;
+  }
+
+  setPos(v) {
+    if (this.page) scrollTo({ [this.axis === "y" ? "top" : "left"]: v, behavior: "instant" });
+    else this.el[this.axis === "y" ? "scrollTop" : "scrollLeft"] = v;
+  }
+
+  /** Где полоса на экране и какой длины ползунок */
+  measure() {
+    const { el, axis } = this;
+    let r;
+    let view;
+    let full;
+    if (this.page) {
+      r = { left: 0, top: 0, right: innerWidth, bottom: innerHeight };
+      view = axis === "y" ? innerHeight : innerWidth;
+      full = axis === "y" ? el.scrollHeight : el.scrollWidth;
+    } else {
+      if (!el.isConnected) return null;
+      const b = el.getBoundingClientRect();
+      if (!b.width || !b.height) return null;
+      const left = b.left + el.clientLeft;
+      const top = b.top + el.clientTop;
+      r = { left, top, right: left + el.clientWidth, bottom: top + el.clientHeight };
+      view = axis === "y" ? el.clientHeight : el.clientWidth;
+      full = axis === "y" ? el.scrollHeight : el.scrollWidth;
     }
-    bar.classList.add("is-drag");
-  });
-  thumb.addEventListener("pointermove", (e) => {
-    if (!drag || geo.track <= geo.size) return;
-    const k = geo.max / (geo.track - geo.size);
-    scrollTo({ top: drag.from + (e.clientY - drag.y) * k, behavior: "instant" });
-  });
-  const stop = () => {
-    if (!drag) return;
-    drag = null;
-    bar.classList.remove("is-drag");
-    show();
-  };
-  thumb.addEventListener("pointerup", stop);
-  thumb.addEventListener("pointercancel", stop);
-  bar.addEventListener("pointerdown", (e) => {
-    if (e.target !== bar || e.pointerType === "touch") return;
-    // нажатие выше или ниже ползунка: на экран вверх или вниз
-    const r = thumb.getBoundingClientRect();
-    scrollBy({ top: (e.clientY < r.top ? -1 : 1) * innerHeight * 0.9, behavior: "smooth" });
-  });
-  schedule();
+    const max = full - view;
+    if (max < 2) return null;
+    // видимая часть: элемент может выходить за край экрана
+    const a = axis === "y" ? Math.max(r.top, 0) + 6 : Math.max(r.left, 0) + 6;
+    const b2 = axis === "y" ? Math.min(r.bottom, innerHeight) - 6 : Math.min(r.right, innerWidth) - 6;
+    const track = b2 - a;
+    if (track < 30) return null;
+    const size = Math.max(MIN_THUMB, Math.round((track * view) / full));
+    const at = Math.round(((track - size) * Math.min(Math.max(this.pos(), 0), max)) / max);
+    return { r, a, track, size, at, max };
+  }
+
+  place() {
+    const g = this.measure();
+    this.geo = g;
+    this.node.classList.toggle("is-none", !g);
+    if (!g) return;
+    const s = this.node.style;
+    if (this.axis === "y") {
+      s.left = `${Math.min(g.r.right, innerWidth) - BAR}px`;
+      s.top = `${g.a}px`;
+      s.height = `${g.track}px`;
+      this.thumb.style.height = `${g.size}px`;
+      this.thumb.style.transform = `translateY(${g.at}px)`;
+    } else {
+      s.top = `${Math.min(g.r.bottom, innerHeight) - BAR}px`;
+      s.left = `${g.a}px`;
+      s.width = `${g.track}px`;
+      this.thumb.style.width = `${g.size}px`;
+      this.thumb.style.transform = `translateX(${g.at}px)`;
+    }
+    // искра поворачивается вместе с прокруткой
+    this.thumb.style.setProperty("--spin", `${Math.round((this.pos() / Math.max(1, g.max)) * 540)}deg`);
+  }
+
+  loop() {
+    this.frame = 0;
+    this.place();
+    if (this.on || this.drag) this.frame = requestAnimationFrame(() => this.loop());
+  }
+
+  show(hold = 1100) {
+    if (!this.on) {
+      this.on = true;
+      this.node.classList.add("is-on");
+      if (!this.frame) this.loop();
+    }
+    clearTimeout(this.fade);
+    this.fade = setTimeout(() => this.hide(), hold);
+  }
+
+  hide() {
+    if (this.drag || this.node.matches(":hover")) return this.show();
+    this.on = false;
+    this.node.classList.remove("is-on");
+    // элемент убрали со страницы (закрыли окно): полоса тоже уходит
+    if (!this.page && !this.el.isConnected) this.destroy();
+  }
+
+  scrolled() {
+    const now = this.pos();
+    const moved = Math.abs(now - this.last);
+    this.last = now;
+    this.show();
+    this.trail += moved;
+    if (this.trail > 70 && this.geo) {
+      this.trail = 0;
+      this.sparkle();
+    }
+  }
+
+  /** Звёздная пыль, которая отлетает от искры при прокрутке */
+  sparkle() {
+    if (dust >= MAX_DUST || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const r = this.thumb.getBoundingClientRect();
+    if (!r.width) return;
+    dust += 1;
+    const bit = h(`<i class="ui-scroll-dust" aria-hidden="true">${STAR}</i>`);
+    document.body.append(bit);
+    const x = r.left + r.width / 2;
+    const y = r.top + r.height / 2;
+    const side = this.axis === "y" ? [-(10 + Math.random() * 16), (Math.random() - 0.5) * 22] : [(Math.random() - 0.5) * 22, -(10 + Math.random() * 16)];
+    const size = 0.35 + Math.random() * 0.45;
+    const anim = bit.animate(
+      [
+        { transform: `translate3d(${x}px, ${y}px, 0) scale(${size})`, opacity: 0.95 },
+        { transform: `translate3d(${x + side[0]}px, ${y + side[1]}px, 0) scale(0) rotate(120deg)`, opacity: 0 },
+      ],
+      { duration: 700 + Math.random() * 300, easing: "cubic-bezier(0.2, 0.7, 0.3, 1)", fill: "forwards" },
+    );
+    anim.onfinish = anim.oncancel = () => {
+      bit.remove();
+      dust -= 1;
+    };
+  }
+
+  bindDrag() {
+    const { thumb, node } = this;
+    const coord = (e) => (this.axis === "y" ? e.clientY : e.clientX);
+    thumb.addEventListener("pointerdown", (e) => {
+      if (e.pointerType === "touch" || e.button !== 0) return;
+      e.preventDefault();
+      e.stopPropagation();
+      this.drag = { at: coord(e), from: this.pos() };
+      try {
+        thumb.setPointerCapture(e.pointerId);
+      } catch {
+        /* без захвата тянется, пока мышь над полосой */
+      }
+      node.classList.add("is-drag");
+      document.documentElement.classList.add("is-scroll-drag");
+      this.show();
+    });
+    thumb.addEventListener("pointermove", (e) => {
+      const g = this.geo;
+      if (!this.drag || !g || g.track <= g.size) return;
+      this.setPos(this.drag.from + ((coord(e) - this.drag.at) * g.max) / (g.track - g.size));
+    });
+    const stop = () => {
+      if (!this.drag) return;
+      this.drag = null;
+      node.classList.remove("is-drag");
+      document.documentElement.classList.remove("is-scroll-drag");
+      this.show();
+    };
+    thumb.addEventListener("pointerup", stop);
+    thumb.addEventListener("pointercancel", stop);
+    thumb.addEventListener("lostpointercapture", stop);
+    // нажатие по дорожке выше или ниже ползунка: на экран назад или вперёд
+    node.addEventListener("pointerdown", (e) => {
+      if (e.target !== node || e.pointerType === "touch" || e.button !== 0) return;
+      e.preventDefault();
+      const r = thumb.getBoundingClientRect();
+      const before = this.axis === "y" ? e.clientY < r.top : e.clientX < r.left;
+      const view = this.page ? (this.axis === "y" ? innerHeight : innerWidth) : this.axis === "y" ? this.el.clientHeight : this.el.clientWidth;
+      const target = this.page ? window : this.el;
+      target.scrollBy({ [this.axis === "y" ? "top" : "left"]: (before ? -1 : 1) * view * 0.9, behavior: "smooth" });
+    });
+    node.addEventListener("pointerenter", () => this.show(1600));
+    node.addEventListener("pointerleave", () => this.show(700));
+  }
+
+  destroy() {
+    clearTimeout(this.fade);
+    cancelAnimationFrame(this.frame);
+    this.node.remove();
+    const pair = starBars.get(this.el);
+    if (pair) {
+      delete pair[this.axis];
+      if (!pair.x && !pair.y) starBars.delete(this.el);
+    }
+  }
+}
+
+function starBar(el, axis) {
+  let pair = starBars.get(el);
+  if (!pair) starBars.set(el, (pair = {}));
+  return (pair[axis] ||= new StarBar(el, axis));
+}
+
+/** Ближайший прокручиваемый блок под мышью: его полоса показывается, чтобы её можно было взять */
+function scrollableAt(node) {
+  for (let el = node instanceof Element ? node : null, i = 0; el && el !== document.body && i < 12; el = el.parentElement, i += 1) {
+    if (el.closest(".ui-scroll")) return null;
+    if (canScroll(el, "y")) return el;
+  }
+  return null;
+}
+
+function watchStarScroll() {
+  const root = document.documentElement;
+  root.classList.add("has-ui-scroll");
+  // прокрутка любого блока: событие не всплывает, ловим на погружении
+  document.addEventListener(
+    "scroll",
+    (e) => {
+      const el = e.target === document ? pageScroller() : e.target;
+      if (!(el instanceof Element)) return;
+      for (const axis of ["y", "x"]) {
+        const pair = starBars.get(el);
+        const bar = pair?.[axis];
+        if (bar) {
+          if (bar.pos() !== bar.last) bar.scrolled();
+        } else if (canScroll(el, axis)) {
+          const fresh = starBar(el, axis);
+          fresh.last = -1;
+          fresh.scrolled();
+        }
+      }
+    },
+    { capture: true, passive: true },
+  );
+  // мышь над блоком с прокруткой или у правого края страницы: полоса показывается
+  let hoverFrame = 0;
+  document.addEventListener(
+    "pointermove",
+    (e) => {
+      if (e.pointerType !== "mouse" || hoverFrame) return;
+      const { clientX, clientY, target } = e;
+      hoverFrame = requestAnimationFrame(() => {
+        hoverFrame = 0;
+        if (clientX > innerWidth - 28 && canScroll(pageScroller(), "y")) starBar(pageScroller(), "y").show(900);
+        const el = scrollableAt(target);
+        if (!el) return;
+        const r = el.getBoundingClientRect();
+        // у края блока полоса держится дольше: её собираются взять
+        if (clientX > r.right - 36) starBar(el, "y").show(1400);
+      });
+    },
+    { passive: true },
+  );
+  // высота страницы меняется без прокрутки: подгрузились заявки, раскрылся блок
+  new ResizeObserver(() => starBars.forEach((pair) => pair.y?.on && pair.y.place())).observe(document.body);
 }
 
 if (document.body) {
   watchTips();
   watchLinks();
   watchContextMenu();
-  if (window.ResizeObserver) watchScrollbar();
+  if (window.ResizeObserver) watchStarScroll();
 }
 
 /**

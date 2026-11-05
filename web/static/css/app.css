@@ -1302,59 +1302,76 @@ input:-webkit-autofill, input:-webkit-autofill:hover, input:-webkit-autofill:foc
   .overlay > .modal, :root .overlay.is-leaving > .modal { animation: none; transition: none; }
 }
 
-/* ===== Полоса прокрутки в стиле сайта ===== */
-/* страница: своя полоса (core.js), системная спрятана; на iPhone системную иначе не оформить */
-html.has-ui-scroll { scrollbar-width: none; }
-html.has-ui-scroll::-webkit-scrollbar { display: none; }
+/* ===== Звёздные полосы прокрутки (core.js) ===== */
+/* системные полосы спрятаны везде: на iPhone их не оформить, а системную полосу браузер тянет сам,
+   и курсор сайта при этом замирал. Свои полосы появляются при прокрутке и при наведении к краю */
+html.has-ui-scroll, html.has-ui-scroll * { scrollbar-width: none; }
+html.has-ui-scroll::-webkit-scrollbar, html.has-ui-scroll ::-webkit-scrollbar { display: none; width: 0; height: 0; }
+html.is-scroll-drag, html.is-scroll-drag * { -webkit-user-select: none; user-select: none; }
+
 .ui-scroll {
-  position: fixed; z-index: 50;
-  top: calc(8px + env(safe-area-inset-top)); bottom: calc(8px + env(safe-area-inset-bottom)); right: max(2px, env(safe-area-inset-right));
-  width: 14px;
+  position: fixed; z-index: 2147482000; left: 0; top: 0;
+  width: 14px; height: 0;
   pointer-events: none;
   opacity: 0;
-  transition: opacity 0.45s ease;
+  transition: opacity 0.55s ease;
 }
+.ui-scroll.is-x { width: 0; height: 14px; }
 .ui-scroll.is-on, .ui-scroll.is-drag { opacity: 1; transition-duration: 0.15s; }
 .ui-scroll.is-none { display: none; }
+/* дорожка: пунктир из звёздной пыли, к концам тает */
+.ui-scroll::before {
+  content: ""; position: absolute; top: 0; bottom: 0; right: 4px; width: 5px;
+  background: radial-gradient(circle, color-mix(in srgb, var(--primary) 70%, var(--text)) 0 0.75px, transparent 1.4px) center top / 5px 12px repeat-y;
+  -webkit-mask: linear-gradient(transparent, #000 14%, #000 86%, transparent);
+  mask: linear-gradient(transparent, #000 14%, #000 86%, transparent);
+  opacity: 0.4;
+  transition: opacity 0.3s;
+}
+.ui-scroll.is-x::before {
+  top: auto; bottom: 4px; left: 0; right: 0; width: auto; height: 5px;
+  background: radial-gradient(circle, color-mix(in srgb, var(--primary) 70%, var(--text)) 0 0.75px, transparent 1.4px) left center / 12px 5px repeat-x;
+  -webkit-mask: linear-gradient(90deg, transparent, #000 14%, #000 86%, transparent);
+  mask: linear-gradient(90deg, transparent, #000 14%, #000 86%, transparent);
+}
+/* ползунок: луч света, к концам тает, в середине искра 404 */
 .ui-scroll-thumb {
-  position: absolute; top: 0; right: 3px;
-  width: 4px; min-height: 36px; border-radius: 999px;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--primary) 70%, var(--text)), var(--primary) 55%, color-mix(in srgb, var(--primary) 60%, transparent));
-  box-shadow: 0 0 10px color-mix(in srgb, var(--primary) 65%, transparent), 0 0 2px color-mix(in srgb, var(--primary) 90%, transparent);
-  transition: width 0.25s var(--ease-out, ease-out), right 0.25s var(--ease-out, ease-out), box-shadow 0.25s;
+  position: absolute; top: 0; right: 5px; width: 3px; border-radius: 999px;
+  background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--primary) 80%, var(--text)) 28%, color-mix(in srgb, var(--primary) 80%, var(--text)) 72%, transparent);
+  box-shadow: 0 0 9px color-mix(in srgb, var(--primary) 55%, transparent);
+  transition: width 0.25s var(--ease-out, ease-out), right 0.25s var(--ease-out, ease-out), height 0.25s, bottom 0.25s, box-shadow 0.25s;
 }
-/* искра на ползунке, как в знаке 404 */
-.ui-scroll-thumb::after {
-  content: ""; position: absolute; left: 50%; top: 50%; width: 10px; height: 10px; margin: -5px 0 0 -5px;
-  background: var(--text);
-  clip-path: polygon(50% 0, 60% 40%, 100% 50%, 60% 60%, 50% 100%, 40% 60%, 0 50%, 40% 40%);
-  opacity: 0; transform: scale(0.4) rotate(-45deg);
-  transition: opacity 0.25s, transform 0.35s var(--ease-out, ease-out);
-  filter: drop-shadow(0 0 4px var(--primary));
+.ui-scroll.is-x .ui-scroll-thumb {
+  top: auto; right: auto; left: 0; bottom: 5px; width: 0; height: 3px;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--primary) 80%, var(--text)) 28%, color-mix(in srgb, var(--primary) 80%, var(--text)) 72%, transparent);
 }
-/* мышью полосу можно тянуть: при наведении она шире, искра загорается */
+.ui-scroll-star {
+  position: absolute; left: 50%; top: 50%; width: 13px; height: 13px; margin: -6.5px 0 0 -6.5px;
+  transform: rotate(var(--spin, 0deg));
+  transition: transform 0.25s ease-out, width 0.25s, height 0.25s, margin 0.25s;
+}
+.ui-scroll-star svg {
+  display: block; width: 100%; height: 100%;
+  fill: color-mix(in srgb, var(--text) 85%, var(--primary));
+  filter: drop-shadow(0 0 2px var(--primary)) drop-shadow(0 0 6px color-mix(in srgb, var(--primary) 70%, transparent));
+  animation: ui-star-twinkle 2.8s ease-in-out infinite;
+}
+@keyframes ui-star-twinkle { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(0.7); opacity: 0.7; } }
+/* звёздная пыль, которая отлетает от искры при прокрутке */
+.ui-scroll-dust { position: fixed; left: 0; top: 0; z-index: 2147482000; width: 12px; height: 12px; margin: -6px 0 0 -6px; pointer-events: none; }
+.ui-scroll-dust svg { display: block; width: 100%; height: 100%; fill: color-mix(in srgb, var(--primary) 70%, var(--text)); filter: drop-shadow(0 0 3px var(--primary)); }
+/* мышью полосу можно взять: у края она шире, искра крупнее, пыль на дорожке ярче */
 @media (hover: hover) and (pointer: fine) {
-  .ui-scroll { pointer-events: auto; cursor: pointer; }
-  .ui-scroll:hover, .ui-scroll.is-drag { opacity: 1; }
-  .ui-scroll:hover .ui-scroll-thumb, .ui-scroll.is-drag .ui-scroll-thumb { width: 8px; right: 3px; box-shadow: 0 0 14px color-mix(in srgb, var(--primary) 80%, transparent); }
-  .ui-scroll:hover .ui-scroll-thumb::after, .ui-scroll.is-drag .ui-scroll-thumb::after { opacity: 1; transform: none; }
+  .ui-scroll.is-on, .ui-scroll.is-drag { pointer-events: auto; cursor: pointer; }
+  .ui-scroll:hover::before, .ui-scroll.is-drag::before { opacity: 0.85; }
+  .ui-scroll:hover .ui-scroll-thumb, .ui-scroll.is-drag .ui-scroll-thumb { width: 5px; right: 4px; box-shadow: 0 0 14px color-mix(in srgb, var(--primary) 80%, transparent); }
+  .ui-scroll.is-x:hover .ui-scroll-thumb, .ui-scroll.is-x.is-drag .ui-scroll-thumb { width: 0; right: auto; height: 5px; bottom: 4px; }
+  .ui-scroll:hover .ui-scroll-star, .ui-scroll.is-drag .ui-scroll-star { width: 17px; height: 17px; margin: -8.5px 0 0 -8.5px; }
 }
-.fv-lock .ui-scroll { display: none; }
-@media (prefers-reduced-motion: reduce) { .ui-scroll, .ui-scroll-thumb, .ui-scroll-thumb::after { transition: none; } }
-@media print { .ui-scroll { display: none !important; } }
-
-/* списки, окна, таблицы: тонкая полоса в цвет темы (на iPhone у них системный индикатор в цвет темы) */
-@supports selector(::-webkit-scrollbar) {
-  ::-webkit-scrollbar { width: 10px; height: 10px; }
-  ::-webkit-scrollbar-track, ::-webkit-scrollbar-corner { background: transparent; }
-  ::-webkit-scrollbar-thumb {
-    border: 3px solid transparent; border-radius: 999px; background-clip: padding-box;
-    background-color: color-mix(in srgb, var(--primary) 42%, transparent);
-  }
-  ::-webkit-scrollbar-thumb:hover { background-color: var(--primary); }
-  ::-webkit-scrollbar-thumb:active { background-color: color-mix(in srgb, var(--primary) 80%, var(--text)); }
+/* окно поверх страницы: полоса страницы не показывается, у окна своя */
+.fv-lock .ui-scroll.is-page, body:has(> .overlay, > .lightbox, > .tut-backdrop) .ui-scroll.is-page { display: none; }
+@media (prefers-reduced-motion: reduce) {
+  .ui-scroll, .ui-scroll-thumb, .ui-scroll-star { transition: none; }
+  .ui-scroll-star svg { animation: none; }
 }
-@supports not selector(::-webkit-scrollbar) {
-  * { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--primary) 50%, transparent) transparent; }
-  html.has-ui-scroll { scrollbar-width: none; }
-}
+@media print { .ui-scroll, .ui-scroll-dust { display: none !important; } }
