@@ -331,10 +331,9 @@ function renderComposer() {
       }"></textarea>
       <div id="photo-slot"></div>
       <div class="composer-bar">
-        <label class="btn btn-ghost btn-sm file-btn" title="Прикрепить фото">
+        <button type="button" class="btn btn-ghost btn-sm" id="photo-btn" title="Прикрепить фото: камера, файл или скриншот">
           ${icon("camera")}<span>Фото</span>
-          <input type="file" id="photo-input" accept="image/*">
-        </label>
+        </button>
         <button class="btn btn-primary" type="submit" id="ask-btn">${icon("send")}<span>Отправить</span></button>
       </div>
     </form>`;
@@ -362,8 +361,59 @@ function renderComposer() {
     e.preventDefault();
     ask(area.value);
   });
-  $("#photo-input").addEventListener("change", (e) => onPhoto(e.target.files[0]));
+  $("#photo-btn").addEventListener("click", openPhotoPicker);
+  // скриншот можно вставить прямо в поле сообщения, а фото перетащить на него
+  area.addEventListener("paste", (e) => {
+    const file = [...(e.clipboardData?.files || [])].find((f) => f.type.startsWith("image/"));
+    if (!file) return;
+    e.preventDefault();
+    onPhoto(file);
+  });
+  bindPhotoDrop(form);
   renderPhotoSlot();
+}
+
+/** Своё окно для фото: камера на странице, перетаскивание, вставка из буфера. Загружается при первом нажатии */
+function openPhotoPicker() {
+  const maxMb = state.meta?.max_upload_mb || 8;
+  import("./photo-picker.js")
+    .then(({ pickPhoto }) => pickPhoto({ onFile: onPhoto, maxMb }))
+    .catch(() => {
+      // окно не загрузилось (нет сети и нет копии): остаётся обычный выбор файла браузера
+      const input = h('<input type="file" accept="image/*" hidden>');
+      input.addEventListener("change", () => onPhoto(input.files[0]));
+      input.click();
+    });
+}
+
+/** Фото можно бросить прямо на блок с сообщением: блок подсвечивается, пока файл над ним */
+function bindPhotoDrop(el) {
+  let depth = 0;
+  const hasFiles = (e) => [...(e.dataTransfer?.types || [])].includes("Files");
+  el.addEventListener("dragenter", (e) => {
+    if (!hasFiles(e)) return;
+    e.preventDefault();
+    depth += 1;
+    el.classList.add("is-drop");
+  });
+  el.addEventListener("dragover", (e) => {
+    if (!hasFiles(e)) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "copy";
+  });
+  el.addEventListener("dragleave", () => {
+    depth = Math.max(0, depth - 1);
+    if (!depth) el.classList.remove("is-drop");
+  });
+  el.addEventListener("drop", (e) => {
+    if (!hasFiles(e)) return;
+    e.preventDefault();
+    depth = 0;
+    el.classList.remove("is-drop");
+    const file = [...e.dataTransfer.files].find((f) => f.type.startsWith("image/"));
+    if (file) onPhoto(file);
+    else toast("Можно прикрепить только фото", "error");
+  });
 }
 
 function autoGrow(area) {
@@ -775,10 +825,8 @@ function renderDraftPhoto() {
       </div>`;
     slot.querySelector("button").addEventListener("click", removePhoto);
   } else {
-    slot.innerHTML = `
-      <label class="u-self-start btn file-btn">${icon("camera")} Добавить фото
-        <input type="file" accept="image/*"></label>`;
-    slot.querySelector("input").addEventListener("change", (e) => onPhoto(e.target.files[0]));
+    slot.innerHTML = `<button type="button" class="u-self-start btn">${icon("camera")} Добавить фото</button>`;
+    slot.querySelector("button").addEventListener("click", openPhotoPicker);
   }
 }
 

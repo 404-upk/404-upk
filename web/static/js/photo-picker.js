@@ -1,0 +1,279 @@
+// Своё окно для фото к заявке. Раньше кнопка «Фото» сразу открывала системное окно выбора файла.
+// Теперь сначала открывается окно в стиле сайта: снять камерой прямо на странице, перетащить файл,
+// вставить скриншот из буфера. Системное окно остаётся только за кнопкой «Выбрать файл»:
+// заглянуть в папки компьютера сайт сам не может, это умеет только браузер своим окном.
+// Загружается при первом нажатии на «Фото», на старте страницы не нужно.
+
+import { esc, icon, loadCss, openModal } from "./core.js";
+import { SPARK_PATH } from "./cursor.js";
+
+const COARSE = matchMedia("(pointer: coarse)");
+const SPARK = `<svg class="spark" viewBox="0 0 24 24" aria-hidden="true"><path d="${SPARK_PATH}"/></svg>`;
+
+/** Камера есть и браузер даст её странице: нужен https (или localhost) и хотя бы одна камера */
+async function cameraCount() {
+  if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) return 0;
+  try {
+    const list = await navigator.mediaDevices.enumerateDevices();
+    return list.filter((d) => d.kind === "videoinput").length;
+  } catch {
+    return 1; // список не отдали: попробуем включить при нажатии
+  }
+}
+
+/** Картинка из буфера обмена по кнопке «Вставить»: браузер один раз спросит разрешение */
+async function clipboardImage() {
+  for (const item of await navigator.clipboard.read()) {
+    const type = item.types.find((t) => t.startsWith("image/"));
+    if (type) return new File([await item.getType(type)], `screenshot.${type.split("/")[1] || "png"}`, { type });
+  }
+  return null;
+}
+
+const firstImage = (files) => [...(files || [])].find((f) => f.type?.startsWith("image/")) || null;
+
+function stamp() {
+  const d = new Date();
+  const p = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
+}
+
+/**
+ * Открывает окно выбора фото. onFile(file) вызывается, когда человек выбрал, снял или вставил фото;
+ * окно при этом закрывается. maxMb — предел размера, как на сервере.
+ */
+export async function pickPhoto({ onFile, maxMb = 8 } = {}) {
+  await loadCss("/static/css/photo-picker.css");
+  const cameras = await cameraCount();
+  const phone = COARSE.matches;
+  const canPaste = !phone && !!navigator.clipboard?.read;
+  let stream = null;
+  let shot = null;
+  let shotUrl = "";
+  let facing = "environment";
+
+  const body = `
+    <div class="pp">
+      <div class="pp-stage" data-mode="drop">
+        <div class="pp-drop">
+          <span class="pp-mark">${SPARK}</span>
+          <b class="pp-title">${phone ? "Сфотографируйте, что случилось" : "Перетащите фото сюда"}</b>
+          <span class="pp-sub">${
+            phone ? "или выберите готовый снимок в галерее" : "или вставьте скриншот: <kbd>Ctrl</kbd> + <kbd>V</kbd>"
+          }</span>
+          <span class="pp-over-text" aria-hidden="true">Отпустите, чтобы прикрепить</span>
+        </div>
+        <video class="pp-video" playsinline muted></video>
+        <span class="pp-corners" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+        <img class="pp-shot" alt="Снимок с камеры">
+        <span class="pp-flash" aria-hidden="true"></span>
+        <div class="pp-note" role="status" aria-live="polite"></div>
+      </div>
+      <div class="pp-actions" data-for="drop">
+        ${cameras ? `<button type="button" class="btn btn-primary pp-cam">${icon("camera")}<span>Снять камерой</span></button>` : ""}
+        <button type="button" class="btn ${cameras ? "" : "btn-primary"} pp-file">${icon("image")}<span>${phone ? "Из галереи" : "Выбрать файл"}</span></button>
+        ${canPaste ? `<button type="button" class="btn btn-ghost pp-paste">${icon("clipboard")}<span>Вставить</span></button>` : ""}
+      </div>
+      <div class="pp-actions pp-cam-bar" data-for="camera" hidden>
+        <button type="button" class="btn btn-ghost pp-back">${icon("arrowLeft")}<span>Назад</span></button>
+        <button type="button" class="pp-shutter" aria-label="Сделать снимок"><i></i></button>
+        <button type="button" class="btn btn-ghost btn-icon pp-flip${cameras > 1 ? "" : " is-off"}" aria-label="Другая камера"${cameras > 1 ? "" : ' tabindex="-1" aria-hidden="true"'}>${icon("refresh")}</button>
+      </div>
+      <div class="pp-actions" data-for="shot" hidden>
+        <button type="button" class="btn pp-retake">${icon("refresh")}<span>Переснять</span></button>
+        <button type="button" class="btn btn-primary pp-use">${icon("check")}<span>Прикрепить</span></button>
+      </div>
+      <p class="pp-hint">Фото до ${esc(String(maxMb))} МБ. По нему быстрее понять, что сломалось и что взять с собой.</p>
+      <input type="file" accept="image/*" class="pp-input" hidden>
+    </div>`;
+
+  openModal({
+    title: "Фото к заявке",
+    body,
+    onMount(overlay, close) {
+      overlay.querySelector(".modal").classList.add("pp-modal");
+      const root = overlay.querySelector(".pp");
+      const stage = root.querySelector(".pp-stage");
+      const video = root.querySelector(".pp-video");
+      const img = root.querySelector(".pp-shot");
+      const note = root.querySelector(".pp-note");
+      const input = root.querySelector(".pp-input");
+
+      const say = (text, error = false) => {
+        note.textContent = text;
+        note.classList.toggle("is-error", error);
+        note.classList.toggle("is-on", !!text);
+      };
+      const setMode = (mode) => {
+        stage.dataset.mode = mode;
+        root.querySelectorAll("[data-for]").forEach((bar) => (bar.hidden = bar.dataset.for !== mode));
+        root.querySelector(`[data-for="${mode}"] .btn-primary, [data-for="${mode}"] .pp-shutter`)?.focus({ preventScroll: true });
+      };
+      const stopCamera = () => {
+        stream?.getTracks().forEach((t) => t.stop());
+        stream = null;
+        video.srcObject = null;
+      };
+      const forgetShot = () => {
+        if (shotUrl) URL.revokeObjectURL(shotUrl);
+        shot = null;
+        shotUrl = "";
+        img.removeAttribute("src");
+      };
+
+      /** Готово: проверка и передача фото заявке */
+      const done = (file) => {
+        if (!file) return;
+        if (!file.type?.startsWith("image/")) return say("Это не фото. Подойдёт снимок или скриншот: JPG, PNG, HEIC.", true);
+        if (file.size > maxMb * 1024 * 1024) return say(`Фото больше ${maxMb} МБ. Выберите поменьше или снимите камерой.`, true);
+        close();
+        onFile?.(file);
+      };
+
+      async function startCamera() {
+        forgetShot();
+        setMode("camera");
+        say("Включаем камеру…");
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: { ideal: facing }, width: { ideal: 1920 }, height: { ideal: 1080 } },
+            audio: false,
+          });
+        } catch (err) {
+          stopCamera();
+          setMode("drop");
+          const denied = err?.name === "NotAllowedError" || err?.name === "SecurityError";
+          say(
+            denied
+              ? "Браузер не дал доступ к камере. Разрешите его у адресной строки или выберите готовое фото."
+              : "Камера не включилась: возможно, она занята другой программой. Выберите готовое фото.",
+            true,
+          );
+          return;
+        }
+        // окно закрыли, пока браузер спрашивал разрешение
+        if (!overlay.isConnected) return stopCamera();
+        video.srcObject = stream;
+        const mode = stream.getVideoTracks()[0]?.getSettings().facingMode;
+        // фронтальная камера и камера ноутбука показываются зеркально, как в зеркале
+        video.classList.toggle("is-mirror", (mode || (phone ? facing : "user")) === "user");
+        await video.play().catch(() => {});
+        say("");
+      }
+
+      function capture() {
+        const w = video.videoWidth;
+        const hgt = video.videoHeight;
+        if (!w || !hgt) return;
+        const canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = hgt;
+        canvas.getContext("2d").drawImage(video, 0, 0, w, hgt);
+        stage.classList.remove("is-flash");
+        void stage.offsetWidth;
+        stage.classList.add("is-flash");
+        canvas.toBlob(
+          (blob) => {
+            if (!blob) return say("Снимок не получился, попробуйте ещё раз.", true);
+            stopCamera();
+            shot = blob;
+            shotUrl = URL.createObjectURL(blob);
+            img.src = shotUrl;
+            setMode("shot");
+          },
+          "image/jpeg",
+          0.9,
+        );
+      }
+
+      root.querySelector(".pp-cam")?.addEventListener("click", startCamera);
+      // на телефоне перетаскивать нечего: нажатие на большое поле сразу включает камеру
+      if (phone) {
+        const drop = root.querySelector(".pp-drop");
+        drop.classList.add("is-tap");
+        drop.addEventListener("click", () => (cameras ? startCamera() : input.click()));
+      }
+      root.querySelector(".pp-retake").addEventListener("click", startCamera);
+      root.querySelector(".pp-shutter").addEventListener("click", capture);
+      root.querySelector(".pp-back").addEventListener("click", () => {
+        stopCamera();
+        say("");
+        setMode("drop");
+      });
+      root.querySelector(".pp-flip").addEventListener("click", () => {
+        facing = facing === "environment" ? "user" : "environment";
+        stopCamera();
+        startCamera();
+      });
+      root.querySelector(".pp-use").addEventListener("click", () => {
+        if (shot) done(new File([shot], `photo-${stamp()}.jpg`, { type: "image/jpeg" }));
+      });
+      // системное окно выбора файла: только по прямому нажатию
+      root.querySelector(".pp-file").addEventListener("click", () => {
+        say("");
+        input.click();
+      });
+      input.addEventListener("change", () => done(input.files[0]));
+      root.querySelector(".pp-paste")?.addEventListener("click", async () => {
+        try {
+          const file = await clipboardImage();
+          if (file) done(file);
+          else say("В буфере обмена нет картинки. Сделайте скриншот (Win + Shift + S) и нажмите ещё раз.", true);
+        } catch {
+          say("Браузер не дал прочитать буфер обмена. Нажмите Ctrl + V прямо в этом окне.", true);
+        }
+      });
+
+      // перетаскивание файла в окно
+      let depth = 0;
+      const hasFiles = (e) => [...(e.dataTransfer?.types || [])].includes("Files");
+      overlay.addEventListener("dragenter", (e) => {
+        if (!hasFiles(e) || stage.dataset.mode !== "drop") return;
+        e.preventDefault();
+        depth += 1;
+        stage.classList.add("is-over");
+      });
+      overlay.addEventListener("dragover", (e) => {
+        if (!hasFiles(e)) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = stage.dataset.mode === "drop" ? "copy" : "none";
+      });
+      overlay.addEventListener("dragleave", () => {
+        depth = Math.max(0, depth - 1);
+        if (!depth) stage.classList.remove("is-over");
+      });
+      overlay.addEventListener("drop", (e) => {
+        if (!hasFiles(e)) return;
+        e.preventDefault();
+        depth = 0;
+        stage.classList.remove("is-over");
+        if (stage.dataset.mode !== "drop") return;
+        const file = firstImage(e.dataTransfer.files);
+        if (file) done(file);
+        else say("Перетащите картинку: снимок или скриншот.", true);
+      });
+
+      // Ctrl + V в окне: скриншот из буфера обмена
+      const onPaste = (e) => {
+        const file = firstImage(e.clipboardData?.files);
+        if (!file) return;
+        e.preventDefault();
+        done(file);
+      };
+      document.addEventListener("paste", onPaste);
+
+      // окно закрыто любым способом: камера выключается, обработчики снимаются
+      const watch = new MutationObserver(() => {
+        if (overlay.isConnected) return;
+        watch.disconnect();
+        stopCamera();
+        forgetShot();
+        document.removeEventListener("paste", onPaste);
+      });
+      watch.observe(document.body, { childList: true });
+
+      // камера не включается сама: браузер спросит разрешение, только когда человек нажмёт «Снять камерой»
+      setMode("drop");
+    },
+  });
+}

@@ -1,0 +1,143 @@
+/* ===== Своё окно для фото к заявке (photo-picker.js), загружается по требованию ===== */
+
+.pp-modal { width: min(580px, 100%); }
+.pp { display: flex; flex-direction: column; gap: 14px; }
+
+/* сцена: место для перетаскивания, видео с камеры или снимок */
+.pp-stage {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  max-height: 58vh;
+  border-radius: var(--radius);
+  overflow: hidden;
+  background:
+    radial-gradient(120% 90% at 50% 0%, color-mix(in srgb, var(--primary) 14%, transparent), transparent 65%),
+    var(--surface-2);
+  isolation: isolate;
+}
+@media (max-width: 560px) { .pp-stage { aspect-ratio: 3 / 4; } }
+
+/* место для перетаскивания: пунктир и бегущий по краю свет */
+.pp-drop {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+  padding: 24px; border-radius: inherit; text-align: center;
+  transition: background 0.3s;
+}
+.pp-drop::before {
+  content: ""; position: absolute; inset: 0; border-radius: inherit;
+  border: 1.5px dashed color-mix(in srgb, var(--primary) 45%, var(--border-strong));
+  transition: border-color 0.3s, box-shadow 0.3s;
+}
+@property --pp-a { syntax: "<angle>"; initial-value: 0deg; inherits: false; }
+.pp-drop::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1.5px;
+  background: conic-gradient(from var(--pp-a), transparent 0 72%, color-mix(in srgb, var(--primary) 60%, transparent) 84%, var(--primary) 88%, transparent 96%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  animation: pp-orbit 5s linear infinite;
+  pointer-events: none;
+}
+@keyframes pp-orbit { to { --pp-a: 360deg; } }
+
+.pp-mark {
+  position: relative; display: grid; place-items: center;
+  width: 64px; height: 64px; margin-bottom: 6px; border-radius: 50%;
+  color: var(--primary);
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--primary) 26%, transparent), transparent 75%);
+}
+.pp-mark .spark { width: 26px; height: 26px; filter: drop-shadow(0 0 10px var(--primary)); animation: pp-float 4.6s ease-in-out infinite; }
+.pp-mark .spark path { fill: currentColor; }
+@keyframes pp-float {
+  0%, 100% { transform: translateY(0) rotate(0deg) scale(1); }
+  50% { transform: translateY(-5px) rotate(45deg) scale(0.86); }
+}
+.pp-title { font-size: 17px; font-weight: 600; letter-spacing: -0.01em; }
+.pp-sub { font-size: 13.5px; color: var(--muted); }
+.pp-sub kbd {
+  display: inline-block; padding: 1px 6px; border-radius: 5px;
+  border: 1px solid var(--border-strong); border-bottom-width: 2px;
+  background: var(--surface-3); font: inherit; font-size: 12px; color: var(--text);
+}
+.pp-over-text { position: absolute; left: 0; right: 0; bottom: 22px; font-size: 13px; font-weight: 600; color: var(--primary); opacity: 0; transform: translateY(6px); transition: opacity 0.25s, transform 0.35s var(--ease-out); }
+
+.pp-drop.is-tap { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.pp-drop.is-tap:active .pp-mark .spark { transform: scale(1.3) rotate(45deg); transition: transform 0.2s var(--ease-out); }
+
+/* файл несут над окном */
+.pp-stage.is-over .pp-drop { background: color-mix(in srgb, var(--primary) 12%, transparent); }
+.pp-stage.is-over .pp-drop::before { border-style: solid; border-color: var(--primary); box-shadow: inset 0 0 40px -10px var(--primary); }
+.pp-stage.is-over .pp-mark .spark { animation: pp-pull 0.9s var(--ease-out) infinite alternate; }
+.pp-stage.is-over .pp-title, .pp-stage.is-over .pp-sub { opacity: 0.35; }
+.pp-stage.is-over .pp-over-text { opacity: 1; transform: none; }
+@keyframes pp-pull { from { transform: scale(1) rotate(0deg); } to { transform: scale(1.35) rotate(90deg); } }
+
+/* видео с камеры и снимок: кадр целиком, без обрезки, что видно — то и снимется */
+.pp-video, .pp-shot { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: #000; display: none; }
+.pp-video.is-mirror { transform: scaleX(-1); }
+.pp-stage[data-mode="camera"] .pp-video, .pp-stage[data-mode="shot"] .pp-shot { display: block; }
+.pp-stage:not([data-mode="drop"]) .pp-drop { display: none; }
+.pp-stage[data-mode="shot"] .pp-shot { animation: pp-develop 0.7s var(--ease-out) both; }
+@keyframes pp-develop { from { filter: blur(10px) brightness(1.7); transform: scale(1.03); } }
+
+/* уголки видоискателя */
+.pp-corners { position: absolute; inset: 14px; pointer-events: none; display: none; }
+.pp-stage[data-mode="camera"] .pp-corners { display: block; animation: pp-aim 2.8s ease-in-out infinite; }
+.pp-corners i { position: absolute; width: 26px; height: 26px; border: 2px solid var(--primary); filter: drop-shadow(0 0 6px var(--primary)); }
+.pp-corners i:nth-child(1) { left: 0; top: 0; border-right: 0; border-bottom: 0; border-top-left-radius: 8px; }
+.pp-corners i:nth-child(2) { right: 0; top: 0; border-left: 0; border-bottom: 0; border-top-right-radius: 8px; }
+.pp-corners i:nth-child(3) { left: 0; bottom: 0; border-right: 0; border-top: 0; border-bottom-left-radius: 8px; }
+.pp-corners i:nth-child(4) { right: 0; bottom: 0; border-left: 0; border-top: 0; border-bottom-right-radius: 8px; }
+@keyframes pp-aim { 0%, 100% { inset: 14px; opacity: 0.9; } 50% { inset: 20px; opacity: 0.55; } }
+
+/* вспышка при снимке */
+.pp-flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; }
+.pp-stage.is-flash .pp-flash { animation: pp-flash 0.45s ease-out; }
+@keyframes pp-flash { from { opacity: 0.85; } to { opacity: 0; } }
+
+/* строка состояния поверх сцены: «Включаем камеру…», ошибки */
+.pp-note {
+  position: absolute; left: 12px; right: 12px; bottom: 12px; z-index: 2;
+  padding: 8px 12px; border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--border-strong);
+  font-size: 13px; line-height: 1.4; color: var(--muted); text-align: center;
+  opacity: 0; transform: translateY(8px); pointer-events: none;
+  transition: opacity 0.25s, transform 0.35s var(--ease-out);
+}
+.pp-note.is-on { opacity: 1; transform: none; }
+.pp-note.is-error { color: var(--text); border-color: color-mix(in srgb, var(--red) 45%, var(--border)); background: color-mix(in srgb, var(--red) 14%, var(--surface)); }
+
+/* кнопки под сценой */
+.pp-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; }
+.pp-actions[hidden] { display: none; }
+.pp-actions .btn { flex: 1 1 150px; justify-content: center; }
+.pp-cam-bar { justify-content: space-between; flex-wrap: nowrap; }
+.pp-cam-bar .btn { flex: 0 0 auto; }
+/* одна камера: кнопки смены нет, но место за ней остаётся, чтобы затвор стоял посередине */
+.pp-flip.is-off { visibility: hidden; }
+.pp-cam-bar .btn-ghost:first-child, .pp-cam-bar .pp-flip { min-width: 96px; }
+.pp-cam-bar .pp-flip { justify-content: flex-end; }
+
+/* спуск затвора */
+.pp-shutter {
+  position: relative; flex: none; width: 64px; height: 64px; border-radius: 50%; padding: 0; cursor: pointer;
+  border: 3px solid var(--text); background: transparent;
+  box-shadow: 0 0 0 6px color-mix(in srgb, var(--primary) 18%, transparent), 0 0 26px -4px var(--primary);
+  transition: transform 0.2s var(--ease-out), box-shadow 0.3s;
+}
+.pp-shutter i { position: absolute; inset: 5px; border-radius: 50%; background: var(--text); transition: transform 0.2s var(--ease-out), background 0.2s; }
+.pp-shutter:hover i { background: var(--primary); }
+.pp-shutter:active { transform: scale(0.92); }
+.pp-shutter:active i { transform: scale(0.82); }
+.pp-shutter:focus-visible { outline: 2px solid var(--primary); outline-offset: 4px; }
+
+.pp-hint { margin: 0; font-size: 12.5px; color: var(--faint); text-align: center; }
+
+@media (prefers-reduced-motion: reduce) {
+  .pp-drop::after, .pp-mark .spark, .pp-stage.is-over .pp-mark .spark, .pp-stage[data-mode="camera"] .pp-corners,
+  .pp-stage[data-mode="shot"] .pp-shot, .pp-stage.is-flash .pp-flash { animation: none; }
+}

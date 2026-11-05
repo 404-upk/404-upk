@@ -64,7 +64,8 @@ async def security_headers(request: Request, call_next):
     headers.setdefault("X-Frame-Options", "DENY")
     # код отслеживания лежит в адресе страницы, его нельзя отдавать сторонним сайтам
     headers.setdefault("Referrer-Policy", "no-referrer")
-    headers.setdefault("Permissions-Policy", "geolocation=(), microphone=(), camera=(), payment=(), usb=()")
+    # камера разрешена только самому сайту: в окне «Фото к заявке» можно снять прямо на странице
+    headers.setdefault("Permissions-Policy", "geolocation=(), microphone=(), camera=(self), payment=(), usb=()")
     headers.setdefault("Cross-Origin-Opener-Policy", "same-origin")
     if settings.is_https:
         headers.setdefault("Strict-Transport-Security", "max-age=31536000")
