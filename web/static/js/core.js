@@ -503,57 +503,143 @@ export function applyTheme(theme) {
   document.querySelector('meta[name="theme-color"]')?.setAttribute("content", bg || "#0c1222");
 }
 
-// темы по кругу: тёмная → светлая → кромешная тьма → тёмная
-const THEMES = ["dark", "light", "black"];
-const THEME_NEXT = {
-  dark: { icon: "sun", label: "Светлая тема" },
-  light: { icon: "dark", label: "Тема «Кромешная тьма»" },
-  black: { icon: "moon", label: "Тёмная тема" },
-};
+// три темы на выбор; id остаются техническими, человек видит названия
+export const THEMES = [
+  { id: "dark", name: "Полночь", note: "Тёмная, основная", icon: "moon" },
+  { id: "light", name: "Горный снег", note: "Светлая", icon: "sun" },
+  { id: "black", name: "Кромешная тьма", note: "Чёрная", icon: "dark" },
+];
+const themeById = (id) => THEMES.find((t) => t.id === id) || THEMES[0];
 
+/** Смена темы с анимацией из точки (x, y): новая тема раскрывается знаком 404, в «Кромешную тьму» прежняя сворачивается */
+function switchTheme(next, x, y, onDone) {
+  const flip = () => {
+    store.set("upk-theme", next);
+    applyTheme(next);
+    onDone?.();
+  };
+  const wave = (strength) => window.dispatchEvent(new CustomEvent("upk:theme", { detail: { x, y, strength } }));
+  if (!document.startViewTransition || matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    flip();
+    return;
+  }
+  const radius = Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y));
+  const root = document.documentElement;
+  const collapse = next === "black";
+  root.classList.toggle("vt-collapse", collapse);
+  const transition = document.startViewTransition(flip);
+  transition.ready.then(() => {
+    const frames = sparkFrames(x, y, radius);
+    root.animate(
+      { clipPath: collapse ? frames.reverse() : frames },
+      collapse
+        ? { duration: 820, easing: "cubic-bezier(0.55, 0, 0.8, 0.2)", pseudoElement: "::view-transition-old(root)", fill: "forwards" }
+        : { duration: 980, easing: "cubic-bezier(0.65, 0, 0.35, 1)", pseudoElement: "::view-transition-new(root)" },
+    );
+    if (!collapse) wave(1.3);
+  });
+  transition.finished.finally(() => {
+    root.classList.remove("vt-collapse");
+    if (collapse) wave(0.7);
+  });
+}
+
+/**
+ * Кнопка темы открывает меню с тремя темами: название, подпись и образец цветов.
+ * Стрелки ходят по пунктам, Enter или пробел выбирает, Escape закрывает, фокус возвращается на кнопку.
+ */
 export function themeToggle(button) {
   const render = () => {
-    const next = THEME_NEXT[currentTheme()] || THEME_NEXT.dark;
-    button.innerHTML = icon(next.icon);
-    button.setAttribute("aria-label", next.label);
-    button.title = next.label;
+    const now = themeById(currentTheme());
+    button.innerHTML = icon(now.icon);
+    button.setAttribute("aria-label", `Тема: ${now.name}. Выбрать тему`);
+    button.title = `Тема: ${now.name}`;
   };
-  button.addEventListener("click", () => {
-    const now = THEMES.indexOf(currentTheme());
-    const next = THEMES[(now + 1) % THEMES.length];
-    const flip = () => {
-      store.set("upk-theme", next);
-      applyTheme(next);
-      render();
-    };
+  button.setAttribute("aria-haspopup", "menu");
+  button.setAttribute("aria-expanded", "false");
+  let menu = null;
+
+  const close = (focus = true) => {
+    if (!menu) return;
+    const old = menu;
+    menu = null;
+    document.removeEventListener("keydown", onKey, true);
+    document.removeEventListener("pointerdown", onDown, true);
+    window.removeEventListener("resize", place);
+    button.setAttribute("aria-expanded", "false");
+    old.classList.add("is-leaving");
+    setTimeout(() => old.remove(), 160);
+    if (focus) button.focus();
+  };
+  const items = () => [...(menu?.querySelectorAll("[data-theme-pick]") || [])];
+  const pick = (id) => {
     const r = button.getBoundingClientRect();
-    const x = r.left + r.width / 2;
-    const y = r.top + r.height / 2;
-    const wave = (strength) => window.dispatchEvent(new CustomEvent("upk:theme", { detail: { x, y, strength } }));
-    if (!document.startViewTransition || matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      flip();
+    close();
+    if (id === currentTheme()) return;
+    switchTheme(id, r.left + r.width / 2, r.top + r.height / 2, render);
+  };
+  function onKey(e) {
+    if (!menu) return;
+    const list = items();
+    const i = list.indexOf(document.activeElement);
+    if (e.key === "Escape") {
+      e.stopPropagation();
+      close();
+    } else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      list[(i + (e.key === "ArrowDown" ? 1 : -1) + list.length) % list.length].focus();
+    } else if (e.key === "Home") list[0].focus();
+    else if (e.key === "End") list[list.length - 1].focus();
+    else if (e.key === "Tab") {
+      close(false);
       return;
+    } else return;
+    e.preventDefault();
+  }
+  function onDown(e) {
+    if (menu && !menu.contains(e.target) && !button.contains(e.target)) close(false);
+  }
+  function place() {
+    if (!menu) return;
+    const r = button.getBoundingClientRect();
+    const mw = menu.offsetWidth;
+    const mh = menu.offsetHeight;
+    const up = r.bottom + mh + 12 > innerHeight && r.top - mh - 12 > 0;
+    menu.style.left = `${Math.max(8, Math.min(r.right - mw, innerWidth - mw - 8))}px`;
+    menu.style.top = `${up ? r.top - mh - 8 : r.bottom + 8}px`;
+    menu.classList.toggle("is-up", up);
+  }
+  const open = () => {
+    const now = currentTheme();
+    menu = h(`
+      <div class="theme-menu" role="menu" aria-label="Тема оформления">
+        <div class="theme-menu-title">Тема оформления</div>
+        ${THEMES.map(
+          (t) => `<button type="button" class="theme-opt" role="menuitemradio" aria-checked="${t.id === now}" data-theme-pick="${t.id}">
+            <span class="theme-swatch ts-${t.id}" aria-hidden="true"><i></i><i></i></span>
+            <span class="theme-opt-text"><b>${esc(t.name)}</b><small>${esc(t.note)}</small></span>
+            ${icon("check", "icon-sm theme-check")}
+          </button>`,
+        ).join("")}
+      </div>`);
+    document.body.append(menu);
+    place();
+    button.setAttribute("aria-expanded", "true");
+    menu.addEventListener("click", (e) => {
+      const opt = e.target.closest("[data-theme-pick]");
+      if (opt) pick(opt.dataset.themePick);
+    });
+    document.addEventListener("keydown", onKey, true);
+    document.addEventListener("pointerdown", onDown, true);
+    window.addEventListener("resize", place);
+    (menu.querySelector('[aria-checked="true"]') || items()[0]).focus();
+  };
+
+  button.addEventListener("click", () => (menu ? close() : open()));
+  button.addEventListener("keydown", (e) => {
+    if ((e.key === "ArrowDown" || e.key === "ArrowUp") && !menu) {
+      e.preventDefault();
+      open();
     }
-    const radius = Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y));
-    const root = document.documentElement;
-    // в «Кромешную тьму» прежняя тема сворачивается в знак у кнопки, в остальные темы новая раскрывается из него
-    const collapse = next === "black";
-    root.classList.toggle("vt-collapse", collapse);
-    const transition = document.startViewTransition(flip);
-    transition.ready.then(() => {
-      const frames = sparkFrames(x, y, radius);
-      root.animate(
-        { clipPath: collapse ? frames.reverse() : frames },
-        collapse
-          ? { duration: 820, easing: "cubic-bezier(0.55, 0, 0.8, 0.2)", pseudoElement: "::view-transition-old(root)", fill: "forwards" }
-          : { duration: 980, easing: "cubic-bezier(0.65, 0, 0.35, 1)", pseudoElement: "::view-transition-new(root)" },
-      );
-      if (!collapse) wave(1.3);
-    });
-    transition.finished.finally(() => {
-      root.classList.remove("vt-collapse");
-      if (collapse) wave(0.7);
-    });
   });
   render();
 }

@@ -79,19 +79,33 @@ def test_board_move_with_mouse_and_keyboard(page):
     expect(moved).to_be_focused()
 
 
-def test_theme_switch_is_remembered(page):
-    """Три темы по кругу: тёмная, светлая, «Кромешная тьма»; выбранная сохраняется после перезагрузки."""
+def test_theme_picker_and_choice_is_remembered(page):
+    """Меню темы: три темы с названиями, выбор мышью и с клавиатуры, выбор сохраняется после перезагрузки."""
     page.goto("/")
     root = page.locator("html")
     expect(root).to_have_attribute("data-theme", "dark")
-    for theme in ("light", "black", "dark", "black"):
-        if theme == "black" and root.get_attribute("data-theme") == "dark":
-            page.click("#theme")  # из тёмной в «Кромешную тьму» через светлую
-        page.click("#theme")
-        expect(root).to_have_attribute("data-theme", theme)
-    page.reload()
+
+    page.click("#theme")
+    menu = page.get_by_role("menu", name="Тема оформления")
+    expect(menu.get_by_role("menuitemradio")).to_have_text(
+        [re.compile("Полночь"), re.compile("Горный снег"), re.compile("Кромешная тьма")]
+    )
+    expect(menu.get_by_role("menuitemradio", name=re.compile("Полночь"))).to_have_attribute("aria-checked", "true")
+    menu.get_by_role("menuitemradio", name=re.compile("Кромешная тьма")).click()
     expect(root).to_have_attribute("data-theme", "black")
-    expect(page.locator("#theme")).to_have_attribute("aria-label", "Тёмная тема")
+    expect(menu).to_have_count(0)
+
+    # с клавиатуры: открыть, стрелкой вверх на «Горный снег», Enter
+    page.locator("#theme").focus()
+    page.keyboard.press("Enter")
+    page.keyboard.press("ArrowUp")
+    page.keyboard.press("Enter")
+    expect(root).to_have_attribute("data-theme", "light")
+    expect(page.locator("#theme")).to_be_focused()
+
+    page.reload()
+    expect(root).to_have_attribute("data-theme", "light")
+    expect(page.locator("#theme")).to_have_attribute("aria-label", "Тема: Горный снег. Выбрать тему")
 
 
 def test_phone_width_has_no_horizontal_scroll(phone):
