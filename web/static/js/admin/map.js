@@ -1,9 +1,9 @@
-import { api, esc, icon, plural } from "../core.js";
-import { bindCampusMap, campusMapSvg, nodeGlyph, spark } from "../campus.js";
+import { api, esc, icon, plural, toast } from "../core.js";
+import { nodeGlyph, spark } from "../campus.js";
 import { countUp, rise } from "../motion.js";
+import { bindPlan, planHtml, planStates, stateOf } from "../plan.js";
 
-// Карта помещений: состояние каждого помещения по этажам.
-// Пунктирное кольцо — 3 и больше заявок за 30 дней.
+// Карта помещений: план здания с состоянием каждого помещения.
 
 function toRoom(l) {
   return {
@@ -51,8 +51,7 @@ export async function render({ el, setHead }) {
       .filter((s) => s.open || s.chronic)
       .sort((a, b) => (b.state === "urgent") - (a.state === "urgent") || b.open - a.open || b.month - a.month);
 
-    // карта рисуется под ширину колонки: подписи остаются читаемыми на любом экране
-    const width = Math.max(480, el.clientWidth - 40);
+    const states = planStates({ buildings: [{ rooms }] });
 
     el.innerHTML = `
       <section class="card campus-card campus-panel enter stack">
@@ -66,12 +65,11 @@ export async function render({ el, setHead }) {
             <span><i class="dot"></i>без заявок</span>
             <span><i class="dot open"></i>есть заявка</span>
             <span><i class="dot urgent"></i>критичная</span>
-            <span><i class="dot chronic"></i>3+ за 30 дней</span>
           </div>
         </div>
         <div class="campus-meter" aria-hidden="true"><i data-css-pct="${index}"></i></div>
-        <div id="floors">${campusMapSvg(rooms, { width, rowHeight: width < 720 ? 104 : 124, labels: true, interactive: true, enter: true })}</div>
-        <div class="small muted">Нажмите на помещение, чтобы открыть его заявки.</div>
+        <div id="floors">${planHtml(states, { enter: first })}</div>
+        <div class="small muted">Нажмите на помещение, чтобы открыть его заявки, или на этаж, чтобы посмотреть его план.</div>
       </section>
       ${
         attention.length
@@ -89,7 +87,6 @@ export async function render({ el, setHead }) {
             </section>`
           : `<div class="notice notice-ok">${icon("check")}<div>В этом корпусе нет открытых заявок.</div></div>`
       }`;
-    bindCampusMap(el);
     el.querySelectorAll("[data-count]").forEach((n) => countUp(n, { delay: 300 }));
     if (!first) {
       rise(el, ":scope > *", { step: 80, dur: 800 });
@@ -98,14 +95,18 @@ export async function render({ el, setHead }) {
     }
     first = false;
     const open = (id) => (location.hash = `#/tickets?status=&location=${id}`);
-    el.querySelectorAll(".cm-node[data-id], .node-row[data-id]").forEach((node) => {
-      node.addEventListener("click", () => open(node.dataset.id));
-      node.addEventListener("keydown", (e) => {
-        if (node.matches(".cm-node") && (e.key === "Enter" || e.key === " ")) {
-          e.preventDefault();
-          open(node.dataset.id);
+    el.querySelectorAll(".node-row[data-id]").forEach((node) => node.addEventListener("click", () => open(node.dataset.id)));
+    bindPlan(el, states, {
+      onOpenFloor: (floor, n) => {
+        const id = n ? stateOf(states, n).id : null;
+        if (id != null) {
+          open(id);
+          return;
         }
-      });
+        import("../floor-view.js")
+          .then(({ openFloor }) => openFloor(floor, { states, room: n, onPick: open, pickLabel: "Открыть заявки" }))
+          .catch(() => toast("Не удалось открыть план этажа. Проверьте интернет и попробуйте ещё раз.", "error"));
+      },
     });
   };
   draw();

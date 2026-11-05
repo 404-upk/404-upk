@@ -254,7 +254,7 @@ function partRanges(f) {
 }
 
 /** Разметка схемы. states — из planStates(), here — id помещения, выбранного заявителем. */
-export function planHtml(states, { here = null, enter = false } = {}) {
+export function planHtml(states, { here = null, enter = false, readonly = false } = {}) {
   const floors = FLOORS.map((f) => {
     const y0 = floorTop(f.floor);
     const ranges = partRanges(f);
@@ -282,7 +282,7 @@ export function planHtml(states, { here = null, enter = false } = {}) {
       center = rail(CX - CW / 2, CX + CW / 2, y0 + FH - 14);
     }
     const label = `${f.floor} этаж: ${open ? `помещений с заявками ${open}` : "заявок нет"}. Открыть план этажа`;
-    return `<g class="pf-floor" data-floor="${f.floor}" tabindex="0" role="button" aria-label="${esc(label)}">
+    return `<g class="pf-floor" data-floor="${f.floor}"${readonly ? "" : ` tabindex="0" role="button" aria-label="${esc(label)}"`}>
       <rect class="pf-floor-bg" x="${X0 + 1}" y="${f1(y0 + 1)}" width="${X1 - X0 - 2}" height="${FH - 2}" rx="3"/>
       <text class="pf-label" x="0" y="${f1(y0 + FH / 2 + 3)}">${f.floor} эт</text>
       ${rooms}${center}
@@ -307,15 +307,15 @@ export function planHtml(states, { here = null, enter = false } = {}) {
     <text class="pf-entry" x="${CX}" y="${G + 18}">Вход</text>`;
 
   const grad = (s) => `<radialGradient id="pfg-${s}" class="pfg-${s}" cx="50%" cy="100%" r="110%"><stop offset="0"/><stop offset="1"/></radialGradient>`;
-  return `<div class="plan${enter && !REDUCED ? " is-enter" : ""}">
-    <svg class="pf" viewBox="0 0 ${W} ${H}" role="group" aria-label="Схема колледжа: 3 этажа">
+  return `<div class="plan${enter && !REDUCED ? " is-enter" : ""}${readonly ? " is-static" : ""}">
+    <svg class="pf" viewBox="0 0 ${W} ${H}" role="${readonly ? "img" : "group"}" aria-label="Схема колледжа: 3 этажа">
       <defs>${grad("clear")}${grad("open")}${grad("urgent")}</defs>
       ${facade}
       <g class="pf-stairs" aria-hidden="true">${sideStairs}</g>
       ${floors}
     </svg>
-  </div>
-  <div class="pl-info" aria-live="polite"><span class="pl-hint">${hintText()}</span></div>`;
+  </div>${readonly ? "" : `
+  <div class="pl-info" aria-live="polite"><span class="pl-hint">${hintText()}</span></div>`}`;
 }
 
 /**

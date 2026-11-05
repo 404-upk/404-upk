@@ -95,7 +95,7 @@ function planHtml(f, states, here) {
  * Открывает план этажа. states — из planStates(), here — id выбранного помещения,
  * onPick(id) — заявитель выбрал помещение для обращения.
  */
-export function openFloor(floorNo, { states, here = null, room = null, onPick } = {}) {
+export function openFloor(floorNo, { states, here = null, room = null, onPick, pickLabel = "Это здесь" } = {}) {
   const opener = document.activeElement;
   const cells = new Map(FLOORS.flatMap((f) => floorRooms(f).map((c) => [c.n, c])));
   const overlay = h(`
@@ -146,7 +146,7 @@ export function openFloor(floorNo, { states, here = null, room = null, onPick } 
           <div class="muted small">${esc(roomNames(cell).sub)} · ${current} этаж</div>
           <div class="pl-info-state is-${esc(data.state)}"><i></i>${esc(STATE_TEXT[data.state])}${data.chronic ? ", проблемы повторяются" : ""}</div>
         </div>
-        ${canPick ? `<button type="button" class="btn btn-primary btn-sm fv-pick">Это здесь</button>` : ""}
+        ${canPick ? `<button type="button" class="btn btn-primary btn-sm fv-pick">${esc(pickLabel)}</button>` : ""}
       </div>
       <div class="fv-issues"></div>`;
     detail.querySelector(".fv-pick")?.addEventListener("click", () => {

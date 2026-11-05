@@ -107,78 +107,7 @@ html:not(.is-revealed) .campus-panel.enter .campus-meter i { animation-play-stat
 .campus-legend .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--node); box-shadow: 0 0 6px var(--node); }
 .campus-legend .dot.open { background: var(--primary); box-shadow: 0 0 6px var(--primary); }
 .campus-legend .dot.urgent { background: var(--red); box-shadow: 0 0 6px var(--red); }
-.campus-legend .dot.chronic { background: transparent; box-shadow: none; border: 1px dashed var(--faint); width: 9px; height: 9px; }
 .campus-note { font-size: 13px; color: var(--muted); line-height: 1.45; }
-
-/* ---------- карта (SVG) ---------- */
-.campus-map { display: block; width: 100%; height: auto; overflow: visible; }
-.campus-map .cm-line { stroke: var(--text); stroke-opacity: 0.17; stroke-width: 1; fill: none; stroke-dasharray: 1; stroke-dashoffset: 0; transition: stroke-opacity 0.3s, stroke 0.3s; }
-.campus-map .cm-link { stroke-opacity: 0.09; }
-.campus-map .cm-signal { fill: var(--primary); filter: drop-shadow(0 0 3px var(--primary)); }
-.campus-map .cm-floor { fill: var(--faint); font-size: 10px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; }
-.campus-map .cm-node { --c: var(--node); outline: none; }
-.campus-map .cm-node.is-open { --c: var(--primary); }
-.campus-map .cm-node.is-urgent { --c: var(--red); }
-.campus-map .hit { fill: transparent; }
-.campus-map .cm-pop { transform-box: fill-box; transform-origin: center; transition: transform 0.45s var(--spring); }
-.campus-map .halo { fill: var(--c); opacity: 0.16; transform-box: fill-box; transform-origin: center; transition: opacity 0.3s; }
-.campus-map .core { fill: var(--c); }
-.campus-map .ring { fill: none; stroke: var(--faint); stroke-dasharray: 2 2.4; stroke-width: 1; transform-box: fill-box; transform-origin: center; animation: ring-turn 14s linear infinite; }
-.campus-map .label { fill: var(--muted); font-size: 10px; font-weight: 500; text-anchor: middle; transition: fill 0.2s; }
-.campus-map .cm-node.is-open .core { animation: map-breathe 2.8s ease-in-out infinite; }
-.campus-map .cm-node.is-open .halo { animation: map-halo 2.8s ease-in-out infinite; }
-.campus-map .cm-node.is-urgent .halo { animation: map-alert 1.5s ease-in-out infinite; }
-.campus-map .ring-here { fill: none; stroke: var(--text); stroke-width: 1; transform-box: fill-box; transform-origin: center; animation: here-ping 2.4s var(--ease-out) infinite; }
-@keyframes ring-turn { to { transform: rotate(360deg); } }
-@keyframes map-breathe { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
-@keyframes map-halo { 0%, 100% { opacity: 0.24; } 50% { opacity: 0.07; } }
-@keyframes map-alert { 0%, 100% { opacity: 0.18; transform: scale(1); } 50% { opacity: 0.42; transform: scale(1.65); } }
-@keyframes here-ping { from { opacity: 0.85; transform: scale(0.55); } to { opacity: 0; transform: scale(2); } }
-
-.campus-map.is-interactive .cm-node { cursor: pointer; }
-.campus-map .cm-node:hover .cm-pop,
-.campus-map .cm-node:focus-visible .cm-pop { transform: scale(1.5); }
-.campus-map .cm-node:hover .halo,
-.campus-map .cm-node:focus-visible .halo { opacity: 0.34; animation: none; }
-.campus-map .cm-node:hover .label,
-.campus-map .cm-node:focus-visible .label { fill: var(--text); }
-.campus-map.has-hot .cm-line { stroke-opacity: 0.08; }
-.campus-map.has-hot .cm-line.is-hot { stroke: var(--primary); stroke-opacity: 0.75; }
-
-/* первый показ: линии прорисовываются, точки появляются слева направо */
-.campus-map.is-enter .cm-line { animation: map-draw 1.5s var(--ease-io) both; animation-delay: calc(var(--enter, 0ms) + 200ms + var(--i, 0) * 130ms); }
-.campus-map.is-enter .cm-pop { animation: map-pop 0.85s var(--spring) both; animation-delay: calc(var(--enter, 0ms) + 280ms + var(--i, 0) * 38ms); }
-.campus-map.is-enter .label,
-.campus-map.is-enter .cm-floor { animation: fade-in 0.8s ease both; animation-delay: calc(var(--enter, 0ms) + 700ms); }
-.campus-map.is-enter .cm-signal { animation: fade-in 1s ease both; animation-delay: calc(var(--enter, 0ms) + 1500ms); }
-html:not(.is-revealed) .campus-map.is-enter * { animation-play-state: paused; }
-@keyframes map-draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
-@keyframes map-pop { from { opacity: 0; transform: scale(0); } to { opacity: 1; transform: scale(1); } }
-
-.cm-tip {
-  position: fixed;
-  z-index: 70;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 130px;
-  max-width: 260px;
-  padding: 9px 12px;
-  border-radius: 12px;
-  background: var(--surface-3);
-  border: 1px solid var(--border-strong);
-  box-shadow: var(--shadow-lg);
-  font-size: 13px;
-  pointer-events: none;
-  opacity: 0;
-  transform: translateY(6px) scale(0.97);
-  transform-origin: 50% 100%;
-  transition: opacity 0.16s ease, transform 0.28s var(--ease-out);
-}
-.cm-tip.is-on { opacity: 1; transform: none; }
-.cm-tip-state { font-size: 12px; color: var(--muted); }
-.cm-tip-state.is-open { color: var(--primary); }
-.cm-tip-state.is-urgent { color: var(--red); }
 
 /* ---------- страница заявителя: две колонки на широком экране ---------- */
 .report-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 28px; }
@@ -304,11 +233,12 @@ html:not(.is-revealed) .track-enter .tp-step, html:not(.is-revealed) .track-ente
 
 /* ---------- панель: карта помещений ---------- */
 .campus-card { padding: 18px 20px 22px; }
-.campus-card .campus-map { max-height: 70vh; }
+.campus-card .plan { width: 100%; max-width: 760px; margin: 0 auto; }
 .campus-kpi { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
 
 /* ===== Схема колледжа: здание в разрезе ===== */
 .plan { position: relative; margin: 0 -4px; }
+.plan.is-static { pointer-events: none; }
 .pf { display: block; width: 100%; height: auto; overflow: visible; user-select: none; -webkit-tap-highlight-color: transparent; }
 .pf text { font-family: inherit; }
 

@@ -1,7 +1,8 @@
 import { $, ApiError, api, errorBlock, esc, h, icon, leaveAndRemove, setBusy, themeToggle, toast } from "../core.js";
 import { can, ctx, initials, loadAssignees, loadLocations, parseHash } from "./ctx.js";
 import { ambient, startAmbient } from "../ambient.js";
-import { campusBadge, campusMapSvg, spark } from "../campus.js";
+import { campusBadge, spark } from "../campus.js";
+import { planHtml, planStates } from "../plan.js";
 import { REDUCED, initMotion, leave, rise, splitWords } from "../motion.js";
 
 const BRAND = (sub) => `
@@ -70,8 +71,7 @@ function renderLogin(message = "") {
   api("/api/campus")
     .then((campus) => {
       const box = $("#login-map");
-      const b = campus.buildings?.[0];
-      if (box && b) box.innerHTML = `${campusBadge(campus)}${campusMapSvg(b.rooms, { width: 420, rowHeight: 62, enter: !message })}`;
+      if (box && campus.buildings?.length) box.innerHTML = `${campusBadge(campus)}${planHtml(planStates(campus), { enter: !message, readonly: true })}`;
     })
     .catch(() => {});
   if (message) {

@@ -196,7 +196,7 @@ def test_at11_panel_requires_auth(client):
 def test_executor_sees_only_own_tickets(client):
     login(client, "electric")
     items = client.get("/api/staff/tickets?status=&per_page=300").json()["items"]
-    assert all(t["assignee"] and t["assignee"]["name"] == "Олег Смирнов" for t in items)
+    assert all(t["assignee"] and t["assignee"]["name"] == "Шамиль Алиев" for t in items)
 
 
 def test_wrong_password_is_rejected(client):
@@ -213,7 +213,7 @@ def test_at12_status_changes_are_logged(client):
     history = client.get(f"/api/staff/tickets/{tid}").json()["history"]
     changes = [h for h in history if h["action"] == "status"]
     assert changes[-1]["text"] == "Статус: Новая → На рассмотрении"
-    assert changes[-1]["actor"] == "Елена Белова"
+    assert changes[-1]["actor"] == "Патимат Гаджиева"
 
 
 def test_photo_is_reencoded_and_private(client):

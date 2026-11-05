@@ -102,13 +102,13 @@
 .login-aside-body { display: flex; flex-direction: column; gap: 14px; max-width: 480px; }
 .login-aside h1 { font-size: clamp(28px, 4vw, 44px); line-height: 1.08; letter-spacing: -0.025em; }
 .login-aside .campus-badge { margin-top: 6px; }
-.login-aside .campus-map { margin-top: 18px; max-width: 440px; }
+.login-aside .plan { margin-top: 18px; max-width: 440px; }
 .login-split .login-card { justify-self: center; }
 @media (min-width: 980px) {
   .login-split { grid-template-columns: minmax(0, 1fr) 400px; gap: 64px; padding: 40px; }
   .login-split .login-card { justify-self: end; }
 }
-@media (max-width: 979px) { .login-aside .campus-map, .login-aside .campus-badge { display: none; } }
+@media (max-width: 979px) { .login-aside .plan, .login-aside .campus-badge { display: none; } }
 .demo-accounts { font-size: 13px; color: var(--muted); background: var(--surface-2); border-radius: var(--radius-sm); padding: 10px 12px; }
 .demo-accounts button { border: 0; background: none; padding: 0; color: var(--primary); cursor: pointer; font-weight: 600; }
 
