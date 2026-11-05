@@ -553,3 +553,62 @@ def test_text_selection_has_own_color_and_sparks(page):
 
     page.evaluate("document.documentElement.dataset.theme = 'sky'")
     assert "39, 64, 122" in title.evaluate(color)
+
+
+def test_page_transition_opens_with_spark_and_goes_back(page):
+    """Переход между страницами идёт через свой сценарий вперёд и назад и не ломает страницу."""
+    page.emulate_media(reduced_motion="no-preference")
+    page.goto("/")
+    link = page.locator('a[href="/privacy"], a[data-href="/privacy"]').first
+    link.scroll_into_view_if_needed()
+    link.click()
+    expect(page).to_have_url(re.compile("/privacy"))
+    expect(page.locator("html")).to_have_attribute("data-nav", "forward")
+
+    page.go_back()
+    expect(page).to_have_url(re.compile(r"/$"))
+    expect(page.locator("html")).to_have_attribute("data-nav", "back")
+    expect(page.locator("html")).not_to_have_class(re.compile("vt-collapse"))
+
+
+def test_admin_section_opens_with_spark(page):
+    """Раздел панели раскрывается анимацией от клика; при первой загрузке анимации нет."""
+    page.emulate_media(reduced_motion="no-preference")
+    login_admin(page)
+    page.goto("/admin#/tickets")
+    expect(page.locator("#list")).to_be_visible()
+    page.get_by_role("link", name="База знаний").click()
+    expect(page.locator(".card[data-id]").first).to_be_visible()
+
+
+def test_sound_is_quiet_and_can_be_switched_off(page):
+    """Звук не перегружен и не пуст, выключатель работает и запоминается."""
+    page.goto("/")
+    for kind, limit in (("intro", 0.6), ("forward", 0.3), ("back", 0.3), ("section", 0.25)):
+        result = page.evaluate("(kind) => import('/static/js/sound.js').then((m) => m.measureSound(kind))", kind)
+        assert 0.01 < result["peak"] < limit, (kind, result)
+        assert result["envelope"][-1] < result["peak"] / 4, (kind, result)
+
+    button = page.locator(".sound-btn")
+    expect(button).to_have_attribute("aria-pressed", "true")
+    button.click()
+    expect(button).to_have_attribute("aria-pressed", "false")
+    page.reload()
+    expect(page.locator(".sound-btn")).to_have_attribute("aria-pressed", "false")
+
+    page.mouse.click(640, 720, button="right")
+    expect(
+        page.get_by_role("menu", name="Действия на странице").get_by_role("menuitem", name="Включить звук")
+    ).to_be_visible()
+
+
+def test_phone_header_keeps_all_buttons_whole(phone):
+    """На узком экране кнопки шапки не обрезаются и не выходят за край."""
+    phone.goto("/")
+    link = phone.locator(".topbar").get_by_role("link", name="Мои заявки")
+    expect(link).to_be_visible()
+    assert link.evaluate("(el) => el.scrollWidth <= el.clientWidth + 1")
+    for selector in (".sound-btn", "#theme"):
+        box = phone.locator(selector).bounding_box()
+        assert box["x"] + box["width"] <= 360
+    assert phone.evaluate("document.documentElement.scrollWidth <= window.innerWidth + 1")

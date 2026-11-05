@@ -5,6 +5,7 @@
 
 import { MARK_PARTS, MARK_VIEWBOX } from "./brand.js";
 import { ambient, startAmbient } from "./ambient.js";
+import { introSound } from "./sound.js";
 
 const root = document.getElementById("intro");
 const html = document.documentElement;
@@ -171,11 +172,13 @@ function target() {
 
 const timers = [];
 let exited = false;
+let sound = null;
 
 function exit() {
   if (exited) return;
   exited = true;
   timers.forEach(clearTimeout);
+  sound?.exit(FLIGHT_MS / 1000);
   // всё недорисованное доводим сразу, кроме сети: она просто гаснет
   root.querySelectorAll(".in-mark path").forEach((p) => p.getAnimations().forEach((a) => a.finish()));
 
@@ -242,6 +245,7 @@ if (root && html.classList.contains("intro-on")) {
   startAmbient({ bloom: true });
   build();
   timeline();
+  sound = introSound({ gather: GATHER_AT / 1000, flare: FLARE_AT / 1000, exit: EXIT_AT / 1000, flight: FLIGHT_MS / 1000 });
   timers.push(setTimeout(exit, EXIT_AT));
   root.addEventListener("click", exit, { once: true });
   window.addEventListener("keydown", exit, { once: true });

@@ -81,12 +81,6 @@ html:not(.is-revealed) .footer { animation-play-state: paused; }
 #theme:hover .icon { transform: rotate(40deg) scale(1.1); }
 
 /* смена темы: круг расходится от кнопки */
-::view-transition-old(root), ::view-transition-new(root) { animation: none; mix-blend-mode: normal; }
-::view-transition-new(root) { z-index: 9998; }
-::view-transition-old(root) { z-index: 1; }
-/* в «Кромешную тьму» сворачивается прежняя тема: её снимок лежит сверху */
-html.vt-collapse::view-transition-old(root) { z-index: 9998; }
-html.vt-collapse::view-transition-new(root) { z-index: 1; }
 
 /* ---------- поля ---------- */
 .input, .select, .textarea { transition: border-color 0.22s, box-shadow 0.3s var(--ease-out), background 0.22s; }

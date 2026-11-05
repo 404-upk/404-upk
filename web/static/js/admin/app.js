@@ -1,4 +1,4 @@
-import { $, ApiError, NO_MANAGER, SECRET_FIELD, api, clearContextActions, errorBlock, esc, h, icon, leaveAndRemove, nameHashLinks, setBusy, store, themeToggle, toast } from "../core.js";
+import { $, ApiError, NO_MANAGER, SECRET_FIELD, api, clearContextActions, errorBlock, esc, h, icon, leaveAndRemove, nameHashLinks, revealSection, setBusy, store, themeToggle, toast } from "../core.js";
 import { attachCombo } from "./combo.js";
 import { can, ctx, initials, loadAssignees, loadLocations, parseHash } from "./ctx.js";
 import { ambient, startAmbient } from "../ambient.js";
@@ -324,6 +324,7 @@ async function route() {
   }
   content.innerHTML = `<div class="stack"><div class="sk-h44 skeleton"></div><div class="sk-h320 skeleton"></div></div>`;
   window.scrollTo({ top: 0 });
+  revealSection(content, Object.keys(PAGES).indexOf(key));
   try {
     const mod = await PAGES[key].load();
     const title = key === "tickets" && ctx.user.role === "executor" ? "Мои заявки" : PAGES[key].title;

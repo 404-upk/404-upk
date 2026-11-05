@@ -3,6 +3,7 @@
 import { SPARK_PATH } from "./cursor.js";
 import { liftable } from "./lift.js";
 import "./selection.js";
+import { playSection, setSound, soundOn } from "./sound.js";
 import "./caret.js";
 import "./select.js";
 
@@ -38,6 +39,8 @@ const ICONS = {
   sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
   moon: '<path d="M20 14.5A8.5 8.5 0 0 1 9.5 4 8.5 8.5 0 1 0 20 14.5Z"/>',
   cloud: '<path d="M7 18.5a4.5 4.5 0 0 1-.7-8.95A6 6 0 0 1 17.9 10a4.25 4.25 0 0 1-.65 8.5z"/>',
+  volume: '<path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5z"/><path d="M15.5 9a4.2 4.2 0 0 1 0 6M18 6.5a7.8 7.8 0 0 1 0 11"/>',
+  volumeOff: '<path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5z"/><path d="m16 9.5 5 5M21 9.5l-5 5"/>',
   undo: '<path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-2"/>',
   scissors: '<circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M8.1 8.1 20 20M14.5 9.5 20 4M8.1 15.9 11 13"/>',
   selectAll: '<path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><path d="M9 12h6"/>',
@@ -691,11 +694,27 @@ function switchTheme(next, x, y, onDone) {
   });
 }
 
+function soundButton() {
+  const b = h('<button type="button" class="btn btn-ghost btn-icon btn-sm sound-btn"></button>');
+  const render = () => {
+    const on = soundOn();
+    b.innerHTML = icon(on ? "volume" : "volumeOff");
+    b.setAttribute("aria-pressed", String(on));
+    b.setAttribute("aria-label", on ? "Звук включён. Выключить" : "Звук выключен. Включить");
+    b.dataset.tip = on ? "Звук включён" : "Звук выключен";
+  };
+  b.addEventListener("click", () => setSound(!soundOn()));
+  window.addEventListener("upk:sound", render);
+  render();
+  return b;
+}
+
 /**
  * Кнопка темы открывает меню с тремя темами: название, подпись и образец цветов.
  * Стрелки ходят по пунктам, Enter или пробел выбирает, Escape закрывает, фокус возвращается на кнопку.
  */
 export function themeToggle(button) {
+  if (!button.previousElementSibling?.classList.contains("sound-btn")) button.before(soundButton());
   const render = () => {
     const now = themeById(currentTheme());
     button.innerHTML = icon(now.icon);
@@ -1176,6 +1195,27 @@ export function clearContextActions() {
   ctxPageActions = null;
 }
 
+let lastClick = { x: 0, y: 0, t: -Infinity };
+document.addEventListener(
+  "click",
+  (e) => {
+    lastClick = { x: e.clientX, y: e.clientY, t: performance.now() };
+  },
+  true,
+);
+
+/** Раздел панели раскрывается знаком от места клика и звучит своей нотой. Без недавнего клика (первая загрузка) ничего не делает */
+export function revealSection(el, index) {
+  if (performance.now() - lastClick.t > 1500) return;
+  playSection(index);
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const r = el.getBoundingClientRect();
+  const x = lastClick.x - r.left;
+  const y = lastClick.y - r.top;
+  const radius = Math.hypot(Math.max(x, r.width - x), Math.max(y, r.height - y));
+  el.animate({ clipPath: sparkFrames(x, y, radius) }, { duration: 620, easing: "cubic-bezier(0.65, 0, 0.35, 1)" });
+}
+
 /** Скачать файл по адресу, не уходя со страницы */
 export function download(url) {
   const a = document.createElement("a");
@@ -1433,6 +1473,7 @@ function openCtx(e) {
         },
       })),
     },
+    { label: soundOn() ? "Выключить звук" : "Включить звук", ic: soundOn() ? "volumeOff" : "volume", action: () => setSound(!soundOn()) },
     { foot: "Меню браузера: Shift + правая кнопка" },
   ]);
 
@@ -1794,36 +1835,7 @@ if (document.body) {
  * Кадры смены темы: четырёхлучевой знак 404 растёт из точки и поворачивается, пока не закроет экран.
  * Форма берётся из того же пути, что и знак: отрезки кривых переводятся в многоугольник для clip-path.
  */
-function sparkFrames(cx, cy, radius, steps = 18) {
-  const n = SPARK_PATH.match(/-?\d*\.?\d+/g).map(Number);
-  const unit = [];
-  let [px, py] = [n[0], n[1]];
-  for (let i = 2; i + 5 < n.length; i += 6) {
-    const [x1, y1, x2, y2, x3, y3] = n.slice(i, i + 6);
-    for (let k = 0; k < 8; k++) {
-      const t = k / 8;
-      const u = 1 - t;
-      const bx = u * u * u * px + 3 * u * u * t * x1 + 3 * u * t * t * x2 + t * t * t * x3;
-      const by = u * u * u * py + 3 * u * u * t * y1 + 3 * u * t * t * y2 + t * t * t * y3;
-      unit.push([(bx - 12) / 12, (by - 12) / 12]);
-    }
-    [px, py] = [x3, y3];
-  }
-  // насколько знак уже круга: во столько раз он должен вырасти, чтобы закрыть весь экран
-  const inner = Math.min(...unit.map(([ux, uy]) => Math.hypot(ux, uy)));
-  const full = (radius / inner) * 1.15;
-  const frames = [];
-  for (let f = 0; f <= steps; f++) {
-    const p = f / steps;
-    const size = full * p;
-    const turn = (-50 + 50 * p) * (Math.PI / 180);
-    const cos = Math.cos(turn);
-    const sin = Math.sin(turn);
-    const pts = unit.map(([ux, uy]) => `${(cx + (ux * cos - uy * sin) * size).toFixed(1)}px ${(cy + (ux * sin + uy * cos) * size).toFixed(1)}px`);
-    frames.push(`polygon(${pts.join(",")})`);
-  }
-  return frames;
-}
+const sparkFrames = (...args) => window.upkSparkFrames(...args);
 
 applyTheme(currentTheme());
 

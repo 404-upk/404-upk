@@ -1170,6 +1170,12 @@ html.can-drop .cursor-ring.is-on i { border-width: 2px; animation-duration: 0.7s
 /* образец темы: фон и акцент. Цвета намеренно постоянные: образец показывает тему, а не текущую */
 .theme-swatch { position: relative; flex: none; width: 34px; height: 34px; border-radius: 10px; border: 1px solid var(--border-strong); overflow: hidden; }
 .theme-swatch svg { display: block; width: 100%; height: 100%; }
+.sound-btn[aria-pressed="false"] { color: var(--faint); }
+/* кнопки шапки не сжимаются; на самом узком экране место освобождает подпись рядом со знаком */
+.topbar-inner > .btn { flex: none; }
+@media (max-width: 400px) {
+  .topbar .brand-sep, .topbar .brand > span:last-child { display: none; }
+}
 .ts-dark { background: linear-gradient(145deg, #1f2a44, #0c1222); }
 .ts-light { background: linear-gradient(180deg, #ffffff, #dfe5ee); }
 .ts-black { background: radial-gradient(circle, #16171c, #000000 72%); }
@@ -1456,6 +1462,16 @@ html.is-scroll-drag, html.is-scroll-drag * { -webkit-user-select: none; user-sel
 
 /* Поле пароля без type="password" (SECRET_FIELD в core.js): символы скрыты */
 [data-secret] { -webkit-text-security: disc; }
+
+/* ===== Переход между страницами (page-transition.js) ===== */
+@view-transition { navigation: auto; }
+@media (prefers-reduced-motion: reduce) { @view-transition { navigation: none; } }
+::view-transition-old(root), ::view-transition-new(root) { animation: none; mix-blend-mode: normal; }
+::view-transition-new(root) { z-index: 9998; }
+::view-transition-old(root) { z-index: 1; }
+/* в «Кромешную тьму» сворачивается прежняя тема: её снимок лежит сверху */
+html.vt-collapse::view-transition-old(root) { z-index: 9998; }
+html.vt-collapse::view-transition-new(root) { z-index: 1; }
 
 /* ===== Искры по краям выделения (selection.js) ===== */
 .sel-spark { position: fixed; top: 0; left: 0; z-index: 124; width: 0; height: 0; pointer-events: none; opacity: 0; transition: opacity 0.14s ease; }
