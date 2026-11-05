@@ -1,6 +1,7 @@
 // Общие утилиты для всех страниц: запросы к API, иконки, форматирование, тосты, модалки.
 
 import { SPARK_PATH } from "./cursor.js";
+import "./caret.js";
 import "./select.js";
 
 const ICONS = {

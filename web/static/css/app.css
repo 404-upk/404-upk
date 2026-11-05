@@ -1023,7 +1023,8 @@ h2.h3 { font-size: 16px; font-weight: 600; letter-spacing: normal; }
 
 /* ---------- свой указатель для мыши (cursor.js) ---------- */
 html.has-cursor, html.has-cursor * { cursor: none !important; }
-html.has-cursor :is(input:not([type="checkbox"], [type="radio"], [type="file"], [type="button"], [type="submit"]), textarea, [contenteditable="true"]) { cursor: text !important; }
+/* над полями ввода системный текстовый курсор тоже заменён своим (.cursor-beam) */
+html.has-cursor :is(input:not([type="checkbox"], [type="radio"], [type="file"], [type="button"], [type="submit"]), textarea, [contenteditable="true"]) { cursor: none !important; }
 .cursor, .cursor-ring, .cursor-bit { position: fixed; top: 0; left: 0; z-index: 2147483000; width: 0; height: 0; pointer-events: none; }
 .cursor, .cursor-ring { opacity: 0; transition: opacity 0.2s ease; will-change: transform; }
 .cursor.is-on, .cursor-ring.is-on { opacity: 1; }
@@ -1034,7 +1035,17 @@ html.has-cursor :is(input:not([type="checkbox"], [type="radio"], [type="file"], 
 .cursor.is-down .cursor-pose { transform: scale(0.72); }
 .cursor.is-hover.is-down .cursor-pose { transform: scale(1.05) rotate(45deg); }
 .cursor.is-disabled .cursor-pose { transform: scale(0.85); opacity: 0.45; }
-.cursor.is-text .cursor-pose { opacity: 0; }
+.cursor.is-text .cursor-pose { opacity: 0; transform: scale(0.2) rotate(90deg); }
+/* текстовый курсор мыши: черта с засечками вырастает из знака и мягко светится */
+.cursor-beam { position: absolute; left: 0; top: 0; width: 0; height: 0; opacity: 0; transform: scaleY(0.2) rotate(-45deg); transition: transform 0.38s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.18s ease; }
+.cursor-beam i { position: absolute; left: -1px; top: -10px; width: 2px; height: 20px; border-radius: 1px; background: currentColor; box-shadow: 0 0 1px rgba(0, 0, 0, 0.7), 0 0 6px var(--primary); }
+.cursor-beam i::before, .cursor-beam i::after { content: ""; position: absolute; left: -3px; width: 8px; height: 2px; border-radius: 1px; background: currentColor; }
+.cursor-beam i::before { top: -1px; }
+.cursor-beam i::after { bottom: -1px; }
+.cursor.is-text .cursor-beam { opacity: 1; transform: none; }
+.cursor.is-text .cursor-beam i { animation: cursor-beam-glow 2.4s ease-in-out infinite; }
+.cursor.is-text.is-down .cursor-beam { transform: scaleY(0.82); transition-duration: 0.12s; }
+@keyframes cursor-beam-glow { 50% { box-shadow: 0 0 1px rgba(0, 0, 0, 0.7), 0 0 11px var(--primary); } }
 .cursor-ring i { display: block; width: 36px; height: 36px; margin: -18px 0 0 -18px; border: 1px solid var(--primary); border-radius: 50%; opacity: 0.38; transition: transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.2s ease; }
 .cursor-ring.is-hover i { transform: scale(1.45); opacity: 0.7; }
 .cursor-ring.is-down i { transform: scale(0.72); opacity: 0.9; }
@@ -1050,8 +1061,8 @@ html.can-drop .cursor-ring.is-on i { border-width: 2px; animation-duration: 0.7s
 @keyframes cursor-carry { to { transform: rotate(360deg); } }
 @keyframes cursor-ring-carry { 0%, 100% { transform: scale(1.35); opacity: 0.55; } 50% { transform: scale(1.7); opacity: 0.95; } }
 @media (prefers-reduced-motion: reduce) {
-  .cursor svg, html.is-dragging .cursor.is-on svg { animation: none; }
-  .cursor-pose { transition: none; }
+  .cursor svg, html.is-dragging .cursor.is-on svg, .cursor.is-text .cursor-beam i { animation: none; }
+  .cursor-pose, .cursor-beam { transition: none; }
   .cursor-ring { display: none; }
 }
 @media print {
@@ -1126,3 +1137,22 @@ html.can-drop .cursor-ring.is-on i { border-width: 2px; animation-duration: 0.7s
 .ctx-item[aria-checked="true"] .theme-check { opacity: 1; }
 @media (prefers-reduced-motion: reduce) { .ui-tip { transition: none; } .ctx-menu, .ctx-menu.is-leaving { animation: none; } }
 @media print { .ui-tip, .ctx-menu { display: none !important; } }
+
+/* ===== Свой курсор ввода в полях (caret.js) ===== */
+.has-ui-caret { caret-color: transparent !important; }
+.ui-caret-mirror { position: absolute; top: 0; left: -9999px; visibility: hidden; overflow: hidden; height: auto; }
+.ui-caret {
+  position: fixed; left: 0; top: 0; z-index: 70; width: 2px; height: 18px;
+  border-radius: 1px; background: var(--primary);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--primary) 70%, transparent);
+  pointer-events: none; opacity: 0;
+  transition: transform 0.11s cubic-bezier(0.2, 0.8, 0.3, 1), height 0.15s ease, opacity 0.15s ease;
+}
+.ui-caret.no-glide { transition: opacity 0.15s ease; }
+.ui-caret.is-on { opacity: 1; animation: caret-breathe 1.15s ease-in-out infinite; }
+.ui-caret.is-on.is-typing { animation: none; opacity: 1; box-shadow: 0 0 9px var(--primary); }
+.ui-caret.is-on.is-appearing { animation: caret-in 0.35s cubic-bezier(0.34, 1.56, 0.64, 1); }
+@keyframes caret-breathe { 0%, 100% { opacity: 1; } 55% { opacity: 0.12; } }
+@keyframes caret-in { from { clip-path: inset(50% 0 50% 0); } to { clip-path: inset(0); } }
+@media (prefers-reduced-motion: reduce) { .ui-caret, .ui-caret.is-on { transition: none; animation: none; } }
+@media print { .ui-caret { display: none; } }

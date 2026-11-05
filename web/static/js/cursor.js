@@ -25,7 +25,8 @@ function part(className, inner) {
 
 function start() {
   const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const cursor = part("cursor", `<div class="cursor-pose">${SHAPE}</div>`);
+  // над полями ввода знак превращается в текстовый курсор: черта с засечками
+  const cursor = part("cursor", `<div class="cursor-pose">${SHAPE}</div><div class="cursor-beam"><i></i></div>`);
   const ring = part("cursor-ring", "<i></i>");
   let x = 0;
   let y = 0;

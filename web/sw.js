@@ -3,7 +3,7 @@
 // Всегда сначала сеть: при обычной связи человек видит свежую версию, копия нужна только без сети.
 // Панель УПК, коды отслеживания (/t/...) и закрытые запросы к API не сохраняются.
 
-const VERSION = "upk-offline-v4";
+const VERSION = "upk-offline-v5";
 const NETWORK_WAIT = 4000; // столько ждём сеть, потом отдаём сохранённую копию
 
 const SHELL = [
@@ -31,6 +31,7 @@ const SHELL = [
   "/static/js/brand.js",
   "/static/js/campus.js",
   "/static/js/cursor.js",
+  "/static/js/caret.js",
   "/static/js/plan.js",
   "/static/js/floor-view.js",
   "/static/js/report.js",
