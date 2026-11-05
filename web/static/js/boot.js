@@ -6,7 +6,7 @@
     var theme = JSON.parse(localStorage.getItem("upk-theme"));
     if (theme) root.dataset.theme = theme;
     // строка состояния и панели браузера на телефоне сразу в цвет темы, без вспышки тёмного
-    var bg = { dark: "#0c1222", light: "#edf0f4", black: "#000000" }[theme];
+    var bg = { dark: "#0c1222", light: "#edf0f4", black: "#000000", sky: "#96b1e6" }[theme];
     var meta = document.querySelector('meta[name="theme-color"]');
     if (bg && meta) meta.setAttribute("content", bg);
   } catch (e) {

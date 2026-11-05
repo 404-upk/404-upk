@@ -1,6 +1,7 @@
 // Общие утилиты для всех страниц: запросы к API, иконки, форматирование, тосты, модалки.
 
 import { SPARK_PATH } from "./cursor.js";
+import { liftable } from "./lift.js";
 import "./caret.js";
 import "./select.js";
 
@@ -35,6 +36,7 @@ const ICONS = {
   dark: '<circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 0 0 18Z" fill="currentColor"/>',
   sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
   moon: '<path d="M20 14.5A8.5 8.5 0 0 1 9.5 4 8.5 8.5 0 1 0 20 14.5Z"/>',
+  cloud: '<path d="M7 18.5a4.5 4.5 0 0 1-.7-8.95A6 6 0 0 1 17.9 10a4.25 4.25 0 0 1-.65 8.5z"/>',
   search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
   filter: '<path d="M3 5h18l-7 8.5V19l-4 2v-7.5L3 5Z"/>',
   download: '<path d="M12 4v11"/><path d="m7 10 5 5 5-5"/><path d="M4 20h16"/>',
@@ -425,6 +427,8 @@ export function openModal({ title, body, footer = "", wide = false, onMount }) {
   modalStack.push(entry);
   document.body.append(overlay);
   swipeToClose(overlay.querySelector(".modal"), close);
+  // в окнах с формами подсказки браузера не нужны; где они уместны, поле само задаёт autocomplete
+  overlay.querySelectorAll("input:not([autocomplete]), textarea:not([autocomplete])").forEach((n) => n.setAttribute("autocomplete", "off"));
   onMount?.(overlay, close);
   const first = overlay.querySelector("input, textarea, select") || overlay.querySelector(".modal-foot .btn, [data-close]");
   first?.focus();
@@ -625,15 +629,16 @@ export function currentTheme() {
 export function applyTheme(theme) {
   document.documentElement.dataset.theme = theme;
   // строка состояния телефона в цвет фона темы
-  const bg = { dark: "#0c1222", light: "#edf0f4", black: "#000000" }[theme];
+  const bg = { dark: "#0c1222", light: "#edf0f4", black: "#000000", sky: "#96b1e6" }[theme];
   document.querySelector('meta[name="theme-color"]')?.setAttribute("content", bg || "#0c1222");
 }
 
-// три темы на выбор; id остаются техническими, человек видит названия
+// четыре темы на выбор; id остаются техническими, человек видит названия
 export const THEMES = [
   { id: "dark", name: "Полночь", note: "Тёмная, основная", icon: "moon" },
   { id: "light", name: "Горный снег", note: "Светлая", icon: "sun" },
   { id: "black", name: "Кромешная тьма", note: "Чёрная", icon: "dark" },
+  { id: "sky", name: "Небо", note: "Голубая", icon: "cloud" },
 ];
 const themeById = (id) => THEMES.find((t) => t.id === id) || THEMES[0];
 
@@ -889,8 +894,9 @@ function watchTips() {
 // ---------- куда ведёт ссылка ----------
 // Браузер при наведении на ссылку показывает внизу слева свою серую строку с полным адресом.
 // Вместо неё своя подсказка в стиле сайта: что откроется и короткий адрес. Пока мышь над ссылкой,
-// адрес лежит в data-href, поэтому системная строка не появляется. На нажатие любой кнопкой, Enter
-// и перетаскивание адрес возвращается на место до того, как браузер их обработает: новая вкладка,
+// адрес лежит в data-href, поэтому системная строка не появляется. Левая кнопка возвращает его только
+// при отпускании: пока она зажата, нет ни системной строки, ни системного перетаскивания (своё в lift.js).
+// Другие кнопки и Enter возвращают адрес сразу, до того как браузер их обработает: новая вкладка,
 // Ctrl + клик, средняя кнопка и «Копировать адрес ссылки» работают как обычно.
 
 const LINK_NAMES = [
@@ -962,9 +968,8 @@ function linkInfo(a) {
 
 function stashHref(a) {
   if (!a.hasAttribute("href")) return;
-  a.dataset.href = a.getAttribute("href");
-  a.removeAttribute("href");
-  // без href ссылка перестала бы быть ссылкой для клавиатуры и экранных читалок, это временно возвращается
+  // без href ссылка перестала бы быть ссылкой для клавиатуры и экранных читалок, это временно возвращается;
+  // сначала tabindex, чтобы ссылка под фокусом его не потеряла
   if (!a.hasAttribute("tabindex")) {
     a.setAttribute("tabindex", "0");
     a.dataset.hrefTab = "";
@@ -973,6 +978,8 @@ function stashHref(a) {
     a.setAttribute("role", "link");
     a.dataset.hrefRole = "";
   }
+  a.dataset.href = a.getAttribute("href");
+  a.removeAttribute("href");
 }
 
 function restoreHref(a) {
@@ -1040,21 +1047,54 @@ function watchLinks() {
     linkX = e.clientX;
     linkY = e.clientY;
     stashHref(a);
-    showLink(info, linkX, linkY);
+    // пока что-то несут, подсказка не отвлекает; системная строка не появится, адрес всё равно спрятан
+    if (!document.documentElement.classList.contains("is-lifting")) showLink(info, linkX, linkY);
   });
   document.addEventListener("pointerout", (e) => {
-    if (linkEl && !linkEl.contains(e.relatedTarget)) leaveLink();
+    if (linkEl && e.pointerType === "mouse" && !linkEl.contains(e.relatedTarget)) leaveLink();
   });
-  // нажатие: адрес на место раньше, чем браузер решит, что делать со ссылкой
+  // Переход клавишей Tab: браузер тоже показал бы свою строку
+  document.addEventListener("focusin", (e) => {
+    const a = e.target.closest?.("a[href], a[data-href]");
+    if (!a || a === linkEl || !a.matches(":focus-visible")) return;
+    const info = linkInfo(a);
+    if (!info) return;
+    leaveLink();
+    linkEl = a;
+    const r = a.getBoundingClientRect();
+    linkX = r.left;
+    linkY = r.bottom;
+    stashHref(a);
+    showLink(info, linkX, linkY);
+  });
+  document.addEventListener("focusout", (e) => {
+    if (e.target === linkEl && !linkEl.matches(":hover")) leaveLink();
+  });
+  // нажатие: другие кнопки возвращают адрес раньше, чем браузер решит, что делать со ссылкой
   document.addEventListener(
     "pointerdown",
-    () => {
+    (e) => {
       if (!linkEl) return;
-      restoreHref(linkEl);
       hideLink();
+      if (e.pointerType !== "mouse" || e.button !== 0) restoreHref(linkEl);
     },
     true,
   );
+  // отпустили левую кнопку: адрес на месте раньше, чем браузер обработает клик
+  document.addEventListener(
+    "pointerup",
+    (e) => {
+      if (linkEl && e.button === 0) restoreHref(linkEl);
+    },
+    true,
+  );
+  liftable("a[href], a[data-href]", (a) => {
+    const info = linkInfo(a);
+    if (!info) return null;
+    const title = info.name || a.textContent.trim().replace(/\s+/g, " ").slice(0, 60) || info.path;
+    return h(`<div class="link-lift"><svg viewBox="0 0 24 24"><path d="${SPARK_PATH}"/></svg>
+      <span class="link-lift-text"><b>${esc(title)}</b><span class="link-lift-url">${esc(info.path)}</span></span></div>`);
+  });
   document.addEventListener(
     "keydown",
     (e) => {
@@ -1071,7 +1111,7 @@ function watchLinks() {
         linkEl = null;
         return;
       }
-      if (!linkEl.matches(":hover")) return;
+      if (!linkEl.matches(":hover, :focus-visible")) return;
       stashHref(linkEl);
       const info = e.type === "contextmenu" ? null : linkInfo(linkEl);
       if (info) showLink(info, linkX, linkY);
@@ -1586,5 +1626,18 @@ if (document.body) {
 
 // Последний рубеж: ошибка, которую никто не обработал, не должна пройти молча
 const SOMETHING_WRONG = "Что-то пошло не так. Обновите страницу и попробуйте ещё раз.";
-window.addEventListener("unhandledrejection", () => toast(SOMETHING_WRONG, "error"));
-window.addEventListener("error", () => toast(SOMETHING_WRONG, "error"));
+let wrongShownUntil = 0;
+function somethingWrong() {
+  // одна и та же ошибка не складывается в стопку сообщений
+  if (Date.now() < wrongShownUntil) return;
+  wrongShownUntil = Date.now() + 6000;
+  toast(SOMETHING_WRONG, "error");
+}
+window.addEventListener("unhandledrejection", somethingWrong);
+window.addEventListener("error", somethingWrong);
+
+// Ни картинки, ни ссылки, ни выделенный текст не тащатся системной копией с курсором-крестиком (своё в lift.js)
+document.addEventListener("dragstart", (e) => {
+  const el = e.target instanceof Element ? e.target : e.target?.parentElement;
+  if (!el?.closest('[draggable="true"]')) e.preventDefault();
+});

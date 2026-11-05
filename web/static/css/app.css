@@ -111,6 +111,76 @@
   color-scheme: dark;
 }
 
+/* Небо: оттенок акцентного Василькового. Сверху насыщеннее, к горизонту светлеет, панели как облака.
+   Акцент темнее обычного: и на панелях, и на самом небе текст держит контраст WCAG AA. */
+:root[data-theme="sky"] {
+  --bg: #b7cbf0;
+  --surface: #f5f8fd;
+  --surface-2: #edf2fa;
+  --surface-3: #dfe7f5;
+  --border: rgba(20, 40, 85, 0.13);
+  --border-strong: rgba(20, 40, 85, 0.24);
+  --text: #0b1a38;
+  --muted: rgba(11, 26, 56, 0.82);
+  --faint: rgba(11, 26, 56, 0.8);
+  --primary: #27407a;
+  --primary-hover: #1f3565;
+  --primary-soft: rgba(39, 64, 122, 0.13);
+  --on-primary: #f5f8fd;
+  --green: #22694a;
+  --green-soft: rgba(46, 125, 87, 0.13);
+  --amber: #7d5610;
+  --amber-soft: rgba(148, 103, 19, 0.14);
+  --orange: #8a3d1b;
+  --orange-soft: rgba(180, 85, 42, 0.13);
+  --red: #b5333a;
+  --red-soft: rgba(198, 58, 63, 0.12);
+  --violet: #5a4aa8;
+  --violet-soft: rgba(101, 83, 184, 0.12);
+  --sky: #24628d;
+  --sky-soft: rgba(44, 111, 158, 0.12);
+  --gray: #4d5568;
+  --gray-soft: rgba(12, 18, 34, 0.08);
+  --glow: rgba(255, 255, 255, 0.42);
+  --node: #ffffff;
+  --shadow-sm: 0 1px 2px rgba(20, 40, 85, 0.1);
+  --shadow: 0 1px 2px rgba(20, 40, 85, 0.08), 0 10px 28px rgba(20, 40, 85, 0.14);
+  --shadow-lg: 0 20px 56px rgba(20, 40, 85, 0.3);
+  --ring: 0 0 0 3px rgba(39, 64, 122, 0.3);
+  color-scheme: light;
+  background: var(--bg);
+}
+:root[data-theme="sky"] body { background: transparent; }
+:root[data-theme="sky"] body::before {
+  content: ""; position: fixed; inset: 0; z-index: -2; pointer-events: none;
+  background: linear-gradient(180deg, #96b1e6 0%, #b7cbf0 52%, #e0e9f8 100%);
+}
+/* облака: узор повторяется, поэтому полоса в две его ширины плывёт на одну без видимого шва;
+   на телефоне узор не уже 1000px, иначе облака вытягиваются вверх */
+:root[data-theme="sky"] body::after {
+  --tile: max(100vw, 1000px);
+  content: ""; position: fixed; top: 0; left: 0; z-index: -1; width: calc(var(--tile) * 2); height: 100lvh; pointer-events: none;
+  background-image:
+    radial-gradient(ellipse 13% 6% at 18% 17%, rgba(255, 255, 255, 0.86), transparent 72%),
+    radial-gradient(ellipse 7% 7% at 14% 14.5%, rgba(255, 255, 255, 0.8), transparent 72%),
+    radial-gradient(ellipse 8% 8.5% at 21% 13%, rgba(255, 255, 255, 0.76), transparent 72%),
+    radial-gradient(ellipse 15% 6.5% at 68% 33%, rgba(255, 255, 255, 0.78), transparent 72%),
+    radial-gradient(ellipse 8% 7.5% at 63.5% 29.5%, rgba(255, 255, 255, 0.72), transparent 72%),
+    radial-gradient(ellipse 10% 9.5% at 71% 28%, rgba(255, 255, 255, 0.68), transparent 72%),
+    radial-gradient(ellipse 18% 6% at 38% 68%, rgba(255, 255, 255, 0.6), transparent 72%),
+    radial-gradient(ellipse 10% 7% at 34% 65%, rgba(255, 255, 255, 0.54), transparent 72%),
+    radial-gradient(ellipse 11% 8% at 43% 63.5%, rgba(255, 255, 255, 0.5), transparent 72%),
+    radial-gradient(ellipse 15% 5.5% at 83% 85%, rgba(255, 255, 255, 0.72), transparent 72%),
+    radial-gradient(ellipse 8% 6% at 80% 82%, rgba(255, 255, 255, 0.62), transparent 72%);
+  background-size: var(--tile) 100%;
+  background-repeat: repeat-x;
+  animation: sky-drift 260s linear infinite;
+  will-change: transform;
+}
+@keyframes sky-drift { to { transform: translate3d(calc(var(--tile) * -1), 0, 0); } }
+@media (prefers-reduced-motion: reduce) { :root[data-theme="sky"] body::after { animation: none; } }
+@media print { :root[data-theme="sky"] body::before, :root[data-theme="sky"] body::after { display: none; } }
+
 /* ===== База ===== */
 *,
 *::before,
@@ -983,7 +1053,6 @@ h2.h3 { font-size: 16px; font-weight: 600; letter-spacing: normal; }
 .u-maxw420 { max-width: 420px !important; }
 .u-maxw440 { max-width: 440px !important; }
 .u-maxw640 { max-width: 640px !important; }
-.u-maxw1000 { max-width: 1000px !important; }
 .u-minw160 { min-width: 160px !important; }
 .u-minw180 { min-width: 180px !important; }
 .u-minw220 { min-width: 220px !important; }
@@ -1008,11 +1077,9 @@ h2.h3 { font-size: 16px; font-weight: 600; letter-spacing: normal; }
 .u-chart2 { color: var(--chart-2) !important; }
 .u-bg-chart1 { background: var(--chart-1) !important; }
 .u-bg-chart2 { background: var(--chart-2) !important; }
-.u-bg-white { background: #fff !important; }
 .u-border-warn { border-color: color-mix(in srgb, var(--orange) 40%, var(--border)) !important; }
 .u-offscreen { position: fixed !important; opacity: 0 !important; }
 .u-pill-check { padding: 6px 10px !important; border: 1px solid var(--border) !important; border-radius: 999px !important; }
-.u-print-url { font-size: 12px !important; color: #888 !important; }
 .u-avatar-lg { width: 54px !important; height: 54px !important; font-size: 18px !important; }
 .my-ticket-icon { width: 34px !important; height: 34px !important; border-radius: 10px !important; display: grid !important; place-items: center !important; background: var(--surface-3) !important; color: var(--muted) !important; }
 .sk-h40 { height: 40px !important; }
@@ -1375,3 +1442,57 @@ html.is-scroll-drag, html.is-scroll-drag * { -webkit-user-select: none; user-sel
   .ui-scroll-star svg { animation: none; }
 }
 @media print { .ui-scroll, .ui-scroll-dust { display: none !important; } }
+
+/* ===== Своё перетаскивание (lift.js) ===== */
+img, a { -webkit-user-drag: none; }
+.qr-thumb, .print-qr { user-select: none; cursor: grab; transition: opacity 0.18s ease, filter 0.18s ease; }
+img.is-lifted { opacity: 0.16; filter: grayscale(1); transition: opacity 0.18s ease, filter 0.18s ease; }
+a.is-lifted { opacity: 0.45; transition: opacity 0.18s ease; }
+html.is-lifting, html.is-lifting * { user-select: none; cursor: grabbing; }
+.qr-lift, .img-lift, .link-lift {
+  position: fixed; top: 0; left: 0; z-index: 130; pointer-events: none;
+  will-change: transform;
+}
+.qr-lift, .img-lift { border-radius: 14px; box-shadow: 0 26px 52px -14px rgba(8, 12, 24, 0.6), 0 0 34px -6px var(--primary); }
+.qr-lift { --scan: var(--primary); background: #fff; }
+.qr-lift img { display: block; width: 100%; height: 100%; padding: 6%; }
+.img-lift { overflow: hidden; background: var(--surface); }
+.img-lift img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.link-lift {
+  display: inline-flex; align-items: center; gap: 10px;
+  max-width: min(380px, calc(100vw - 24px)); padding: 9px 15px 9px 12px;
+  border: 1px solid var(--border-strong); border-radius: var(--radius);
+  background: var(--surface); color: var(--text); font-size: 13px; line-height: 1.3;
+  box-shadow: var(--shadow-lg), 0 0 26px -6px var(--primary);
+}
+.link-lift svg { flex: none; width: 15px; height: 15px; fill: var(--primary); filter: drop-shadow(0 0 4px var(--primary)); animation: cursor-carry 1.4s linear infinite; }
+.link-lift-text { display: flex; flex-direction: column; min-width: 0; }
+.link-lift-text b { overflow: hidden; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.link-lift-url { overflow: hidden; color: var(--muted); font-family: var(--mono); font-size: 11.5px; text-overflow: ellipsis; white-space: nowrap; }
+/* рамка сканера: четыре уголка */
+.qr-lift::before {
+  content: ""; position: absolute; inset: -5%;
+  --len: 18%; --th: 3px;
+  background:
+    linear-gradient(var(--scan) 0 0) left top / var(--len) var(--th),
+    linear-gradient(var(--scan) 0 0) left top / var(--th) var(--len),
+    linear-gradient(var(--scan) 0 0) right top / var(--len) var(--th),
+    linear-gradient(var(--scan) 0 0) right top / var(--th) var(--len),
+    linear-gradient(var(--scan) 0 0) left bottom / var(--len) var(--th),
+    linear-gradient(var(--scan) 0 0) left bottom / var(--th) var(--len),
+    linear-gradient(var(--scan) 0 0) right bottom / var(--len) var(--th),
+    linear-gradient(var(--scan) 0 0) right bottom / var(--th) var(--len);
+  background-repeat: no-repeat;
+  animation: qr-frame 0.9s ease-in-out infinite alternate;
+}
+/* бегущая линия сканера */
+.qr-lift::after {
+  content: ""; position: absolute; left: 4%; right: 4%; top: 4%; height: 16%;
+  background: linear-gradient(to bottom, transparent, color-mix(in srgb, var(--scan) 38%, transparent));
+  border-bottom: 2px solid var(--scan);
+  animation: qr-scan 1.25s ease-in-out infinite alternate;
+}
+.qr-lift.is-dropping::before, .qr-lift.is-dropping::after { opacity: 0; transition: opacity 0.14s ease; }
+@keyframes qr-frame { to { transform: scale(1.035); } }
+@keyframes qr-scan { to { transform: translateY(500%); } }
+@media print { .qr-lift, .img-lift, .link-lift { display: none; } }

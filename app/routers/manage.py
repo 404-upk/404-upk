@@ -1,3 +1,5 @@
+from urllib.parse import quote
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import Response
 from sqlalchemy import func, select
@@ -112,6 +114,8 @@ def locations(_: User = Depends(upk_staff), db: Session = Depends(get_db)):
 
 
 def _check_location(payload: LocationIn) -> None:
+    if not payload.building.strip():
+        raise HTTPException(400, "Укажите корпус")
     if not (payload.room or "").strip() and not (payload.zone_name or "").strip():
         raise HTTPException(400, "Укажите номер кабинета или название зоны")
 
@@ -119,11 +123,25 @@ def _check_location(payload: LocationIn) -> None:
 @router.post("/locations", status_code=201)
 def create_location(payload: LocationIn, _: User = Depends(upk_staff), db: Session = Depends(get_db)):
     _check_location(payload)
+    building = payload.building.strip()
+    room = (payload.room or "").strip() or None
+    zone_name = (payload.zone_name or "").strip() or None
+    # два кода на одно помещение путают заявки: повторное нажатие или опечатка не создают дубль
+    twin = db.scalar(
+        select(Location).where(
+            Location.building == building,
+            Location.floor == payload.floor,
+            Location.room == room,
+            Location.zone_name == zone_name,
+        )
+    )
+    if twin:
+        raise HTTPException(400, "Такое помещение уже есть в списке")
     loc = Location(
-        building=payload.building.strip(),
+        building=building,
         floor=payload.floor,
-        room=(payload.room or "").strip() or None,
-        zone_name=(payload.zone_name or "").strip() or None,
+        room=room,
+        zone_name=zone_name,
         kind=payload.kind,
         is_active=payload.is_active,
         qr_key=new_qr_key(),
@@ -168,11 +186,12 @@ def location_qr(location_id: int, fmt: str, _: User = Depends(upk_staff), db: Se
     if fmt == "svg":
         return Response(qr_svg(location_url(loc)), media_type="image/svg+xml")
     if fmt == "png":
-        name = f"qr-{loc.room or loc.qr_key}.png"
+        # в номере кабинета бывает кириллица (214а), а заголовок ответа принимает только латиницу
+        name = quote(f"qr-{loc.room or loc.qr_key}.png")
         return Response(
             qr_png(location_url(loc)),
             media_type="image/png",
-            headers={"Content-Disposition": f'attachment; filename="{name}"'},
+            headers={"Content-Disposition": f"attachment; filename=\"qr-{loc.qr_key}.png\"; filename*=UTF-8''{name}"},
         )
     raise HTTPException(404, "Формат не поддерживается")
 

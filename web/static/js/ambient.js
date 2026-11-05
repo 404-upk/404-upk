@@ -184,6 +184,7 @@ function createAmbient({ bloom }) {
   let gain = 1;
   let light = false;
   let black = false;
+  let sky = false;
 
   // свет: сам ходит по экрану, при движении мыши идёт за курсором
   const ptr = { x: 0, y: 0, tx: 0, ty: 0, power: 0.55, moved: -1e9, attract: null };
@@ -207,11 +208,12 @@ function createAmbient({ bloom }) {
   function readTheme() {
     light = document.documentElement.dataset.theme === "light";
     black = document.documentElement.dataset.theme === "black";
+    sky = document.documentElement.dataset.theme === "sky";
     pointColor = cssVar("--node", "#edf0f4");
-    accentColor = cssVar("--primary", "#6a86be");
+    accentColor = sky ? "#ffffff" : cssVar("--primary", "#6a86be");
     accentRgb = hexRgb(accentColor);
-    deepRgb = light ? [150, 170, 214] : black ? [14, 20, 40] : [38, 54, 104];
-    gain = light ? 0.62 : 1;
+    deepRgb = sky ? [224, 233, 248] : light ? [150, 170, 214] : black ? [14, 20, 40] : [38, 54, 104];
+    gain = sky ? 0.8 : light ? 0.62 : 1;
   }
 
   function makePoint(x, y) {

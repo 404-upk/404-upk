@@ -80,7 +80,7 @@ def test_board_move_with_mouse_and_keyboard(page):
 
 
 def test_theme_picker_and_choice_is_remembered(page):
-    """Меню темы: три темы с названиями, выбор мышью и с клавиатуры, выбор сохраняется после перезагрузки."""
+    """Меню темы: четыре темы с названиями, выбор мышью и с клавиатуры, выбор сохраняется после перезагрузки."""
     page.goto("/")
     root = page.locator("html")
     expect(root).to_have_attribute("data-theme", "dark")
@@ -88,7 +88,7 @@ def test_theme_picker_and_choice_is_remembered(page):
     page.click("#theme")
     menu = page.get_by_role("menu", name="Тема оформления")
     expect(menu.get_by_role("menuitemradio")).to_have_text(
-        [re.compile("Полночь"), re.compile("Горный снег"), re.compile("Кромешная тьма")]
+        [re.compile("Полночь"), re.compile("Горный снег"), re.compile("Кромешная тьма"), re.compile("Небо")]
     )
     expect(menu.get_by_role("menuitemradio", name=re.compile("Полночь"))).to_have_attribute("aria-checked", "true")
     menu.get_by_role("menuitemradio", name=re.compile("Кромешная тьма")).click()
@@ -162,3 +162,150 @@ def test_own_tooltip_and_context_menu(page):
 
     page.locator("#message").click(button="right")
     expect(page.locator(".ctx-menu")).to_have_count(0)
+
+
+def test_sky_theme_is_applied_and_remembered(page):
+    """Тема «Небо» применяется вместе со своим фоном и сохраняется после перезагрузки."""
+    page.goto("/")
+    root = page.locator("html")
+    page.click("#theme")
+    page.get_by_role("menu", name="Тема оформления").get_by_role("menuitemradio", name=re.compile("Небо")).click()
+    expect(root).to_have_attribute("data-theme", "sky")
+    assert page.evaluate("getComputedStyle(document.documentElement).getPropertyValue('--bg').trim()") == "#b7cbf0"
+    assert "gradient" in page.evaluate("getComputedStyle(document.body, '::before').backgroundImage")
+    page.reload()
+    expect(root).to_have_attribute("data-theme", "sky")
+    assert page.evaluate("document.documentElement.scrollWidth > window.innerWidth + 1") is False
+
+
+def test_add_room_and_print_its_qr(page):
+    """«Добавить» открывает форму, новое помещение появляется в списке, страница печати кладёт его код на лист."""
+    login_admin(page)
+    page.goto("/admin#/locations")
+    page.click("#add-loc")
+    page.fill("#lf-f", "5")
+    page.fill("#lf-r", "512а")
+    page.keyboard.press("Enter")
+
+    row = page.locator("tr", has_text="Кабинет 512а")
+    expect(row).to_be_visible()
+    page.goto(row.get_by_role("link", name="Напечатать этот код").get_attribute("href"))
+    expect(page.locator(".print-card")).to_have_count(1)
+    expect(page.locator(".print-card h2")).to_have_text("Кабинет 512а")
+    expect(page.locator("#qp-print")).to_contain_text("1 лист")
+
+
+def test_print_page_splits_codes_into_sheets_and_prints_them(page):
+    """Раскладка делит коды на листы A4; PDF содержит столько же страниц, без пустых в конце; поиск и выбор работают."""
+    login_admin(page)
+    page.goto("/admin/qr-print")
+    cards = page.locator(".print-card")
+    expect(cards.first).to_be_visible()
+    total = cards.count()
+
+    page.click('[data-layout="1"]')
+    expect(page.locator(".sheet")).to_have_count(total)
+    page.click('[data-layout="6"]')
+    sheets = (total + 5) // 6
+    expect(page.locator(".sheet")).to_have_count(sheets)
+    overflow = "[...document.querySelectorAll('.print-card')].filter(c => c.scrollHeight > c.clientHeight + 1).length"
+    assert page.evaluate(overflow) == 0
+
+    page.emulate_media(media="print")
+    page.evaluate("Promise.all([...document.images].map((i) => i.decode()))")
+    pdf = page.pdf(prefer_css_page_size=True)
+    page.emulate_media(media="screen")
+    assert len(re.findall(rb"/Type\s*/Page\b(?!s)", pdf)) == sheets
+
+    page.fill("#qp-q", "214")
+    page.click("#qp-all")
+    expect(cards).to_have_count(total - page.locator("[data-room]:not([hidden])").count())
+    page.fill("#qp-q", "")
+    page.click("#qp-all")
+    expect(cards).to_have_count(total)
+    page.click("#qp-all")
+    expect(page.locator("#qp-print")).to_be_disabled()
+    expect(page.locator(".qp-empty")).to_be_visible()
+
+
+def test_qr_is_carried_with_own_animation(page):
+    """QR-код не тащится системной копией: своя копия идёт за мышью и исчезает, вернувшись на место."""
+    page.emulate_media(reduced_motion="no-preference")
+    login_admin(page)
+    page.goto("/admin/qr-print")
+    img = page.locator(".print-qr").first
+    expect(img).to_be_visible()
+    assert img.evaluate("(el) => !el.dispatchEvent(new DragEvent('dragstart', { bubbles: true, cancelable: true }))")
+
+    box = img.bounding_box()
+    x, y = box["x"] + box["width"] / 2, box["y"] + box["height"] / 2
+    page.mouse.move(x, y)
+    page.mouse.down()
+    page.mouse.move(x + 90, y + 50, steps=6)
+    ghost = page.locator(".qr-lift")
+    expect(ghost).to_be_visible()
+    expect(img).to_have_class(re.compile("is-lifted"))
+    page.mouse.up()
+    expect(ghost).to_have_count(0)
+    expect(img).not_to_have_class(re.compile("is-lifted"))
+
+
+def test_new_employee_form_has_own_suggestions(page):
+    """В форме сотрудника нет поля пароля для менеджера браузера: логины предлагает сайт, пароль придумывается кнопкой."""
+    login_admin(page)
+    page.goto("/admin#/users")
+    page.click("#u-add")
+    expect(page.locator('.modal input[type="password"]')).to_have_count(0)
+
+    page.fill("#u-name", "Иван Петров")
+    page.click("#u-nick")
+    option = page.get_by_role("option", name="i.petrov", exact=True)
+    expect(option).to_be_visible()
+    option.click()
+    expect(page.locator("#u-nick")).to_have_value("i.petrov")
+    expect(page.locator(".login-menu")).to_have_count(0)
+
+    page.fill("#u-nick", "admin")
+    expect(page.locator("#u-nick-hint")).to_have_text("Такой логин уже занят")
+    # Escape закрывает открытый список логинов, а окно с формой остаётся
+    page.fill("#u-nick", "")
+    expect(page.locator(".login-menu")).to_be_visible()
+    page.keyboard.press("Escape")
+    expect(page.locator(".login-menu")).to_have_count(0)
+    expect(page.locator(".modal")).to_be_visible()
+    page.fill("#u-nick", "i.petrov")
+
+    page.click("#u-gen")
+    assert len(page.input_value("#u-secret")) == 14
+    page.click("#u-save")
+    expect(page.locator("td.mono", has_text="i.petrov")).to_be_visible()
+
+
+def test_link_has_no_system_bar_or_drag_and_still_opens(page):
+    """Пока кнопка зажата, адрес спрятан от браузера: вместо его строки и копии своя карточка. Клик открывает ссылку."""
+    page.emulate_media(reduced_motion="no-preference")
+    page.goto("/")
+    link = page.locator('a[href="/privacy"], a[data-href="/privacy"]').first
+    link.scroll_into_view_if_needed()
+    box = link.bounding_box()
+    x, y = box["x"] + box["width"] / 2, box["y"] + box["height"] / 2
+
+    page.mouse.move(x, y)
+    expect(page.locator(".ui-link.is-on")).to_be_visible()
+    assert link.get_attribute("href") is None
+
+    page.mouse.down()
+    assert link.get_attribute("href") is None
+    page.mouse.move(x + 70, y - 80, steps=6)
+    chip = page.locator(".link-lift")
+    expect(chip).to_be_visible()
+    expect(chip).to_contain_text("Обработка данных")
+    page.mouse.move(x, y, steps=6)
+    page.mouse.up()
+    expect(chip).to_have_count(0)
+    assert "/privacy" not in page.url
+
+    page.mouse.move(x, y + 1)
+    page.mouse.down()
+    page.mouse.up()
+    expect(page).to_have_url(re.compile("/privacy"))

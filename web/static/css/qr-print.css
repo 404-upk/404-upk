@@ -1,0 +1,79 @@
+/* Страница печати QR: слева выбор помещений, справа листы A4 в настоящих пропорциях.
+   Все размеры внутри листа заданы в --mm: на экране лист ужимается под ширину окна, на бумаге --mm равен 1 мм. */
+
+.qp { display: grid; grid-template-columns: 350px minmax(0, 1fr); min-height: 100dvh; }
+.qp-loading { grid-column: 1 / -1; display: grid; place-items: center; min-height: 100dvh; }
+.qp-message { grid-column: 1 / -1; display: flex; flex-direction: column; align-items: flex-start; gap: 10px; width: min(420px, calc(100% - 32px)); margin: 18vh auto 0; align-self: start; }
+
+.qp-side {
+  position: sticky; top: 0; align-self: start;
+  display: flex; flex-direction: column; gap: 12px;
+  height: 100dvh; padding: 16px 18px;
+  background: var(--surface); border-right: 1px solid var(--border);
+}
+.qp-head { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.qp-back { margin-left: -8px; }
+.qp-head h1 { font-size: 22px; line-height: 1.2; }
+.qp-side .notice { padding: 10px 12px; }
+.qp-rooms { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; gap: 14px; padding-right: 4px; }
+.qp-group[hidden], [data-room][hidden] { display: none !important; }
+.qp-group-head { display: flex; width: 100%; padding-bottom: 8px; font-weight: 600; font-size: 13px; }
+.qp-group-rooms { display: flex; flex-wrap: wrap; gap: 6px; }
+.qp-group-rooms .check { font-size: 13px; }
+.qp-foot { display: flex; flex-direction: column; gap: 10px; padding-top: 12px; border-top: 1px solid var(--border); }
+.qp-foot .btn-primary { width: 100%; justify-content: center; }
+
+.qp-stage { container-type: inline-size; display: flex; flex-direction: column; align-items: center; gap: 22px; padding: 22px 26px 60px; min-width: 0; }
+.qp-empty { margin-top: 18vh; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.sheet-wrap { display: flex; flex-direction: column; align-items: center; gap: 8px; animation: sheet-in 0.34s var(--ease-out) both; }
+@keyframes sheet-in { from { opacity: 0; transform: translateY(10px); } }
+
+.sheet {
+  --mm: min(1mm, calc(100cqi / 210));
+  --qr: 60; --title: 6; --text: 3.3; --gap: 2.4; --pad: 5; --brand: 3.6;
+  display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: calc(var(--mm) * 6);
+  width: calc(var(--mm) * 210); height: calc(var(--mm) * 297); padding: calc(var(--mm) * 10);
+  background: #fff; color: #111; border-radius: 3px; box-shadow: var(--shadow-lg);
+}
+.sheet.per-1 { --qr: 130; --title: 13; --text: 6; --gap: 6; --pad: 8; --brand: 6; grid-template-columns: 1fr; grid-template-rows: 1fr; }
+.sheet.per-2 { --qr: 68; --title: 8; --text: 4; --gap: 2; --pad: 5; --brand: 4; grid-template-columns: 1fr; }
+.sheet.per-6 { --qr: 38; --title: 4.8; --text: 2.7; --gap: 1.3; --pad: 3; --brand: 2.9; grid-template-rows: 1fr 1fr 1fr; }
+
+.print-card {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: calc(var(--mm) * var(--gap));
+  min-height: 0; overflow: hidden; padding: calc(var(--mm) * var(--pad));
+  border: calc(var(--mm) * 0.5) solid #111; border-radius: calc(var(--mm) * 4);
+  text-align: center; color: #111; background: #fff;
+}
+.print-card.is-new { animation: print-card-in 0.3s var(--ease-out) both; }
+@keyframes print-card-in { from { opacity: 0; transform: scale(0.94); } }
+.print-brand { display: flex; align-items: center; gap: calc(var(--mm) * 1.5); font-size: calc(var(--mm) * var(--brand)); font-weight: 800; color: #111; }
+.print-brand img { width: calc(var(--mm) * var(--brand) * 1.7); height: calc(var(--mm) * var(--brand) * 1.7); }
+.print-card h2 { margin: 0; font-size: calc(var(--mm) * var(--title)); line-height: 1.18; color: #111; }
+.print-card b { font-size: calc(var(--mm) * var(--text) * 1.05); color: #111; }
+.print-card p { margin: 0; font-size: calc(var(--mm) * var(--text)); line-height: 1.35; color: #444; }
+.print-card .print-url { font-size: calc(var(--mm) * var(--text) * 0.85); color: #777; overflow-wrap: anywhere; }
+.print-qr { flex: none; width: calc(var(--mm) * var(--qr)); height: calc(var(--mm) * var(--qr)); }
+
+@media (max-width: 900px) {
+  .qp { display: block; }
+  .qp-side { position: static; height: auto; border-right: 0; border-bottom: 1px solid var(--border); }
+  .qp-rooms { flex: none; max-height: 42dvh; }
+  .qp-stage { padding: 16px 16px 48px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sheet-wrap, .print-card.is-new { animation: none; }
+}
+
+@media print {
+  @page { size: A4; margin: 0; }
+  .no-print { display: none !important; }
+  html, body { background: #fff !important; }
+  .qp { display: block; min-height: 0; }
+  .qp-stage { display: block; padding: 0; container-type: normal; }
+  .sheet-wrap { display: block; animation: none; }
+  /* чуть меньше листа: из-за округления ровно 297 мм иногда дают пустую страницу в конце */
+  .sheet { --mm: 1mm; height: 296.5mm; border-radius: 0; box-shadow: none; break-after: page; break-inside: avoid; }
+  .sheet-wrap:last-child .sheet { break-after: auto; }
+  .print-card { animation: none; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+}

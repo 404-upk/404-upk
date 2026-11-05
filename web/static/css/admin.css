@@ -2,6 +2,7 @@
 /* графики: Васильковый и Сланцевый из бренд-гайда */
 :root { --chart-1: #6a86be; --chart-2: #a6aebd; }
 :root[data-theme="light"] { --chart-1: #4c68a6; --chart-2: #7d8492; }
+:root[data-theme="sky"] { --chart-1: #27407a; --chart-2: #6c7a96; }
 
 .admin {
   display: grid;
@@ -297,18 +298,18 @@
 .ai-result td { vertical-align: top; }
 .playground-out { font-size: 14px; }
 
-/* ===== Печать QR ===== */
-.print-sheet { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; padding: 14px; background: #fff; color: #111; }
-.print-card { border: 2px solid #111; border-radius: 18px; padding: 18px; display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; break-inside: avoid; }
-.print-card img { width: 210px; height: 210px; }
-.print-card h2 { font-size: 22px; }
-.print-card p { font-size: 13px; color: #444; }
+/* ===== Форма сотрудника ===== */
+.input-with-btn { display: flex; align-items: center; gap: 8px; }
+.input-with-btn .input { flex: 1; min-width: 0; }
+.input-with-btn .btn { flex: none; }
+.field .hint.is-error { color: var(--red); }
+.login-menu-title { padding: 6px 10px 4px; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--faint); }
+.login-menu .ui-option { font-size: 13px; }
 
-@media print {
-  .no-print { display: none !important; }
-  body { background: #fff; }
-  .print-sheet { padding: 0; gap: 10mm; }
-}
+/* только что добавленное помещение */
+tr.is-fresh > td { animation: row-fresh 2.4s var(--ease-out) both; }
+@keyframes row-fresh { 0%, 35% { background: var(--primary-soft); } }
+@media (prefers-reduced-motion: reduce) { tr.is-fresh > td { animation: none; background: var(--primary-soft); } }
 
 /* ===== Адаптив ===== */
 @media (max-width: 1180px) {
@@ -345,7 +346,6 @@
   .kv, .actions-grid { grid-template-columns: 1fr; }
   .map-floor { grid-template-columns: 52px 1fr; }
   .rooms { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); }
-  .print-sheet { grid-template-columns: 1fr; }
   .hbar { grid-template-columns: 100px 1fr 34px; }
 }
 

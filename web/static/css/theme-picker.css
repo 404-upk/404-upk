@@ -3,7 +3,7 @@
 
 .tpick {
   position: fixed; z-index: 120;
-  width: min(452px, calc(100vw - 16px));
+  width: min(600px, calc(100vw - 16px));
   padding: 14px;
   border: 1px solid var(--border-strong); border-radius: var(--radius-lg);
   background: color-mix(in srgb, var(--surface) 92%, transparent);
@@ -22,7 +22,7 @@
 .tpick-spark { width: 11px; height: 11px; fill: var(--primary); }
 .tpick-now { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-.tpick-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.tpick-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
 .tpick-card {
   position: relative;
   display: flex; flex-direction: column; align-items: stretch; gap: 2px;
@@ -80,6 +80,14 @@
   --bg: #000; --surf: #0b0c0f; --ink: rgba(230, 232, 236, 0.85); --ink-2: rgba(230, 232, 236, 0.26); --line: rgba(230, 232, 236, 0.1); --door: rgba(230, 232, 236, 0.2);
   background: #000;
 }
+.tp-sky {
+  --bg: #b7cbf0; --surf: #f5f8fd; --ink: rgba(11, 26, 56, 0.85); --ink-2: rgba(11, 26, 56, 0.3); --line: rgba(20, 40, 85, 0.16); --acc: #27407a; --door: rgba(11, 26, 56, 0.24);
+  background:
+    radial-gradient(22% 9% at 76% 24%, rgba(255, 255, 255, 0.95), transparent 72%),
+    radial-gradient(12% 11% at 70% 20%, rgba(255, 255, 255, 0.9), transparent 72%),
+    radial-gradient(26% 9% at 28% 90%, rgba(255, 255, 255, 0.8), transparent 72%),
+    linear-gradient(180deg, #96b1e6, #e0e9f8);
+}
 .tp-shot > span { position: absolute; display: block; }
 .tp-top { left: 0; right: 0; top: 0; height: 15%; background: color-mix(in srgb, var(--surf) 85%, transparent); border-bottom: 1px solid var(--line); }
 .tp-top svg { position: absolute; left: 6%; top: 50%; width: 9px; height: 9px; margin-top: -4.5px; fill: var(--acc); transition: transform 0.6s var(--ease-out); }
@@ -114,6 +122,11 @@
   0% { transform: translate(0, 10%); }
   50% { transform: translate(55%, 35%); }
   100% { transform: translate(25%, -5%); }
+}
+
+@media (max-width: 620px) {
+  .tpick { width: min(452px, calc(100vw - 16px)); }
+  .tpick-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (max-width: 460px) {

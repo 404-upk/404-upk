@@ -1,28 +1,22 @@
 <!doctype html>
-<html lang="ru" data-theme="light">
+<html lang="ru" data-no-intro>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>QR-коды для печати · УПК</title>
+  <meta name="theme-color" content="#0c1222">
   <meta name="robots" content="noindex">
   <link rel="icon" href="/static/img/icon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/static/css/fonts.css">
   <link rel="stylesheet" href="/static/css/app.css">
   <link rel="stylesheet" href="/static/css/admin.css">
+  <link rel="stylesheet" href="/static/css/qr-print.css">
+  <script src="/static/js/boot.js"></script>
   <script type="module" src="/static/js/qr-print.js"></script>
 </head>
-<body class="u-bg-white">
-  <div class="u-maxw1000 no-print page">
-    <div class="u-wrap u-gap12 row between">
-      <div><h1>QR-коды для печати</h1>
-        <p class="muted small">Отметьте помещения, нажмите «Печать» и сохраните в PDF или распечатайте. Наклейте код на видное место у входа.</p></div>
-      <div class="row">
-        <button class="btn" id="all">Выбрать все</button>
-        <button class="btn btn-primary" id="print">Печать</button>
-      </div>
-    </div>
-    <div class="u-mt14 row-wrap" id="picker"></div>
+<body>
+  <div class="qp" id="qp">
+    <div class="qp-loading"><span class="spinner"></span></div>
   </div>
-  <div class="print-sheet" id="sheet"></div>
 </body>
 </html>

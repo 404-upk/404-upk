@@ -5,7 +5,7 @@ export const SPARK_PATH = "M12 0C12.9 7.6 16.4 11.1 24 12C16.4 12.9 12.9 16.4 12
 
 const SHAPE = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${SPARK_PATH}"/></svg>`;
 const INTERACTIVE =
-  'a[href], a[data-href], button, .ui-scroll, [role="button"], [role="option"], label, select, summary, input[type="checkbox"], input[type="radio"], input[type="file"], [tabindex]:not([tabindex="-1"]), .pf-room, .kcard';
+  'a[href], a[data-href], button, .ui-scroll, [role="button"], [role="option"], label, select, summary, input[type="checkbox"], input[type="radio"], input[type="file"], [tabindex]:not([tabindex="-1"]), .pf-room, .kcard, .qr-thumb, .print-qr';
 const TEXT_FIELD =
   'input:not([type="checkbox"], [type="radio"], [type="file"], [type="button"], [type="submit"]), textarea, [contenteditable="true"]';
 const DISABLED = 'button:disabled, input:disabled, select:disabled, [aria-disabled="true"]';

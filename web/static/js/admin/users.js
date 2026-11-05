@@ -1,21 +1,152 @@
-import { api, esc, icon, openModal, toast } from "../core.js";
+import { api, copyText, esc, icon, openModal, setBusy, toast } from "../core.js";
 import { ctx, initials, loadAssignees } from "./ctx.js";
 
 const ROLES = { admin: "Администратор", staff: "Сотрудник УПК", executor: "Исполнитель" };
+
+// Менеджер паролей браузера открывает свой список, когда видит рядом логин и поле type="password".
+// Здесь администратор заводит чужую учётную запись, поэтому такого поля нет, а подсказки и пароль свои.
+const NO_MANAGER = 'autocomplete="off" autocapitalize="none" spellcheck="false" data-lpignore="true" data-1p-ignore data-bwignore data-form-type="other"';
+const LOGIN_RE = /^[a-z0-9_.-]{3,60}$/i;
+const PASSWORD_MIN = 8;
+const PASSWORD_ALPHABET = "abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+const TRANSLIT = {
+  а: "a", б: "b", в: "v", г: "g", д: "d", е: "e", ё: "e", ж: "zh", з: "z", и: "i", й: "y", к: "k", л: "l", м: "m", н: "n", о: "o", п: "p",
+  р: "r", с: "s", т: "t", у: "u", ф: "f", х: "kh", ц: "ts", ч: "ch", ш: "sh", щ: "shch", ъ: "", ы: "y", ь: "", э: "e", ю: "yu", я: "ya",
+};
+
+const latin = (text) => [...text.toLowerCase()].map((ch) => TRANSLIT[ch] ?? ch).join("");
+
+/** Логины из имени сотрудника: только свободные, занятый получает номер */
+function loginVariants(name, typed, taken) {
+  const [first, last] = latin(name).split(/[^a-z0-9]+/).filter(Boolean);
+  const wanted = latin(typed).replace(/[^a-z0-9_.-]/g, "");
+  const base = first && last ? [`${first[0]}.${last}`, `${first}.${last}`, `${last}.${first[0]}`, last] : first ? [first] : [];
+  // написали кириллицей: первым идёт то же самое латиницей
+  if (wanted && wanted !== typed.toLowerCase()) base.unshift(wanted);
+  const free = (login) => {
+    if (!taken.has(login)) return login;
+    for (let n = 2; n < 100; n += 1) if (!taken.has(`${login}${n}`)) return `${login}${n}`;
+    return null;
+  };
+  const found = base.filter((login) => login.length >= 3).map(free).filter(Boolean);
+  return [...new Set(found)].filter((login) => login !== typed && login.startsWith(wanted)).slice(0, 5);
+}
+
+function newPassword(length = 14) {
+  return Array.from(crypto.getRandomValues(new Uint32Array(length)), (v) => PASSWORD_ALPHABET[v % PASSWORD_ALPHABET.length]).join("");
+}
+
+/** Свой список логинов под полем: тот же вид, что у выпадающих списков сайта */
+function attachLoginMenu(input, nameInput, taken) {
+  const menuId = "u-nick-menu";
+  let menu = null;
+  let options = [];
+  let active = -1;
+
+  const place = () => {
+    if (!menu) return;
+    const r = input.getBoundingClientRect();
+    menu.style.left = `${r.left}px`;
+    menu.style.top = `${r.bottom + 6}px`;
+    menu.style.minWidth = `${r.width}px`;
+    menu.style.maxHeight = `${Math.max(120, innerHeight - r.bottom - 18)}px`;
+  };
+  const close = () => {
+    if (!menu) return;
+    const leaving = menu;
+    menu = null;
+    active = -1;
+    input.setAttribute("aria-expanded", "false");
+    input.removeAttribute("aria-activedescendant");
+    leaving.classList.add("is-leaving");
+    setTimeout(() => leaving.remove(), 160);
+    window.removeEventListener("resize", place);
+    window.removeEventListener("scroll", place, true);
+  };
+  const setActive = (i) => {
+    active = i;
+    menu.querySelectorAll(".ui-option").forEach((n, index) => n.classList.toggle("is-active", index === active));
+    if (active >= 0) input.setAttribute("aria-activedescendant", `${menuId}-${active}`);
+    else input.removeAttribute("aria-activedescendant");
+  };
+  const refresh = () => {
+    options = loginVariants(nameInput.value, input.value.trim(), taken);
+    if (!options.length) return close();
+    if (!menu) {
+      menu = document.createElement("div");
+      menu.className = "ui-select-menu login-menu";
+      menu.id = menuId;
+      menu.setAttribute("role", "listbox");
+      menu.setAttribute("aria-label", "Свободные логины");
+      // нажатие по списку не должно забирать фокус у поля, иначе список закроется раньше выбора
+      menu.addEventListener("pointerdown", (e) => e.preventDefault());
+      menu.addEventListener("click", (e) => {
+        const item = e.target.closest(".ui-option");
+        if (item) choose(Number(item.dataset.i));
+      });
+      menu.addEventListener("pointermove", (e) => {
+        const item = e.target.closest(".ui-option");
+        if (item && Number(item.dataset.i) !== active) setActive(Number(item.dataset.i));
+      });
+      document.body.append(menu);
+      input.setAttribute("aria-expanded", "true");
+      window.addEventListener("resize", place);
+      window.addEventListener("scroll", place, true);
+    }
+    active = -1;
+    input.removeAttribute("aria-activedescendant");
+    menu.innerHTML = `<div class="login-menu-title">Свободные логины</div>${options
+      .map((login, i) => `<div class="ui-option mono" role="option" id="${menuId}-${i}" data-i="${i}" aria-selected="false"><span>${esc(login)}</span></div>`)
+      .join("")}`;
+    place();
+  };
+  function choose(i) {
+    input.value = options[i];
+    close();
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    close();
+  }
+
+  input.addEventListener("focus", refresh);
+  input.addEventListener("input", refresh);
+  input.addEventListener("blur", close);
+  input.addEventListener("keydown", (e) => {
+    if (!menu) {
+      if (e.key === "ArrowDown") refresh();
+      return;
+    }
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      const step = e.key === "ArrowDown" ? 1 : -1;
+      setActive((active + step + options.length + (active < 0 && step < 0 ? 1 : 0)) % options.length);
+    } else if (e.key === "Enter" && active >= 0) {
+      e.preventDefault();
+      choose(active);
+    } else if (e.key === "Escape") {
+      // окно с формой при этом остаётся открытым
+      e.stopPropagation();
+      close();
+    }
+  });
+}
 
 function userForm(u = {}) {
   return `
     <div class="field"><label for="u-name">Имя и фамилия</label><input class="input" id="u-name" maxlength="120" value="${esc(u.name || "")}"></div>
     <div class="field"><label for="u-pos">Должность</label><input class="input" id="u-pos" maxlength="120" value="${esc(u.position || "")}" placeholder="Например: электрик"></div>
     <div class="u-gap12 grid-2">
-      <div class="field"><label for="u-login">Логин</label><input class="input" id="u-login" maxlength="60" value="${esc(u.login || "")}" ${u.id ? "disabled" : ""} autocapitalize="none"></div>
+      <div class="field"><label for="u-nick">Логин</label><input class="input" id="u-nick" maxlength="60" value="${esc(u.login || "")}" ${u.id ? "disabled" : `role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="u-nick-menu"`} ${NO_MANAGER}>
+        ${u.id ? "" : `<span class="hint" id="u-nick-hint">Латиница, цифры, точка, дефис</span>`}</div>
       <div class="field"><label for="u-role">Роль</label><select class="select" id="u-role">${Object.entries(ROLES)
-        .map(([k, v]) => `<option value="${k}" ${u.role === k ? "selected" : ""}>${v}</option>`)
+        .map(([k, v]) => `<option value="${k}" ${(u.role || "staff") === k ? "selected" : ""}>${v}</option>`)
         .join("")}</select></div>
     </div>
-    <div class="field"><label for="u-pass">${u.id ? "Новый пароль" : "Пароль"}</label>
-      <input class="input" id="u-pass" type="password" autocomplete="new-password" placeholder="${u.id ? "Оставьте пустым, чтобы не менять" : "Не короче 8 символов"}">
-      <span class="hint">Хранится только в виде хеша bcrypt. При смене пароля все сессии пользователя завершаются.</span></div>
+    <div class="field"><label for="u-secret">${u.id ? "Новый временный пароль" : "Временный пароль"}</label>
+      <div class="input-with-btn">
+        <input class="input mono" id="u-secret" type="text" maxlength="200" ${NO_MANAGER} placeholder="${u.id ? "Оставьте пустым, чтобы не менять" : `Не короче ${PASSWORD_MIN} символов`}">
+        <button type="button" class="btn btn-sm" id="u-gen">${icon("refresh", "icon-sm")} Придумать</button>
+      </div>
+      <span class="hint">Передайте его сотруднику: при первом входе система попросит заменить пароль на постоянный. На сервере хранится только хеш bcrypt, при смене пароля все сессии сотрудника завершаются.</span></div>
     ${u.id ? `<label class="check"><input type="checkbox" id="u-active" ${u.is_active ? "checked" : ""}> Доступ включён</label>` : ""}`;
 }
 
@@ -30,8 +161,45 @@ export async function render({ el, setHead }) {
       body: userForm(u || {}),
       footer: `<button class="btn" data-close>Отмена</button><button class="btn btn-primary" id="u-save">Сохранить</button>`,
       onMount(m, close) {
-        m.querySelector("#u-save").addEventListener("click", async () => {
-          const password = m.querySelector("#u-pass").value;
+        const saveBtn = m.querySelector("#u-save");
+        const nameInput = m.querySelector("#u-name");
+        const loginInput = m.querySelector("#u-nick");
+        const secretInput = m.querySelector("#u-secret");
+        const taken = new Set(users.map((x) => x.login.toLowerCase()));
+        if (!u) {
+          attachLoginMenu(loginInput, nameInput, taken);
+          const hint = m.querySelector("#u-nick-hint");
+          loginInput.addEventListener("input", () => {
+            const busy = taken.has(loginInput.value.trim().toLowerCase());
+            hint.classList.toggle("is-error", busy);
+            hint.textContent = busy ? "Такой логин уже занят" : "Латиница, цифры, точка, дефис";
+          });
+        }
+        m.querySelector("#u-gen").addEventListener("click", () => {
+          secretInput.value = newPassword();
+          secretInput.select();
+          copyText(secretInput.value);
+        });
+        const problem = () => {
+          if (nameInput.value.trim().length < 2) return [nameInput, "Впишите имя и фамилию"];
+          if (!u) {
+            const login = loginInput.value.trim();
+            if (!LOGIN_RE.test(login)) return [loginInput, "Логин: от 3 символов, латиница, цифры, точка, дефис или подчёркивание"];
+            if (taken.has(login.toLowerCase())) return [loginInput, "Такой логин уже занят"];
+          }
+          const size = secretInput.value.length;
+          if (u ? size > 0 && size < PASSWORD_MIN : size < PASSWORD_MIN) return [secretInput, `Пароль не короче ${PASSWORD_MIN} символов`];
+          return null;
+        };
+        saveBtn.addEventListener("click", async () => {
+          const wrong = problem();
+          if (wrong) {
+            wrong[0].focus();
+            toast(wrong[1], "error");
+            return;
+          }
+          const password = secretInput.value;
+          setBusy(saveBtn, true);
           try {
             if (u) {
               const body = {
@@ -48,7 +216,7 @@ export async function render({ el, setHead }) {
                 body: {
                   name: m.querySelector("#u-name").value.trim(),
                   position: m.querySelector("#u-pos").value.trim() || null,
-                  login: m.querySelector("#u-login").value.trim(),
+                  login: loginInput.value.trim(),
                   role: m.querySelector("#u-role").value,
                   password,
                 },
@@ -57,9 +225,11 @@ export async function render({ el, setHead }) {
             toast("Сохранено");
             close();
             await loadAssignees();
-            load();
+            await load();
           } catch (err) {
             toast(err.message, "error");
+          } finally {
+            setBusy(saveBtn, false);
           }
         });
       },
