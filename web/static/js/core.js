@@ -553,7 +553,7 @@ export function themeToggle(button) {
     const now = themeById(currentTheme());
     button.innerHTML = icon(now.icon);
     button.setAttribute("aria-label", `Тема: ${now.name}. Выбрать тему`);
-    button.title = `Тема: ${now.name}`;
+    button.dataset.tip = `Тема: ${now.name}`;
   };
   button.setAttribute("aria-haspopup", "menu");
   button.setAttribute("aria-expanded", "false");
@@ -635,6 +635,7 @@ export function themeToggle(button) {
   };
 
   button.addEventListener("click", () => (menu ? close() : open()));
+  button.addEventListener("upk:theme-render", render);
   button.addEventListener("keydown", (e) => {
     if ((e.key === "ArrowDown" || e.key === "ArrowUp") && !menu) {
       e.preventDefault();
@@ -642,6 +643,210 @@ export function themeToggle(button) {
     }
   });
   render();
+}
+
+// ---------- подсказки при наведении ----------
+// Системная подсказка из title заменяется своей, в стиле сайта и в цветах темы.
+// title переносится в data-tip, чтобы браузер не показывал свою поверх.
+
+let tipEl = null;
+let tipFor = null;
+let tipTimer = 0;
+
+function adoptTitle(el) {
+  if (!el.hasAttribute("title")) return;
+  const text = el.getAttribute("title");
+  el.removeAttribute("title");
+  if (!text) return;
+  el.dataset.tip = text;
+  // подсказка не должна пропасть для экранных читалок
+  if (!el.getAttribute("aria-label") && !el.textContent.trim()) el.setAttribute("aria-label", text);
+}
+
+function hideTip() {
+  clearTimeout(tipTimer);
+  tipFor = null;
+  if (tipEl) tipEl.classList.remove("is-on");
+}
+
+function showTip(el) {
+  const text = el.dataset.tip;
+  if (!text || !el.isConnected) return;
+  if (!tipEl) {
+    tipEl = h('<div class="ui-tip" role="tooltip"></div>');
+    document.body.append(tipEl);
+  }
+  tipEl.textContent = text;
+  const r = el.getBoundingClientRect();
+  const tw = tipEl.offsetWidth;
+  const th = tipEl.offsetHeight;
+  const below = r.bottom + th + 10 < innerHeight;
+  tipEl.style.left = `${Math.max(8, Math.min(r.left + r.width / 2 - tw / 2, innerWidth - tw - 8))}px`;
+  tipEl.style.top = `${below ? r.bottom + 8 : r.top - th - 8}px`;
+  tipEl.classList.toggle("is-above", !below);
+  tipEl.classList.add("is-on");
+}
+
+function tipTarget(node) {
+  const el = node?.closest?.("[title], [data-tip]");
+  if (!el || el.closest(".pf, svg")) return null;
+  adoptTitle(el);
+  return el.dataset.tip ? el : null;
+}
+
+function watchTips() {
+  document.addEventListener("pointerover", (e) => {
+    if (e.pointerType === "touch") return;
+    const el = tipTarget(e.target);
+    if (el === tipFor) return;
+    hideTip();
+    if (!el) return;
+    tipFor = el;
+    tipTimer = setTimeout(() => tipFor === el && showTip(el), 380);
+  });
+  document.addEventListener("pointerout", (e) => {
+    if (tipFor && !tipFor.contains(e.relatedTarget)) hideTip();
+  });
+  // с клавиатуры подсказка показывается при фокусе
+  document.addEventListener("focusin", (e) => {
+    const el = tipTarget(e.target);
+    if (el && e.target.matches(":focus-visible")) {
+      tipFor = el;
+      showTip(el);
+    }
+  });
+  document.addEventListener("focusout", hideTip);
+  document.addEventListener("pointerdown", hideTip, true);
+  document.addEventListener("keydown", (e) => e.key === "Escape" && hideTip());
+  window.addEventListener("scroll", hideTip, { passive: true, capture: true });
+}
+
+// ---------- своё меню по правой кнопке ----------
+// В полях ввода, на телефоне и с зажатым Shift остаётся меню браузера:
+// там нужны «Вставить», проверка орфографии и инструменты разработчика.
+
+let ctxMenu = null;
+let lastPointer = "mouse";
+
+function closeCtx(focusBack = true) {
+  if (!ctxMenu) return;
+  const { el, opener } = ctxMenu;
+  ctxMenu = null;
+  el.classList.add("is-leaving");
+  setTimeout(() => el.remove(), 140);
+  if (focusBack && opener?.isConnected) opener.focus?.({ preventScroll: true });
+}
+
+function openCtx(e) {
+  closeCtx(false);
+  hideTip();
+  const link = e.target.closest?.("a[href]");
+  const selected = String(window.getSelection?.() || "").trim();
+  const nav = window.navigation;
+  const items = [];
+  const add = (label, action, { hint = "", disabled = false, ic = "" } = {}) =>
+    items.push({ label, action, hint, disabled, ic });
+  if (selected) add("Копировать", () => copyText(selected), { hint: "Ctrl+C", ic: "copy" });
+  if (link) {
+    add("Открыть в новой вкладке", () => window.open(link.href, "_blank", "noopener"), { ic: "external" });
+    add("Скопировать адрес ссылки", () => copyText(link.href), { ic: "copy" });
+  }
+  if (items.length) items.push("sep");
+  add("Назад", () => history.back(), { hint: "Alt+←", disabled: nav ? !nav.canGoBack : false, ic: "arrowLeft" });
+  add("Вперёд", () => history.forward(), { hint: "Alt+→", disabled: nav ? !nav.canGoForward : false, ic: "arrowRight" });
+  add("Обновить страницу", () => location.reload(), { hint: "Ctrl+R", ic: "refresh" });
+  items.push("sep");
+  items.push("themes");
+  items.push("sep");
+  add("Скопировать ссылку на страницу", () => copyText(location.href), { ic: "copy" });
+  add("Печать", () => window.print(), { hint: "Ctrl+P", ic: "clipboard" });
+
+  const now = currentTheme();
+  const html = items
+    .map((it) => {
+      if (it === "sep") return '<div class="ctx-sep" role="separator"></div>';
+      if (it === "themes")
+        return `<div class="ctx-label">Тема оформления</div>${THEMES.map(
+          (t) => `<button type="button" class="ctx-item" role="menuitemradio" aria-checked="${t.id === now}" data-ctx-theme="${t.id}">
+            <span class="theme-swatch ts-${t.id} is-mini" aria-hidden="true"><i></i><i></i></span><span class="grow">${esc(t.name)}</span>${icon("check", "icon-sm theme-check")}</button>`,
+        ).join("")}`;
+      const i = items.indexOf(it);
+      return `<button type="button" class="ctx-item" role="menuitem" data-ctx="${i}"${it.disabled ? " disabled" : ""}>
+        ${it.ic ? icon(it.ic, "icon-sm") : ""}<span class="grow">${esc(it.label)}</span>${it.hint ? `<kbd>${esc(it.hint)}</kbd>` : ""}</button>`;
+    })
+    .join("");
+  const el = h(`<div class="ctx-menu" role="menu" aria-label="Действия на странице">${html}
+    <div class="ctx-foot">Меню браузера: Shift + правая кнопка</div></div>`);
+  document.body.append(el);
+  const opener = document.activeElement;
+  ctxMenu = { el, opener };
+
+  // у края экрана меню разворачивается внутрь
+  const fromKeys = e.clientX === 0 && e.clientY === 0;
+  const anchor = fromKeys && opener?.getBoundingClientRect ? opener.getBoundingClientRect() : null;
+  const x0 = anchor ? anchor.left + 12 : e.clientX;
+  const y0 = anchor ? anchor.bottom : e.clientY;
+  const mw = el.offsetWidth;
+  const mh = el.offsetHeight;
+  const left = x0 + mw + 8 > innerWidth ? Math.max(8, x0 - mw) : x0;
+  const top = y0 + mh + 8 > innerHeight ? Math.max(8, y0 - mh) : y0;
+  el.style.left = `${left}px`;
+  el.style.top = `${top}px`;
+  el.classList.toggle("from-right", left < x0);
+  el.classList.toggle("from-bottom", top < y0);
+
+  el.addEventListener("click", (ev) => {
+    const btn = ev.target.closest(".ctx-item");
+    if (!btn || btn.disabled) return;
+    const theme = btn.dataset.ctxTheme;
+    closeCtx();
+    if (theme) {
+      if (theme !== currentTheme()) {
+        switchTheme(theme, x0, y0, () => {
+          document.querySelectorAll("#theme").forEach((b) => b.dispatchEvent(new CustomEvent("upk:theme-render")));
+        });
+      }
+      return;
+    }
+    items[Number(btn.dataset.ctx)]?.action?.();
+  });
+  el.querySelector(".ctx-item:not([disabled])")?.focus({ preventScroll: true });
+}
+
+function watchContextMenu() {
+  document.addEventListener("pointerdown", (e) => {
+    lastPointer = e.pointerType || "mouse";
+    if (ctxMenu && !ctxMenu.el.contains(e.target)) closeCtx(false);
+  }, true);
+  document.addEventListener("contextmenu", (e) => {
+    if (e.shiftKey || lastPointer === "touch" || lastPointer === "pen") return;
+    if (e.target.closest?.("input, textarea, select, [contenteditable=''], [contenteditable='true'], .ctx-menu")) return;
+    e.preventDefault();
+    openCtx(e);
+  });
+  document.addEventListener("keydown", (e) => {
+    if (!ctxMenu) return;
+    const list = [...ctxMenu.el.querySelectorAll(".ctx-item:not([disabled])")];
+    const i = list.indexOf(document.activeElement);
+    if (e.key === "Escape") closeCtx();
+    else if (e.key === "ArrowDown" || e.key === "ArrowUp") list[(i + (e.key === "ArrowDown" ? 1 : -1) + list.length) % list.length]?.focus();
+    else if (e.key === "Home") list[0]?.focus();
+    else if (e.key === "End") list[list.length - 1]?.focus();
+    else if (e.key === "Tab") {
+      closeCtx(false);
+      return;
+    } else return;
+    e.preventDefault();
+    e.stopPropagation();
+  }, true);
+  window.addEventListener("blur", () => closeCtx(false));
+  window.addEventListener("resize", () => closeCtx(false));
+  window.addEventListener("scroll", () => closeCtx(false), { passive: true });
+}
+
+if (document.body) {
+  watchTips();
+  watchContextMenu();
 }
 
 /**

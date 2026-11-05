@@ -143,3 +143,22 @@ def test_page_opens_offline_and_message_is_sent_when_back_online(page):
     page.context.set_offline(False)
     expect(page.locator("#thread .notice-danger")).to_have_count(0)
     expect(page.locator("#d-desc")).to_be_visible()
+
+
+def test_own_tooltip_and_context_menu(page):
+    """Подсказки и меню по правой кнопке в стиле сайта; в поле ввода остаётся меню браузера."""
+    page.goto("/")
+    page.hover("#theme")
+    expect(page.locator(".ui-tip.is-on")).to_have_text("Тема: Полночь")
+    assert page.locator("#theme").get_attribute("title") is None  # системной подсказки нет
+
+    page.mouse.click(640, 720, button="right")
+    menu = page.get_by_role("menu", name="Действия на странице")
+    expect(menu).to_be_visible()
+    expect(menu.get_by_role("menuitem", name=re.compile("Обновить страницу"))).to_be_visible()
+    menu.get_by_role("menuitemradio", name=re.compile("Горный снег")).click()
+    expect(page.locator("html")).to_have_attribute("data-theme", "light")
+    expect(menu).to_have_count(0)
+
+    page.locator("#message").click(button="right")
+    expect(page.locator(".ctx-menu")).to_have_count(0)
