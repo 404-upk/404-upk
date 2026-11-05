@@ -238,7 +238,6 @@ html:not(.is-revealed) .track-enter .tp-step, html:not(.is-revealed) .track-ente
 
 /* ===== Схема колледжа: здание в разрезе ===== */
 .plan { position: relative; margin: 0 -4px; }
-.plan.is-static { pointer-events: none; }
 .pf { display: block; width: 100%; height: auto; overflow: visible; user-select: none; -webkit-tap-highlight-color: transparent; }
 .pf text { font-family: inherit; }
 
