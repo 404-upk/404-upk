@@ -157,6 +157,8 @@ def test_own_tooltip_and_context_menu(page):
     expect(menu).to_be_visible()
     expect(menu.get_by_role("menuitem", name=re.compile("Обновить страницу"))).to_be_visible()
     menu.get_by_role("menuitem", name="Тема оформления").hover()
+    # у каждой темы свой знак
+    expect(page.locator(".ctx-sub .theme-swatch svg > *:first-child")).to_have_count(4)
     page.get_by_role("menuitemradio", name=re.compile("Горный снег")).click()
     expect(page.locator("html")).to_have_attribute("data-theme", "light")
     expect(menu).to_have_count(0)
@@ -499,3 +501,29 @@ def test_login_has_own_menu_and_no_password_field(page):
     page.fill("#l-nick", "")
     page.click("#l-nick")
     expect(page.get_by_role("option", name="admin", exact=True)).to_have_count(0)
+
+
+def test_floor_plan_stairs_match_the_floor(page):
+    """На плане этажа лестница ведёт туда, куда с него можно попасть; коридор сквозной; на 1 этаже есть вход."""
+    page.goto("/")
+    page.locator('.pf-floor[data-floor="1"] .pf-floor-bg').click(position={"x": 8, "y": 30}, force=True)
+    plan = page.locator(".fv-plan")
+    expect(plan).to_be_visible()
+    expect(page.locator(".fv-entry")).to_be_visible()
+    expect(plan.locator(".fs-to.is-up")).to_have_count(2)
+    expect(plan.locator(".fs-to.is-down")).to_have_count(0)
+
+    tabs = page.locator(".fv-tabs")
+    tabs.get_by_role("button", name="3 этаж").click()
+    expect(plan.locator(".fs-to.is-up")).to_have_count(0)
+    expect(plan.locator(".fs-to.is-down")).to_have_count(2)
+    expect(page.locator(".fv-entry")).to_have_count(0)
+
+    tabs.get_by_role("button", name="2 этаж").click()
+    expect(plan.locator(".fs-to.is-up")).to_have_count(2)
+    expect(plan.locator(".fs-to.is-down")).to_have_count(2)
+    # коридор идёт на одной высоте через лестничные клетки и середину этажа
+    tops = plan.locator(".fv-hall, .fv-corridor").evaluate_all(
+        "(els) => els.map((e) => Math.round(e.getBoundingClientRect().top))"
+    )
+    assert len(tops) == 5 and len(set(tops)) == 1, tops

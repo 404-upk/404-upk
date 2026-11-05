@@ -646,6 +646,17 @@ export const THEMES = [
 ];
 const themeById = (id) => THEMES.find((t) => t.id === id) || THEMES[0];
 
+// Искра знака 404 в точке (x, y) с размахом лучей size
+const logoSpark = (x, y, size, fill) => `<path transform="translate(${x - size / 2} ${y - size / 2}) scale(${size / 24})" fill="${fill}" d="${SPARK_PATH}"/>`;
+// Знак каждой темы. Цвета постоянные: значок показывает саму тему, а не текущую
+const THEME_LOGOS = {
+  dark: `<path fill="#edf0f4" transform="translate(2.2 3.6) scale(0.74)" d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>${logoSpark(17.4, 7, 7, "#8ea6d8")}`,
+  light: `<path fill="#4c68a6" d="M1.8 20 9.6 6.6l4.3 7.2 2.3-3.4L22.2 20z"/><path fill="#ffffff" d="M9.6 6.6 6.9 11.2l1.5-.7 1.2 1.1 1.2-1.1 1.5.8zM16.2 10.4l-1.7 2.5 1-.5.7.7.8-.6 1 .5z"/>${logoSpark(18.6, 5.6, 5.4, "#0c1222")}`,
+  black: `<circle cx="12" cy="12" r="8.6" fill="none" stroke="#3d4f78" stroke-width="0.8"/>${logoSpark(12, 12, 13, "#e6e8ec")}`,
+  sky: `${logoSpark(7, 7.2, 8, "#27407a")}<path fill="#ffffff" d="M7.4 19.2a3.7 3.7 0 0 1-.5-7.4 5.2 5.2 0 0 1 10-1.2 4.3 4.3 0 0 1 .3 8.6z"/>`,
+};
+const themeLogo = (id) => `<span class="theme-swatch ts-${esc(id)} is-mini" aria-hidden="true"><svg viewBox="0 0 24 24">${THEME_LOGOS[id] || ""}</svg></span>`;
+
 /** Смена темы с анимацией из точки (x, y): новая тема раскрывается знаком 404, в «Кромешную тьму» прежняя сворачивается */
 function switchTheme(next, x, y, onDone) {
   const flip = () => {
@@ -1211,7 +1222,7 @@ function ctxMenuEl(items, label, className = "") {
   const button = (it) => {
     handlers.push(it);
     const choice = it.checked !== undefined;
-    const lead = it.swatch ? `<span class="theme-swatch ts-${esc(it.swatch)} is-mini" aria-hidden="true"><i></i><i></i></span>` : it.ic ? icon(it.ic, "icon-sm") : "";
+    const lead = it.swatch ? themeLogo(it.swatch) : it.ic ? icon(it.ic, "icon-sm") : "";
     const tail = it.items ? icon("chevronRight", "icon-sm ctx-chevron") : choice ? icon("check", "icon-sm theme-check") : it.hint ? `<kbd>${esc(it.hint)}</kbd>` : "";
     return `<button type="button" class="ctx-item${it.danger ? " is-danger" : ""}" role="${choice ? "menuitemradio" : "menuitem"}" data-h="${handlers.length - 1}"${choice ? ` aria-checked="${it.checked}"` : ""}${it.items ? ' aria-haspopup="menu" aria-expanded="false"' : ""}${it.disabled ? " disabled" : ""}>
       ${lead}<span class="grow">${esc(it.label)}</span>${tail}</button>`;

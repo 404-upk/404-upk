@@ -31,48 +31,92 @@
 .fv-tabs button[aria-pressed="true"] { color: var(--text); border-color: var(--border-strong); background: var(--surface-3); }
 .fv-body { flex: 1; min-height: 0; overflow: auto; padding: 22px 20px; overscroll-behavior: contain; }
 
-/* этаж сверху: внешние стены, лестницы, части с кабинетами */
+/* этаж сверху: внешние стены, лестницы, части с кабинетами.
+   Лестничные клетки и середина этажа делятся по тем же трём рядам, что и кабинеты, поэтому коридор идёт через весь этаж */
 .fv-plan {
   --wall: color-mix(in srgb, var(--text) 20%, transparent);
   --row: 116px;
   --corr: 46px;
+  --rows: minmax(var(--row), 1fr) var(--corr) minmax(var(--row), 1fr);
+  --corridor: color-mix(in srgb, var(--bg) 25%, transparent);
+  --glass: color-mix(in srgb, var(--primary) 50%, transparent);
   display: flex;
-  min-width: 840px;
+  min-width: 880px;
   border: 1.5px solid color-mix(in srgb, var(--text) 32%, transparent);
   border-radius: 10px;
-  overflow: hidden;
   background: color-mix(in srgb, var(--surface-2) 55%, transparent);
 }
-.fv-stair { position: relative; flex: none; width: 84px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 8px 4px; border-inline: 1px solid var(--wall); }
-.fv-stair:first-child { border-left: 0; }
-.fv-stair:last-child { border-right: 0; }
-.fs-svg { display: block; }
-.fs-h { width: 76px; height: calc(var(--row) * 2 + var(--corr) - 52px); }
-.fv-center .fs-h { height: calc(var(--row) * 2 + var(--corr) - 152px); }
+.fv-plan.has-entry { margin-bottom: 26px; }
+
+/* коридор: общий вид для кабинетов и лестничных клеток */
+.fv-hall, .fv-corridor { border-block: 1px solid var(--wall); background: var(--corridor); }
+
+/* лестничная клетка */
+.fv-stair { position: relative; flex: none; width: 90px; display: grid; grid-template-rows: var(--rows); }
+.fv-stair-run, .fv-center-run { position: relative; min-height: 0; }
+.fv-stair-label { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding: 8px 2px; font-size: 11px; font-weight: 600; line-height: 1.25; text-align: center; color: var(--muted); }
+.fv-stair:first-child .fv-stair-run, .fv-stair:first-child .fv-stair-label { border-right: 1px solid var(--wall); }
+.fv-stair:last-child .fv-stair-run, .fv-stair:last-child .fv-stair-label { border-left: 1px solid var(--wall); }
+.fv-way { display: inline-flex; align-items: center; gap: 3px; font-size: 10.5px; font-weight: 400; white-space: nowrap; color: var(--muted); }
+.fv-way svg { flex: none; width: 11px; height: 11px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.fv-way.is-up svg { color: var(--primary); }
+
+/* окно в торце коридора */
+.fv-stair .fv-hall { position: relative; }
+.fv-stair .fv-hall::before { content: ""; position: absolute; top: 22%; bottom: 22%; width: 3px; background: var(--surface); border-inline: 1px solid var(--glass); }
+.fv-stair:first-child .fv-hall::before { left: -1.5px; }
+.fv-stair:last-child .fv-hall::before { right: -1.5px; }
+
+/* рисунок лестницы: толщина линий не зависит от растяжения под высоту этажа */
+.fs-svg { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
+.fs-svg * { vector-effect: non-scaling-stroke; }
 .fs-v { display: none; }
-.fs-well { fill: color-mix(in srgb, var(--text) 3%, transparent); stroke: none; }
-.fs-treads { stroke: var(--text); stroke-opacity: 0.18; stroke-width: 1; }
-.fs-mid, .fs-landing { stroke: var(--text); stroke-opacity: 0.26; stroke-width: 1.1; }
-.fs-arrow { fill: none; stroke: var(--primary); stroke-width: 1.4; stroke-linejoin: round; stroke-opacity: 0.85; }
-.fs-arrow-head { fill: none; stroke: var(--primary); stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; }
-.fs-arrow-start { fill: var(--primary); }
-.fv-stair-label { font-size: 11px; font-weight: 600; line-height: 1.25; text-align: center; color: var(--muted); }
-.fv-stair-label small { display: block; font-size: 10px; font-weight: 400; }
+/* правая клетка зеркальна левой: здание симметрично */
+.fv-stair:last-child .fs-h { transform: scaleX(-1); }
+/* куда ведёт марш: бейдж у дальнего конца */
+.fs-to {
+  position: absolute; top: 5px; transform: translateX(-50%);
+  display: inline-flex; align-items: center; gap: 1px; padding: 1px 6px 1px 3px;
+  border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface);
+  font-size: 10.5px; font-weight: 700; line-height: 1.3; font-variant-numeric: tabular-nums; color: var(--muted);
+}
+.fs-to svg { flex: none; width: 10px; height: 10px; fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+.fs-to.is-up { color: var(--text); border-color: color-mix(in srgb, var(--primary) 55%, var(--border)); }
+.fs-to.is-up svg { color: var(--primary); }
+.fs-to.col-l { left: 28%; }
+.fs-to.col-r { left: 72%; }
+.fv-stair:last-child .fs-to.col-l { left: 72%; }
+.fv-stair:last-child .fs-to.col-r { left: 28%; }
+.fs-treads { fill: none; stroke: var(--text); stroke-opacity: 0.26; stroke-width: 1; }
+.fs-treads.is-dim { stroke-opacity: 0.1; }
+.fs-edge { fill: none; stroke: var(--text); stroke-opacity: 0.32; stroke-width: 1.1; }
+.fs-rail { fill: none; stroke: var(--text); stroke-opacity: 0.42; stroke-width: 1.4; }
+.fs-guard { fill: none; stroke: var(--text); stroke-opacity: 0.42; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; }
+.fs-way { fill: none; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.fs-way.is-up { stroke: var(--primary); }
+.fs-way.is-down { stroke: var(--muted); stroke-dasharray: 4 3; }
+.fs-way-head { fill: none; stroke: var(--muted); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.fs-way-start.is-up { fill: var(--primary); }
+.fs-way-start.is-down { fill: var(--muted); }
 
 .fv-part {
   flex: 1 1 0;
   display: grid;
   grid-template-columns: repeat(var(--units, 4), minmax(76px, 1fr));
-  grid-template-rows: minmax(var(--row), 1fr) var(--corr) minmax(var(--row), 1fr);
+  grid-template-rows: var(--rows);
 }
-.fv-corridor { grid-row: 2; grid-column: 1 / -1; display: grid; place-items: center; border-block: 1px solid var(--wall); background: color-mix(in srgb, var(--bg) 25%, transparent); }
+.fv-corridor { grid-row: 2; grid-column: 1 / -1; display: grid; place-items: center; }
 .fv-corridor span { font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
-.fv-center { position: relative; flex: none; width: 116px; display: flex; flex-direction: column; border-inline: 1px solid var(--wall); }
-.fv-center .fv-stair { border: 0; flex: 1; width: auto; }
-.fv-center .fv-room { height: 96px; flex: none; border-top: 1px solid var(--wall); padding-top: 36px; }
+
+/* середина этажа: лестница, коридор и холл с входом или подпись */
+.fv-center { position: relative; flex: none; width: 112px; display: grid; grid-template-rows: var(--rows); }
+.fv-center-run, .fv-center > .fv-stair-label, .fv-center > .fv-room { border-inline: 1px solid var(--wall); }
+.fv-center > .fv-room { grid-row: 3; }
+.fv-run-tag { position: absolute; left: 50%; top: 5px; transform: translateX(-50%); padding: 1px 8px; border-radius: 999px; background: var(--surface); border: 1px solid color-mix(in srgb, var(--primary) 55%, var(--border)); }
+.fv-run-tag .fv-way { color: var(--text); }
 .fv-room.is-lobby .fv-num { font-size: 15px; }
-.fv-entry { position: absolute; left: 50%; bottom: -26px; transform: translateX(-50%); display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
-.fv-entry .icon { transform: rotate(-90deg); }
+.fv-entry { position: absolute; left: 50%; bottom: -25px; transform: translateX(-50%); display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap; color: var(--muted); pointer-events: none; }
+.fv-entry .icon { transform: rotate(-90deg); color: var(--primary); }
 
 /* кабинет в плане */
 .fv-room {
@@ -91,6 +135,7 @@
   cursor: pointer;
   transition: background 0.45s;
 }
+.fv-room.is-end { border-right: 0; }
 .fv-room.side-a { grid-row: 1; padding-bottom: 38px; }
 .fv-room.side-b { grid-row: 3; --ly: 0%; padding-top: 38px; }
 .fv-room.is-open { --c: var(--primary); }
@@ -111,26 +156,45 @@
 .fv-room.is-open .fv-state i, .fv-room.is-urgent .fv-state i { background: var(--c); box-shadow: 0 0 6px var(--c); }
 .fv-room.is-urgent .fv-state i { animation: pl-alert 1.6s ease-in-out infinite; }
 
+/* окно кабинета в наружной стене */
+.fv-room::before { content: ""; position: absolute; left: 50%; width: min(52%, 64px); height: 3px; transform: translateX(-50%); background: var(--surface); border-block: 1px solid var(--glass); pointer-events: none; }
+.fv-room.side-a::before { top: -1.5px; }
+.fv-room.side-b::before { bottom: -1.5px; }
+.fv-room.is-lobby::before { display: none; }
+
 /* дверь в стене коридора: проём, полотно и дуга открывания */
-.fv-door { position: absolute; width: 28px; height: 28px; pointer-events: none; }
+.fv-door { position: absolute; width: 26px; height: 26px; pointer-events: none; }
 .fv-door i { position: absolute; display: block; }
-.fv-gap { background: var(--surface); }
-.fv-leaf { background: var(--text); opacity: 0.75; border-radius: 1px; transition: transform 0.6s var(--ease-out), background 0.4s; }
+.fv-gap { background: var(--surface-2); }
+.fv-leaf { background: var(--text); opacity: 0.55; border-radius: 1px; transition: transform 0.6s var(--ease-out), background 0.4s, opacity 0.4s; }
 .fv-arc { inset: 0; border: 1px dashed color-mix(in srgb, var(--c) 70%, var(--text)); opacity: 0; transition: opacity 0.35s; }
-.fv-room.is-on .fv-leaf, .fv-room.is-peek .fv-leaf { background: var(--c); opacity: 1; }
+.fv-room.is-open .fv-leaf, .fv-room.is-urgent .fv-leaf, .fv-room.is-on .fv-leaf, .fv-room.is-peek .fv-leaf { background: var(--c); opacity: 1; }
 .fv-room.is-on .fv-arc, .fv-room.is-peek .fv-arc { opacity: 0.8; }
 /* ряд a: дверь в нижней стене, открывается вверх */
 .fv-room.side-a .fv-door { left: 14px; bottom: 0; }
-.fv-room.side-a .fv-gap { left: 0; right: 0; bottom: -2px; height: 3px; }
-.fv-room.side-a .fv-leaf { left: 0; bottom: -1px; width: 100%; height: 2.5px; transform-origin: 0 50%; }
+.fv-room.side-a .fv-gap { left: 0; right: 0; bottom: -1px; height: 1px; }
+.fv-room.side-a .fv-leaf { left: 0; bottom: -1px; width: 100%; height: 2px; transform-origin: 0 50%; }
 .fv-room.side-a .fv-arc { border-bottom: 0; border-left: 0; border-top-right-radius: 100%; }
 .fv-room.side-a.is-on .fv-leaf, .fv-room.side-a.is-peek .fv-leaf { transform: rotate(-90deg); }
 /* ряд b: дверь в верхней стене, открывается вниз */
 .fv-room.side-b .fv-door { left: 14px; top: 0; }
-.fv-room.side-b .fv-gap { left: 0; right: 0; top: -2px; height: 3px; }
-.fv-room.side-b .fv-leaf { left: 0; top: -1px; width: 100%; height: 2.5px; transform-origin: 0 50%; }
+.fv-room.side-b .fv-gap { left: 0; right: 0; top: -1px; height: 1px; }
+.fv-room.side-b .fv-leaf { left: 0; top: -1px; width: 100%; height: 2px; transform-origin: 0 50%; }
 .fv-room.side-b .fv-arc { border-top: 0; border-left: 0; border-bottom-right-radius: 100%; }
 .fv-room.side-b.is-on .fv-leaf, .fv-room.side-b.is-peek .fv-leaf { transform: rotate(90deg); }
+/* холл: двустворчатая входная дверь в наружной стене, створки открываются внутрь */
+.fv-room.is-lobby { padding: 12px 10px 28px; }
+.fv-room.is-lobby.side-b .fv-door { left: 50%; top: auto; bottom: 0; width: 19px; height: 19px; }
+.fv-room.is-lobby .d-l { margin-left: -19px; }
+.fv-room.is-lobby.side-b .fv-gap { top: auto; bottom: -2px; height: 3px; background: var(--surface); }
+.fv-room.is-lobby.side-b .fv-leaf { top: auto; bottom: -1.5px; }
+.fv-room.is-lobby.side-b .d-l .fv-leaf { transform-origin: 0 50%; }
+.fv-room.is-lobby.side-b .d-r .fv-leaf { left: auto; right: 0; transform-origin: 100% 50%; }
+.fv-room.is-lobby.side-b .fv-arc { border: 1px dashed color-mix(in srgb, var(--c) 70%, var(--text)); border-bottom: 0; }
+.fv-room.is-lobby.side-b .d-l .fv-arc { border-left: 0; border-radius: 0 100% 0 0; }
+.fv-room.is-lobby.side-b .d-r .fv-arc { border-right: 0; border-radius: 100% 0 0 0; }
+.fv-room.is-lobby.side-b.is-on .d-l .fv-leaf, .fv-room.is-lobby.side-b.is-peek .d-l .fv-leaf { transform: rotate(-90deg); }
+.fv-room.is-lobby.side-b.is-on .d-r .fv-leaf, .fv-room.is-lobby.side-b.is-peek .d-r .fv-leaf { transform: rotate(90deg); }
 
 /* сведения о выбранном кабинете */
 .fv-detail { border-top: 1px solid var(--border); padding: 14px 20px 16px; min-height: 76px; background: color-mix(in srgb, var(--surface-2) 60%, transparent); }
@@ -167,42 +231,72 @@
   .fv-tabs { order: 3; width: 100%; }
   .fv-tabs button { flex: 1; }
   .fv-body { padding: 16px 16px 40px; }
-  .fv-plan { --row: auto; flex-direction: column; min-width: 0; }
-  .fv-stair { width: auto; height: auto; padding: 10px 8px 8px; border-inline: 0; border-block: 1px solid var(--wall); }
-  .fv-stair:first-child { border-top: 0; }
-  .fv-stair:last-child { border-bottom: 0; }
+  .fv-plan { --row: auto; --mcols: minmax(0, 1fr) 36px minmax(0, 1fr); flex-direction: column; min-width: 0; }
+  .fv-plan.has-entry { margin-bottom: 0; }
+  /* лестничная клетка поперёк: слева лестница, посередине коридор, справа подпись */
+  .fv-stair, .fv-center { width: auto; grid-template-columns: var(--mcols); grid-template-rows: minmax(100px, auto); }
+  .fv-stair-run, .fv-center-run { grid-column: 1; grid-row: 1; }
+  .fv-hall { grid-column: 2; grid-row: 1; border-block: 0; border-inline: 1px solid var(--wall); }
+  .fv-stair-label { grid-column: 3; grid-row: 1; }
+  .fv-stair:first-child .fv-stair-run, .fv-stair:first-child .fv-stair-label { border-right: 0; border-bottom: 1px solid var(--wall); }
+  .fv-stair:last-child .fv-stair-run, .fv-stair:last-child .fv-stair-label { border-left: 0; border-top: 1px solid var(--wall); }
+  .fv-center-run, .fv-center > .fv-stair-label, .fv-center > .fv-room { border-inline: 0; border-block: 1px solid var(--wall); }
+  /* окно в торце коридора: наверху и внизу плана */
+  .fv-stair .fv-hall::before { left: 22%; right: 22%; top: auto; bottom: auto; width: auto; height: 3px; border-inline: 0; border-block: 1px solid var(--glass); }
+  .fv-stair:first-child .fv-hall::before { left: 22%; top: -1.5px; }
+  .fv-stair:last-child .fv-hall::before { right: 22%; bottom: -1.5px; }
   .fs-h { display: none; }
-  .fs-v { display: block; width: 272px; max-width: 100%; height: 84px; }
+  .fs-v { display: block; }
+  /* нижняя клетка зеркальна верхней */
+  .fv-stair:last-child .fs-v { transform: scaleY(-1); }
+  .fs-to { top: auto; left: 4px; transform: translateY(-50%); }
+  .fs-to.col-r, .fv-stair:last-child .fs-to.col-l { top: 28%; left: 4px; }
+  .fs-to.col-l, .fv-stair:last-child .fs-to.col-r { top: 72%; left: 4px; }
+  /* подпись средней лестницы под ступенями, а не поверх них */
+  .fv-center { grid-template-rows: minmax(128px, auto); }
+  .fv-center-run .fs-v { height: calc(100% - 28px); }
+  .fv-run-tag { top: auto; left: 50%; bottom: 5px; transform: translateX(-50%); white-space: nowrap; }
   .fv-part { grid-template-columns: minmax(0, 1fr) 36px minmax(0, 1fr); grid-template-rows: repeat(var(--units, 4), minmax(68px, auto)); }
   .fv-corridor { grid-row: 1 / -1; grid-column: 2; border-block: 0; border-inline: 1px solid var(--wall); }
+  .fv-room.is-end { border-bottom: 0; }
   .fv-corridor span { writing-mode: vertical-rl; }
   .fv-room { grid-column: auto; grid-row: var(--col) / span var(--w); border-right: 0; border-bottom: 1px solid var(--wall); padding: 10px 12px; gap: 4px; }
   .fv-room.m-l { grid-column: 1; grid-row: var(--col) / span var(--w); padding: 10px 40px 10px 12px; --lx: 100%; --ly: 22px; }
   .fv-room.m-r { grid-column: 3; grid-row: var(--col) / span var(--w); justify-content: flex-start; padding: 10px 12px 10px 40px; --lx: 0%; --ly: 22px; }
   .fv-room.m-r .fv-state { margin-top: auto; }
   .fv-num { font-size: 18px; }
-  .fv-center { width: auto; border-inline: 0; border-block: 1px solid var(--wall); }
-  .fv-center .fv-stair { flex: none; }
-  .fv-center .fv-room { height: auto; min-height: 64px; border-top: 1px solid var(--wall); border-bottom: 0; padding: 36px 12px 10px; }
-  .fv-entry { position: static; transform: none; justify-content: center; padding: 8px 0; border-top: 1px dashed var(--wall); }
-  .fv-entry .icon { transform: rotate(90deg); }
+  .fv-center > .fv-room.is-lobby { grid-column: 3; grid-row: 1; min-height: 100px; padding: 12px 12px 30px; border-bottom: 1px solid var(--wall); }
+  .fv-entry { left: auto; right: 10px; bottom: 8px; transform: none; z-index: 1; }
+  .fv-entry .icon { transform: rotate(180deg); }
+  /* окна в боковых стенах */
+  .fv-room::before { width: 3px; height: min(52%, 44px); top: 50%; bottom: auto; left: auto; right: auto; transform: translateY(-50%); border-block: 0; border-inline: 1px solid var(--glass); }
+  .fv-room.side-a::before, .fv-room.side-b::before { top: 50%; bottom: auto; }
+  .fv-room.m-l::before { left: -1.5px; }
+  .fv-room.m-r::before { right: -1.5px; }
   /* ряд a слева: дверь в правой стене, открывается влево */
   .fv-room.m-l .fv-door { left: auto; right: 0; bottom: auto; top: 12px; }
-  .fv-room.m-l .fv-gap { left: auto; right: -2px; top: 0; bottom: 0; width: 3px; height: auto; }
-  .fv-room.m-l .fv-leaf { left: auto; right: -1px; top: 0; bottom: auto; width: 2.5px; height: 100%; transform-origin: 50% 0; }
+  .fv-room.m-l .fv-gap { left: auto; right: -1px; top: 0; bottom: 0; width: 1px; height: auto; }
+  .fv-room.m-l .fv-leaf { left: auto; right: -1px; top: 0; bottom: auto; width: 2px; height: 100%; transform-origin: 50% 0; }
   .fv-room.m-l .fv-arc { border: 1px dashed color-mix(in srgb, var(--c) 70%, var(--text)); border-top: 0; border-right: 0; border-radius: 0 0 0 100%; }
   .fv-room.m-l.is-on .fv-leaf, .fv-room.m-l.is-peek .fv-leaf { transform: rotate(90deg); }
   /* ряд b справа: дверь в левой стене, открывается вправо */
   .fv-room.m-r .fv-door { left: 0; top: 12px; }
-  .fv-room.m-r .fv-gap { left: -2px; right: auto; top: 0; bottom: 0; width: 3px; height: auto; }
-  .fv-room.m-r .fv-leaf { left: -1px; top: 0; width: 2.5px; height: 100%; transform-origin: 50% 0; }
+  .fv-room.m-r .fv-gap { left: -1px; right: auto; top: 0; bottom: 0; width: 1px; height: auto; }
+  .fv-room.m-r .fv-leaf { left: -1px; top: 0; width: 2px; height: 100%; transform-origin: 50% 0; }
   .fv-room.m-r .fv-arc { border: 1px dashed color-mix(in srgb, var(--c) 70%, var(--text)); border-top: 0; border-left: 0; border-radius: 0 0 100% 0; }
   .fv-room.m-r.is-on .fv-leaf, .fv-room.m-r.is-peek .fv-leaf { transform: rotate(-90deg); }
-  .fv-center .fv-room.side-b .fv-door { left: 50%; top: 0; }
-  .fv-center .fv-room.side-b .fv-gap { left: 0; right: 0; top: -2px; width: auto; height: 3px; }
-  .fv-center .fv-room.side-b .fv-leaf { left: 0; top: -1px; width: 100%; height: 2.5px; transform-origin: 0 50%; }
-  .fv-center .fv-room.side-b .fv-arc { border: 1px dashed color-mix(in srgb, var(--c) 70%, var(--text)); border-top: 0; border-left: 0; border-radius: 0 0 100% 0; }
-  .fv-center .fv-room.side-b.is-on .fv-leaf { transform: rotate(90deg); }
+  /* холл: входная дверь в правой наружной стене */
+  .fv-room.is-lobby.side-b .fv-door { left: auto; right: 0; top: 50%; bottom: auto; width: 17px; height: 17px; margin: 0; }
+  .fv-room.is-lobby.side-b .d-l { margin-top: -17px; }
+  .fv-room.is-lobby.side-b .fv-gap { left: auto; right: -2px; top: 0; bottom: 0; width: 3px; height: auto; }
+  .fv-room.is-lobby.side-b .fv-leaf { left: auto; right: -1.5px; top: 0; bottom: auto; width: 2px; height: 100%; }
+  .fv-room.is-lobby.side-b .d-l .fv-leaf { transform-origin: 50% 0; }
+  .fv-room.is-lobby.side-b .d-r .fv-leaf { right: -1.5px; transform-origin: 50% 100%; }
+  .fv-room.is-lobby.side-b .fv-arc { border: 1px dashed color-mix(in srgb, var(--c) 70%, var(--text)); border-right: 0; }
+  .fv-room.is-lobby.side-b .d-l .fv-arc { border-top: 0; border-radius: 0 0 0 100%; }
+  .fv-room.is-lobby.side-b .d-r .fv-arc { border-bottom: 0; border-radius: 100% 0 0 0; }
+  .fv-room.is-lobby.side-b.is-on .d-l .fv-leaf, .fv-room.is-lobby.side-b.is-peek .d-l .fv-leaf { transform: rotate(90deg); }
+  .fv-room.is-lobby.side-b.is-on .d-r .fv-leaf, .fv-room.is-lobby.side-b.is-peek .d-r .fv-leaf { transform: rotate(-90deg); }
   .fv-detail { position: sticky; bottom: 0; padding: 12px 16px calc(14px + env(safe-area-inset-bottom)); }
 }
 

@@ -237,7 +237,7 @@ html:not(.is-revealed) .track-enter .tp-step, html:not(.is-revealed) .track-ente
 .campus-kpi { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
 
 /* ===== Схема колледжа: здание в разрезе ===== */
-/* Линии васильковые, как знак и созвездия на фоне сайта: здание «нарисовано светом», а не серым контуром. */
+/* Линии васильковые, как знак и узор на фоне сайта: здание «нарисовано светом», а не серым контуром. */
 .plan { position: relative; margin: 0 -4px; }
 .pf {
   --pf-line: color-mix(in srgb, var(--primary) 62%, var(--text));
@@ -248,8 +248,8 @@ html:not(.is-revealed) .track-enter .tp-step, html:not(.is-revealed) .track-ente
 .pf:focus, .pf:focus-visible, .pf :focus, .pf :focus-visible { outline: none; }
 .pf text { font-family: inherit; }
 
-/* небо над крышей: два созвездия из фирменных звёзд */
-.pf-const { fill: none; stroke: var(--primary); stroke-opacity: 0.34; stroke-width: 0.55; stroke-linecap: round; stroke-linejoin: round; }
+/* небо над крышей: узор из фирменных звёзд */
+.pf-sky-line { fill: none; stroke: var(--primary); stroke-opacity: 0.34; stroke-width: 0.55; stroke-linecap: round; stroke-linejoin: round; }
 .pf-star {
   fill: var(--pf-line);
   filter: drop-shadow(0 0 1.5px var(--primary));
@@ -266,11 +266,13 @@ html:not(.is-revealed) .track-enter .tp-step, html:not(.is-revealed) .track-ente
 .pfg-body stop:first-child { stop-color: color-mix(in srgb, var(--primary) 15%, var(--surface-2)); stop-opacity: 0.85; }
 .pfg-body stop:last-child { stop-color: var(--surface-2); stop-opacity: 0.5; }
 .pf-body-line { fill: none; stroke: var(--pf-line); stroke-opacity: 0.5; stroke-width: 1.2; }
-.pf-well { fill: color-mix(in srgb, var(--primary) 6%, transparent); }
+.pf-well { fill: color-mix(in srgb, var(--primary) 5%, transparent); }
 .pf-cornice { fill: none; stroke: var(--pf-line); stroke-opacity: 0.6; stroke-width: 2; stroke-linecap: round; }
 .pf-attic { fill: color-mix(in srgb, var(--primary) 9%, var(--surface-2)); fill-opacity: 0.9; }
 .pf-attic-line { fill: none; stroke: var(--pf-line); stroke-opacity: 0.5; stroke-width: 1.2; stroke-linejoin: round; }
-.pf-slab { stroke: var(--pf-line); stroke-opacity: 0.3; stroke-width: 1.5; stroke-linecap: round; }
+.pf-slab { stroke: var(--pf-line); stroke-opacity: 0.42; stroke-width: 1.4; }
+/* пол дальнего ряда кабинетов: тоньше перекрытия */
+.pf-gallery { stroke: var(--pf-line); stroke-opacity: 0.16; stroke-width: 0.7; }
 .pf-ground { fill: none; stroke-width: 1.2; stroke-linecap: round; }
 .pfg-ground stop { stop-color: var(--pf-line); stop-opacity: 0; }
 .pfg-ground stop:nth-child(2) { stop-opacity: 0.6; }
@@ -300,13 +302,16 @@ html:not(.is-revealed) .track-enter .tp-step, html:not(.is-revealed) .track-ente
 .pf-scan { animation: pf-scan 11s cubic-bezier(0.45, 0, 0.25, 1) 2.4s infinite backwards; }
 @keyframes pf-scan { 0% { transform: translateX(0); } 55%, 100% { transform: translateX(530px); } }
 
-/* лестницы в разрезе: ступени, косоур, площадки, перила */
-.pf-steps { fill: color-mix(in srgb, var(--primary) 9%, transparent); stroke: var(--pf-line); stroke-opacity: 0.4; stroke-width: 0.8; stroke-linejoin: round; }
-.pf-landing { stroke: var(--pf-line); stroke-opacity: 0.4; stroke-width: 1.6; stroke-linecap: round; }
-.pf-rail { fill: none; stroke: var(--pf-line); stroke-opacity: 0.4; stroke-width: 0.8; }
-.pf-handrail { fill: none; stroke: var(--pf-line); stroke-opacity: 0.38; stroke-width: 0.8; stroke-linecap: round; }
-.pf-stair-front { fill: color-mix(in srgb, var(--primary) 9%, transparent); }
-.pf-treads { stroke: var(--pf-line); stroke-opacity: 0.42; stroke-width: 0.9; stroke-linecap: round; }
+/* лестницы в разрезе: ближний марш ярче дальнего, площадки заодно с маршем, стены с дверями в коридор */
+.pf-steps { fill: color-mix(in srgb, var(--primary) 12%, transparent); stroke: var(--pf-line); stroke-opacity: 0.55; stroke-width: 0.7; stroke-linejoin: round; }
+.pf-flight.is-far { opacity: 0.5; }
+.pf-handrail { fill: none; stroke: var(--pf-line); stroke-opacity: 0.5; stroke-width: 0.7; stroke-linecap: round; stroke-linejoin: round; }
+.pf-rail { fill: none; stroke: var(--pf-line); stroke-opacity: 0.5; stroke-width: 0.65; stroke-linecap: round; }
+.pf-stairwall { fill: none; stroke: var(--pf-line); stroke-opacity: 0.3; stroke-width: 0.9; }
+.pf-stair-front { fill: color-mix(in srgb, var(--primary) 11%, transparent); stroke: var(--pf-line); stroke-opacity: 0.5; stroke-width: 0.7; stroke-linejoin: round; }
+.pf-treads { stroke: var(--pf-line); stroke-opacity: 0.5; stroke-width: 0.75; }
+.pf-stair-base { stroke: var(--pf-line); stroke-opacity: 0.55; stroke-width: 1.1; stroke-linecap: round; }
+.pf-canopy { stroke: var(--pf-line); stroke-opacity: 0.6; stroke-width: 1.1; stroke-linecap: round; }
 
 /* вход: свет из дверей на землю и стрелка, которая зовёт внутрь */
 .pfg-spill stop { stop-color: var(--primary); stop-opacity: 0; }
@@ -374,6 +379,7 @@ html:not(.is-revealed) .track-enter .tp-step, html:not(.is-revealed) .track-ente
   transition: transform 0.6s var(--ease-out), fill 0.6s, stroke-opacity 0.3s;
 }
 .pf-door-r { transform-origin: 100% 50%; }
+.pf-knob { fill: var(--pf-line); fill-opacity: 0.6; transition: opacity 0.2s; pointer-events: none; }
 .pf-lamp { fill: color-mix(in srgb, var(--pf-line) 28%, transparent); }
 .pf-sill { stroke: color-mix(in srgb, var(--pf-line) 38%, transparent); stroke-width: 1.4; stroke-linecap: round; }
 .pf-room.is-open .pf-lamp, .pf-room.is-urgent .pf-lamp { fill: var(--c); filter: drop-shadow(0 0 2.5px var(--c)); }
@@ -399,6 +405,7 @@ html:not(.is-revealed) .track-enter .tp-step, html:not(.is-revealed) .track-ente
 .pf-room.is-demo .pf-door { transform: skewY(-14deg) scaleX(0.3); fill: color-mix(in srgb, var(--surface-3) 70%, var(--text)); }
 .pf-room.is-demo .pf-door-r { transform: skewY(14deg) scaleX(0.3); }
 .pf-room.is-demo .pf-icon { opacity: 1; }
+.pf-room.is-demo .pf-knob { opacity: 0; }
 .pf-room.is-demo .pf-hit { fill: color-mix(in srgb, var(--primary) 10%, transparent); stroke: color-mix(in srgb, var(--primary) 45%, transparent); }
 /* двери открываются при наведении только там, где есть мышь; на телефоне касание сразу открывает этаж */
 @media (hover: hover) {
@@ -407,6 +414,7 @@ html:not(.is-revealed) .track-enter .tp-step, html:not(.is-revealed) .track-ente
   .pf-room:hover .pf-door { transform: skewY(-14deg) scaleX(0.3); fill: color-mix(in srgb, var(--surface-3) 70%, var(--text)); }
   .pf-room:hover .pf-door-r { transform: skewY(14deg) scaleX(0.3); }
   .pf-room:hover .pf-icon { opacity: 1; }
+  .pf-room:hover .pf-knob { opacity: 0; }
 }
 /* на телефоне строки о кабинете под схемой нет: навести нельзя; этаж подсвечивается, пока палец на нём */
 @media (hover: none) {
@@ -417,7 +425,7 @@ html:not(.is-revealed) .track-enter .tp-step, html:not(.is-revealed) .track-ente
 /* первое появление: контур здания прорисовывается линией, этажи поднимаются снизу вверх,
    в кабинетах слева направо «включается свет», лампы с заявками мигают, как при включении */
 .plan.is-enter .pf-draw { stroke-dasharray: 1 1; animation: pf-draw 1.6s var(--ease-io) 200ms backwards; }
-.plan.is-enter .pf-const { stroke-dasharray: 1 1; animation: pf-draw 2.4s var(--ease-out) 1.3s backwards; }
+.plan.is-enter .pf-sky-line { stroke-dasharray: 1 1; animation: pf-draw 2.4s var(--ease-out) 1.3s backwards; }
 .plan.is-enter .pf-sky { animation: pl-fade 1.6s var(--ease-out) 1.1s backwards; }
 .plan.is-enter .pf-body, .plan.is-enter .pf-attic, .plan.is-enter .pf-well, .plan.is-enter .pf-halo,
 .plan.is-enter .pf-slab, .plan.is-enter .pf-ground { animation: pl-fade 1.2s var(--ease-out) 600ms backwards; }

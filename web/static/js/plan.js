@@ -1,8 +1,9 @@
 // Схема колледжа в блоке «Состояние колледжа»: здание в разрезе, три этажа, кабинеты по обе стороны коридора.
-// Лестницы: по бокам на всех этажах, посередине с 1 на 2 этаж, на 1 этаже посередине вход.
+// Лестницы: по бокам двухмаршевые на всех этажах, посередине прямая с 1 на 2 этаж, на 1 этаже посередине вход.
+// Боковая лестница в разрезе: этажная площадка у двери в коридор, промежуточная у наружной стены.
 // Состояние кабинета берётся из /api/campus: без заявок, есть заявка, срочная заявка.
 // Наведение открывает дверь кабинета, нажатие открывает план этажа во весь экран (floor-view.js).
-// Оформление в цветах знака 404: васильковые линии, созвездия над крышей, свет ламп над дверями,
+// Оформление в цветах знака 404: васильковые линии, узор из звёзд над крышей, свет ламп над дверями,
 // при первом показе контур здания прорисовывается, а в кабинетах по очереди «включается свет».
 
 import { esc } from "./core.js";
@@ -143,54 +144,97 @@ const FH = 96; // высота этажа
 const G = TOP + 3 * FH; // земля
 const H = G + 24;
 const ROW = 38;
+const IN_L = X0 + SW; // внутренние стены боковых лестничных клеток
+const IN_R = X1 - SW;
+
+const STEPS = 7; // ступеней в одном марше
+const LAND_FLOOR = 10; // этажная площадка, у двери в коридор
+const LAND_MID = 9; // промежуточная площадка, у наружной стены
+const SLAB = 3; // толщина площадки
+const THICK = 5; // толщина марша по вертикали
+const RAIL_H = 9; // высота перил над ступенями
+const DOOR_H = 22; // высота двери из лестничной клетки в коридор
+const OPENING = 13; // половина проёма средней лестницы в перекрытии
 
 const floorTop = (n) => TOP + (3 - n) * FH;
 const f1 = (n) => n.toFixed(1);
+const ROW_A = 7; // отступ дальнего ряда кабинетов от потолка этажа
 
-/** Марш лестницы в разрезе: ступени от (xa, ya) до (xb, yb), снизу косоур */
-function flight(xa, ya, xb, yb, steps = 6, withRail = false) {
-  const dx = (xb - xa) / steps;
-  const dy = (yb - ya) / steps;
+/**
+ * Марш в разрезе от (xa, ya) вверх до (xb, yb) вместе с верхней площадкой, которая идёт до стены wall.
+ * Низ марша параллелен ступеням и упирается в перекрытие, поэтому ничего не торчит под пол.
+ */
+function flight(xa, ya, xb, yb, wall, far = false) {
+  const dx = (xb - xa) / STEPS;
+  const dy = (yb - ya) / STEPS;
+  const rise = ya - yb;
+  const at = (s) => xa + (xb - xa) * s;
   let d = `M${f1(xa)} ${f1(ya)}`;
-  for (let i = 0; i < steps; i++) d += `v${f1(dy)}h${f1(dx)}`;
-  const under = `L${f1(xb)} ${f1(yb + 5)}L${f1(xa + dx * 0.4)} ${f1(ya + 1.5)}Z`;
-  // перила идут параллельно маршу над ступенями
-  const hr = `M${f1(xa + dx * 0.5)} ${f1(ya - 9)}L${f1(xb - dx * 0.5)} ${f1(yb - 9 + dy * 0.5)}M${f1(xa + dx * 0.5)} ${f1(ya - 9)}v${f1(9 + dy * 0)}M${f1(xb - dx * 0.5)} ${f1(yb - 9 + dy * 0.5)}v${f1(9 - dy * 0.5)}`;
-  return `<path class="pf-steps" d="${d}${under}"/>${withRail ? `<path class="pf-handrail" d="${hr}"/>` : ""}`;
+  for (let i = 0; i < STEPS; i++) d += `v${f1(dy)}h${f1(dx)}`;
+  d += `H${f1(wall)}V${f1(yb + SLAB)}H${f1(at(1 + (THICK - SLAB) / rise))}L${f1(at(THICK / rise))} ${f1(ya)}Z`;
+  const rail = `M${f1(xa)} ${f1(ya)}V${f1(ya - RAIL_H)}L${f1(xb)} ${f1(yb - RAIL_H)}V${f1(yb)}`;
+  return `<g class="pf-flight${far ? " is-far" : ""}"><path class="pf-steps" d="${d}"/><path class="pf-handrail" d="${rail}"/></g>`;
 }
 
-/** Средняя лестница прямо от входа: вид спереди, ступени уходят вглубь и сужаются */
+/** Боковая лестничная клетка: марши с этажа на этаж. mirror — правая сторона здания */
+function sideStair(mirror) {
+  const sx = (x) => (mirror ? X0 + X1 - x : x);
+  const outer = X0;
+  const inner = IN_L;
+  const xFloor = inner - LAND_FLOOR;
+  const xMid = outer + LAND_MID;
+  let out = "";
+  // сверху вниз: дальний марш рисуется раньше ближнего, на верхнем этаже только ограждение
+  for (const n of [2, 1]) {
+    const y = floorTop(n) + FH;
+    const ym = y - FH / 2;
+    const yt = y - FH;
+    out += flight(sx(xMid), ym, sx(xFloor), yt, sx(inner), true);
+    out += flight(sx(xFloor), y, sx(xMid), ym, sx(outer));
+  }
+  // на верхнем этаже лестница заканчивается: над проёмом ограждение
+  const top = floorTop(3) + FH;
+  out += rail(Math.min(sx(outer + 1), sx(xFloor)), Math.max(sx(outer + 1), sx(xFloor)), top - RAIL_H, RAIL_H, 3.6);
+  // внутренняя стена с дверью в коридор на каждом этаже
+  const wall = sx(inner);
+  let d = `M${f1(wall)} ${TOP}`;
+  for (const n of [3, 2, 1]) {
+    const y = floorTop(n) + FH;
+    d += `V${f1(y - DOOR_H)}M${f1(wall)} ${f1(y)}`;
+  }
+  const lintels = [3, 2, 1]
+    .map((n) => {
+      const y = floorTop(n) + FH - DOOR_H;
+      return `M${f1(wall - 2.5)} ${f1(y)}H${f1(wall + 2.5)}`;
+    })
+    .join("");
+  return `${out}<path class="pf-stairwall" d="${d}"/><path class="pf-stairwall" d="${lintels}"/>`;
+}
+
+/** Средняя лестница прямо от входа: вид спереди, ступени уходят вглубь и сужаются, вверху проём в перекрытии */
 function straightStair(yb, yt) {
-  const steps = 9;
-  const wb = 40; // ширина внизу
-  const wt = 22; // ширина наверху
-  let treads = "";
-  let y = yb;
+  const steps = 10;
+  const wb = 44; // ширина внизу
+  const wt = 2 * (OPENING - 1); // ширина наверху
+  const total = yb - yt;
   // ступени ближе к входу крупнее, дальше мельче
-  const total = (yb - yt);
-  const weights = Array.from({ length: steps }, (_, i) => 1 - i * 0.07);
+  const weights = Array.from({ length: steps }, (_, i) => 1 - i * 0.06);
   const sum = weights.reduce((a, b) => a + b, 0);
   const at = (yy) => wb + (wt - wb) * ((yb - yy) / total);
+  let treads = "";
+  let y = yb;
   for (let i = 0; i < steps; i++) {
-    const half = at(y) / 2;
-    treads += `M${f1(CX - half)} ${f1(y)}H${f1(CX + half)}`;
     y -= (total * weights[i]) / sum;
+    const half = at(y) / 2;
+    if (i < steps - 1) treads += `M${f1(CX - half)} ${f1(y)}H${f1(CX + half)}`;
   }
   const body = `M${f1(CX - wb / 2)} ${f1(yb)}L${f1(CX - wt / 2)} ${f1(yt)}H${f1(CX + wt / 2)}L${f1(CX + wb / 2)} ${f1(yb)}Z`;
-  const rails = `M${f1(CX - wb / 2 - 3)} ${f1(yb - 8)}L${f1(CX - wt / 2 - 2)} ${f1(yt - 6)}M${f1(CX + wb / 2 + 3)} ${f1(yb - 8)}L${f1(CX + wt / 2 + 2)} ${f1(yt - 6)}`;
-  return `<path class="pf-stair-front" d="${body}"/><path class="pf-treads" d="${treads}"/><path class="pf-handrail" d="${rails}"/>`;
-}
-
-/** Лестничная клетка на высоту одного этажа: два марша с промежуточной площадкой */
-function stairFloor(a, b, yb, yt, mirror = false) {
-  const ym = (yb + yt) / 2;
-  const L = mirror ? b : a;
-  const Rr = mirror ? a : b;
-  const s = mirror ? -1 : 1;
-  return `${flight(L + 6 * s, yb, Rr - 6 * s, ym)}
-    <path class="pf-landing" d="M${f1(Rr - 7 * s)} ${f1(ym)}H${f1(Rr)}"/>
-    ${flight(Rr - 6 * s, ym, L + 6 * s, yt)}
-    <path class="pf-landing" d="M${f1(L)} ${f1(yt)}H${f1(L + 7 * s)}"/>`;
+  // перила: столбик внизу, поручень вдоль марша, столбик у перекрытия
+  const side = (s) =>
+    `M${f1(CX + s * (wb / 2 + 1))} ${f1(yb)}V${f1(yb - RAIL_H)}L${f1(CX + s * OPENING)} ${f1(yt - RAIL_H + 1)}V${f1(yt)}`;
+  return `<path class="pf-stair-front" d="${body}"/><path class="pf-treads" d="${treads}"/>
+    <path class="pf-stair-base" d="M${f1(CX - wb / 2 - 3)} ${f1(yb)}H${f1(CX + wb / 2 + 3)}"/>
+    <path class="pf-handrail" d="${side(-1)}${side(1)}"/>`;
 }
 
 /** Эмблема университета контуром: кольцо с надписью, внутри здание с фронтоном и колоннами */
@@ -206,10 +250,12 @@ function emblem(cx, cy, r) {
   </g>`;
 }
 
-function rail(a, b, y) {
+/** Ограждение: поручень на высоте y, стойки до пола через равные промежутки, крайние всегда есть */
+function rail(a, b, y, h = 8, step = 3.4) {
+  const count = Math.max(1, Math.round((b - a) / step));
   const posts = [];
-  for (let x = a + 4; x <= b - 3; x += 6) posts.push(`M${f1(x)} ${f1(y)}v8`);
-  return `<path class="pf-rail" d="M${f1(a + 2)} ${f1(y)}H${f1(b - 2)}${posts.join("")}"/>`;
+  for (let i = 0; i <= count; i++) posts.push(`M${f1(a + ((b - a) * i) / count)} ${f1(y)}v${h}`);
+  return `<path class="pf-rail" d="M${f1(a)} ${f1(y)}H${f1(b)}${posts.join("")}"/>`;
 }
 
 /**
@@ -240,6 +286,7 @@ function roomSvg(cell, x, w, y, states, here) {
     <rect class="pf-inside" x="${f1(dx)}" y="${f1(dy)}" width="${f1(dw)}" height="${dh}" fill="url(#pfg-${esc(info.state)})"/>
     <svg class="pf-icon" x="${f1(cx - 5.5)}" y="${f1(dy + dh / 2 - 5.5)}" width="11" height="11" viewBox="0 0 24 24">${TYPE_ICON[cell.type]}</svg>
     <rect class="pf-door" x="${f1(dx)}" y="${f1(dy)}" width="${f1(dw)}" height="${dh}" rx="0.8"/>
+    <circle class="pf-knob" cx="${f1(dx + dw - 2.3)}" cy="${f1(dy + dh * 0.56)}" r="0.65"/>
     <path class="pf-sill" d="M${f1(dx - 1.5)} ${f1(y + ROW - 0.5)}H${f1(dx + dw + 1.5)}"/>
   </g>`;
 }
@@ -250,15 +297,10 @@ function star(x, y, size, i) {
   return `<g transform="translate(${f1(x - size / 2)} ${f1(y - size / 2)}) scale(${k.toFixed(3)})"><path class="pf-star" data-css-i="${i}" d="${SPARK_PATH}"/></g>`;
 }
 
-/** Созвездие над крышей, как на фоне сайта: тонкие линии и мерцающие звёзды */
-function constellation(points, from) {
+/** Узор над крышей, как на фоне сайта: тонкие линии и мерцающие звёзды */
+function skyLines(points, from) {
   const line = points.map(([x, y]) => `${x} ${y}`).join("L");
-  return `<path class="pf-const" pathLength="1" d="M${line}"/>${points.map(([x, y, s], i) => star(x, y, s, from + i)).join("")}`;
-}
-
-/** Скруглённый прямоугольник контуром: путь нужен, чтобы контур здания прорисовывался при появлении */
-function roundRect(x, y, w, h, r) {
-  return `M${x + r} ${y}H${x + w - r}Q${x + w} ${y} ${x + w} ${y + r}V${y + h - r}Q${x + w} ${y + h} ${x + w - r} ${y + h}H${x + r}Q${x} ${y + h} ${x} ${y + h - r}V${y + r}Q${x} ${y} ${x + r} ${y}Z`;
+  return `<path class="pf-sky-line" pathLength="1" d="M${line}"/>${points.map(([x, y, s], i) => star(x, y, s, from + i)).join("")}`;
 }
 
 function rowSvg(cells, x0, x1, y, states, here) {
@@ -312,24 +354,32 @@ export function planHtml(states, { here = null, enter = false, hint = null } = {
     const rooms = f.parts
       .map((p, i) => {
         const [xa, xb] = ranges[i];
-        return `${rowSvg(p.a, xa, xb, y0 + 6, states, here)}
-          ${rowSvg(p.b, xa, xb, y0 + 52, states, here)}`;
+        // дальний ряд стоит на своём полу, ближний на перекрытии этажа
+        return `${rowSvg(p.a, xa, xb, y0 + ROW_A, states, here)}
+          <path class="pf-gallery" d="M${f1(xa - 1)} ${f1(y0 + ROW_A + ROW)}H${f1(xb + 1)}"/>
+          ${rowSvg(p.b, xa, xb, y0 + FH - ROW, states, here)}`;
       })
       .join("");
     let center = "";
     if (f.center === "entrance") {
       const lobby = stateOf(states, LOBBY.n);
       const isHere = here != null && lobby.id === here;
-      center = `${straightStair(G - 31, y0 + 2)}
+      center = `${straightStair(G - 33, y0)}
         <g class="pf-room pf-lobby is-${esc(lobby.state)}${isHere ? " is-here" : ""}" data-n="${LOBBY.n}" data-css-i="${order(CX)}">
           <rect class="pf-hit" x="${f1(CX - CW / 2 + 2)}" y="${f1(G - 32)}" width="${CW - 4}" height="32" rx="4"/>
           ${lampLight(lobby.state, CX, G - 28.6, 16, 6)}
           <rect class="pf-inside" x="${f1(CX - 11)}" y="${f1(G - 25)}" width="22" height="25" fill="url(#pfg-${esc(lobby.state)})"/>
           <rect class="pf-door pf-door-l" x="${f1(CX - 11)}" y="${f1(G - 25)}" width="11" height="25"/>
           <rect class="pf-door pf-door-r" x="${f1(CX)}" y="${f1(G - 25)}" width="11" height="25"/>
+          <circle class="pf-knob" cx="${f1(CX - 2)}" cy="${f1(G - 11)}" r="0.65"/>
+          <circle class="pf-knob" cx="${f1(CX + 2)}" cy="${f1(G - 11)}" r="0.65"/>
+          <path class="pf-canopy" d="M${f1(CX - 15)} ${f1(G - 26.6)}H${f1(CX + 15)}"/>
+          <path class="pf-sill" d="M${f1(CX - 14)} ${f1(G - 0.5)}H${f1(CX + 14)}"/>
         </g>`;
     } else if (f.center === "arrive") {
-      center = rail(CX - CW / 2, CX + CW / 2, y0 + FH - 14);
+      // ограждение по сторонам проёма, посередине приходит лестница
+      const y = y0 + FH - RAIL_H;
+      center = `${rail(CX - CW / 2, CX - OPENING, y, RAIL_H)}${rail(CX + OPENING, CX + CW / 2, y, RAIL_H)}`;
     }
     const label = `${f.floor} этаж: ${open ? `помещений с заявками ${open}` : "заявок нет"}. Открыть план этажа`;
     return `<g class="pf-floor" data-floor="${f.floor}" tabindex="0" role="button" aria-label="${esc(label)}">
@@ -340,17 +390,16 @@ export function planHtml(states, { here = null, enter = false, hint = null } = {
     </g>`;
   }).join("");
 
-  // боковые лестничные клетки: марши с 1 на 2 и со 2 на 3 этаж
-  const sideStairs = [1, 2]
-    .map((n) => `${stairFloor(X0, X0 + SW, floorTop(n) + FH, floorTop(n))}${stairFloor(X1 - SW, X1, floorTop(n) + FH, floorTop(n), true)}`)
-    .join("");
-  const body = roundRect(X0, TOP, X1 - X0, G - TOP, 5);
-  const attic = `M${CX - 72} ${TOP - 4}L${CX - 50} ${TOP - 36}H${CX + 50}L${CX + 72} ${TOP - 4}Z`;
+  // боковые лестничные клетки на всю высоту здания и зал входа посередине
+  const sideStairs = `${sideStair(false)}${sideStair(true)}
+    <path class="pf-stairwall" d="M${CX - CW / 2} ${floorTop(1)}V${G}M${CX + CW / 2} ${floorTop(1)}V${G}"/>`;
+  const body = `M${X0} ${G}V${TOP}H${X1}V${G}Z`;
+  const attic = `M${CX - 72} ${TOP - 2}L${CX - 50} ${TOP - 36}H${CX + 50}L${CX + 72} ${TOP - 2}Z`;
   // крыша и контур здания прорисовываются линией при первом показе (pathLength=1 для анимации штриха)
   const facade = `
     <g class="pf-sky" aria-hidden="true">
-      ${constellation([[44, 30, 6], [86, 14, 8], [132, 34, 5], [160, 16, 6]], 0)}
-      ${constellation([[352, 20, 6], [392, 36, 5], [424, 12, 8], [462, 28, 6]], 4)}
+      ${skyLines([[44, 30, 6], [86, 14, 8], [132, 34, 5], [160, 16, 6]], 0)}
+      ${skyLines([[346, 16, 6], [374, 34, 5], [420, 14, 8], [462, 30, 6]], 4)}
     </g>
     <ellipse class="pf-halo" cx="${CX}" cy="${G}" rx="${(X1 - X0) / 2 + 20}" ry="14" fill="url(#pfg-halo)"/>
     <path class="pf-attic" d="${attic}"/>
@@ -362,12 +411,12 @@ export function planHtml(states, { here = null, enter = false, hint = null } = {
     <g class="pf-scan-g" clip-path="url(#pf-clip)" aria-hidden="true">
       <rect class="pf-scan" x="${X0 - 80}" y="${TOP}" width="80" height="${G - TOP}" fill="url(#pfg-scan)"/>
     </g>
+    <rect class="pf-well" x="${X0}" y="${TOP}" width="${SW}" height="${G - TOP}"/>
+    <rect class="pf-well" x="${IN_R}" y="${TOP}" width="${SW}" height="${G - TOP}"/>
+    <rect class="pf-well" x="${CX - CW / 2}" y="${floorTop(1)}" width="${CW}" height="${FH}"/>
+    <path class="pf-slab" d="M${IN_L} ${floorTop(2)}H${IN_R}M${IN_L} ${floorTop(1)}H${f1(CX - OPENING)}M${f1(CX + OPENING)} ${floorTop(1)}H${IN_R}"/>
     <path class="pf-body-line pf-draw" pathLength="1" d="${body}"/>
-    <rect class="pf-well" x="${X0 + 3}" y="${floorTop(2) + 3}" width="${SW - 5}" height="${2 * FH - 6}" rx="4"/>
-    <rect class="pf-well" x="${X1 - SW + 2}" y="${floorTop(2) + 3}" width="${SW - 5}" height="${2 * FH - 6}" rx="4"/>
-    <rect class="pf-well" x="${CX - CW / 2 + 3}" y="${floorTop(1) + 3}" width="${CW - 6}" height="${FH - 6}" rx="4"/>
     <path class="pf-cornice pf-draw" pathLength="1" d="M${X0 - 6} ${TOP - 2}H${X1 + 6}"/>
-    <path class="pf-slab" d="M${X0 + 4} ${floorTop(2)}H${X1 - 4}M${X0 + 4} ${floorTop(1)}H${f1(CX - 15)}M${f1(CX + 15)} ${floorTop(1)}H${X1 - 4}"/>
     <path class="pf-ground" d="M2 ${G}H${W - 2}" stroke="url(#pfg-ground)"/>
     <ellipse class="pf-spill" cx="${CX}" cy="${G + 1}" rx="34" ry="6" fill="url(#pfg-spill)"/>
     <path class="pf-entry-arrow" d="M${CX - 4} ${G + 11}l4 -3.5l4 3.5"/>
