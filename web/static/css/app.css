@@ -1017,8 +1017,16 @@ html.has-cursor :is(input:not([type="checkbox"], [type="radio"], [type="file"], 
 .cursor-ring.is-text i, .cursor-ring.is-disabled i { opacity: 0; }
 .cursor-bit svg { display: block; width: 14px; height: 14px; margin: -7px 0 0 -7px; fill: var(--primary); filter: drop-shadow(0 0 3px var(--primary)); }
 @keyframes cursor-idle { 0%, 100% { transform: scale(1) rotate(0deg); } 50% { transform: scale(0.88) rotate(12deg); } }
+/* несём карточку: форма сжимается и вращается, кольцо расходится и пульсирует, над подходящей колонкой всё ярче */
+html.is-dragging .cursor.is-on .cursor-pose { transform: scale(0.7); }
+html.is-dragging .cursor.is-on svg { animation: cursor-carry 1.4s linear infinite; }
+html.is-dragging .cursor-ring.is-on i { animation: cursor-ring-carry 1.1s ease-in-out infinite; }
+html.can-drop .cursor.is-on .cursor-pose { transform: scale(1.1); }
+html.can-drop .cursor-ring.is-on i { border-width: 2px; animation-duration: 0.7s; }
+@keyframes cursor-carry { to { transform: rotate(360deg); } }
+@keyframes cursor-ring-carry { 0%, 100% { transform: scale(1.35); opacity: 0.55; } 50% { transform: scale(1.7); opacity: 0.95; } }
 @media (prefers-reduced-motion: reduce) {
-  .cursor svg { animation: none; }
+  .cursor svg, html.is-dragging .cursor.is-on svg { animation: none; }
   .cursor-pose { transition: none; }
   .cursor-ring { display: none; }
 }
