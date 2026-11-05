@@ -65,6 +65,10 @@ def ticket_brief(t: Ticket) -> dict:
     }
 
 
+def ticket_transitions(t: Ticket, user: User) -> list[dict]:
+    return [{"value": s, "label": STATUS_LABELS[s]} for s in allowed_transitions(t, user)]
+
+
 def ticket_full(t: Ticket, user: User) -> dict:
     data = ticket_brief(t)
     suggested = t.category.default_assignee
@@ -82,7 +86,7 @@ def ticket_full(t: Ticket, user: User) -> dict:
                 if suggested and suggested.is_active and suggested.id != t.assignee_id
                 else None
             ),
-            "transitions": [{"value": s, "label": STATUS_LABELS[s]} for s in allowed_transitions(t, user)],
+            "transitions": ticket_transitions(t, user),
             "attachments": [
                 {"id": a.id, "url": f"/api/staff/attachments/{a.id}", "type": a.file_type, "size": a.size}
                 for a in t.attachments

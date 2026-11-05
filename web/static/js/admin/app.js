@@ -1,4 +1,5 @@
-import { $, ApiError, api, errorBlock, esc, h, icon, leaveAndRemove, nameHashLinks, setBusy, themeToggle, toast } from "../core.js";
+import { $, ApiError, NO_MANAGER, SECRET_FIELD, api, clearContextActions, errorBlock, esc, h, icon, leaveAndRemove, nameHashLinks, setBusy, store, themeToggle, toast } from "../core.js";
+import { attachCombo } from "./combo.js";
 import { can, ctx, initials, loadAssignees, loadLocations, parseHash } from "./ctx.js";
 import { ambient, startAmbient } from "../ambient.js";
 import { campusBadge, spark } from "../campus.js";
@@ -45,6 +46,25 @@ function allowed(page) {
 
 // ---------- вход ----------
 
+// Логины, с которыми входили на этом устройстве. Только логины: пароли сайт нигде не хранит
+const RECENT_LOGINS = "upk-logins";
+const MAX_RECENT_LOGINS = 5;
+const browserPasswords = () => Boolean(window.PasswordCredential && window.isSecureContext && navigator.credentials);
+
+function rememberLogin(login) {
+  store.set(RECENT_LOGINS, [login, ...store.get(RECENT_LOGINS, []).filter((x) => x !== login)].slice(0, MAX_RECENT_LOGINS));
+}
+
+/** Браузер предлагает сохранить пароль в своём менеджере: без поля type="password" сам он этого не заметит */
+function offerToSavePassword(id, password) {
+  if (!browserPasswords()) return;
+  try {
+    navigator.credentials.store(new PasswordCredential({ id, password })).catch(() => {});
+  } catch {
+    /* браузер не умеет, вход это не мешает */
+  }
+}
+
 function renderLogin(message = "") {
   const demo = ctx.meta?.demo_logins;
   root.innerHTML = `
@@ -58,14 +78,14 @@ function renderLogin(message = "") {
           <div id="login-map"></div>
         </div>
       </section>
-      <form class="card login-card" id="login" novalidate>
+      <form class="card login-card" id="l-form" novalidate autocomplete="off">
         <div class="stack-sm"><div class="eyebrow">Для сотрудников</div><h2>Вход в панель</h2>
           <p class="small muted">Заявители входить не должны: им хватает QR-кода и кода отслеживания.</p></div>
         ${message ? `<div class="notice notice-danger">${icon("alert")}<div>${esc(message)}</div></div>` : ""}
-        <div class="field"><label for="l-login">Логин</label>
-          <input class="input" id="l-login" autocomplete="username" autocapitalize="none" required></div>
-        <div class="field"><label for="l-pass">Пароль</label>
-          <input class="input" id="l-pass" type="password" autocomplete="current-password" required></div>
+        <div class="field"><label for="l-nick">Логин</label>
+          <input class="input" id="l-nick" ${NO_MANAGER} required></div>
+        <div class="field"><label for="l-secret">Пароль</label>
+          <input class="input" id="l-secret" ${SECRET_FIELD} required></div>
         <button class="btn btn-primary btn-lg" type="submit" id="l-btn">Войти</button>
         ${
           demo
@@ -83,34 +103,64 @@ function renderLogin(message = "") {
     })
     .catch(() => {});
   if (message) {
-    $("#login").classList.add("shake");
+    $("#l-form").classList.add("shake");
   } else {
     splitWords($(".login-aside h1"), { delay: 120 });
     rise(root, ".login-aside .brand, .login-aside-body > *:not(h1)", { step: 90, delay: 60 });
     rise(root, ".login-card", { delay: 240, dur: 1150 });
   }
-  const form = $("#login");
+  const form = $("#l-form");
+  const nick = $("#l-nick");
+  const secret = $("#l-secret");
   form.querySelectorAll("[data-l]").forEach((b) =>
     b.addEventListener("click", () => {
-      $("#l-login").value = b.dataset.l;
-      $("#l-pass").value = b.dataset.p;
+      nick.value = b.dataset.l;
+      secret.value = b.dataset.p;
       form.requestSubmit();
     }),
   );
+  const fromBrowser = async () => {
+    try {
+      const saved = await navigator.credentials.get({ password: true, mediation: "required" });
+      if (!saved?.password) return;
+      nick.value = saved.id;
+      secret.value = saved.password;
+      form.requestSubmit();
+    } catch {
+      toast("Браузер не дал доступ к сохранённым паролям", "error");
+    }
+  };
+  attachCombo(nick, {
+    title: "Недавние логины",
+    options() {
+      const typed = nick.value.trim().toLowerCase();
+      const recent = store.get(RECENT_LOGINS, []);
+      return [
+        ...recent.filter((login) => login !== typed && login.startsWith(typed)),
+        ...(browserPasswords() ? [{ label: "Пароли браузера", ic: "lock", action: fromBrowser }] : []),
+        ...(recent.length ? [{ label: "Забыть логины на этом устройстве", ic: "trash", action: () => store.set(RECENT_LOGINS, []) }] : []),
+      ];
+    },
+    onPick: () => secret.focus(),
+  });
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
     const btn = $("#l-btn");
+    const login = nick.value.trim();
+    const password = secret.value;
     setBusy(btn, true);
     try {
-      await api("/api/auth/login", { method: "POST", body: { login: $("#l-login").value.trim(), password: $("#l-pass").value } });
+      await api("/api/auth/login", { method: "POST", body: { login, password } });
+      rememberLogin(login.toLowerCase());
+      offerToSavePassword(login, password);
       await leave(root.firstElementChild, { duration: 300 });
       await boot();
     } catch (err) {
       renderLogin(err.message);
-      $("#l-login").value = form.querySelector("#l-login")?.value || "";
+      $("#l-nick").value = login;
     }
   });
-  $("#l-login").focus();
+  nick.focus();
 }
 
 // ---------- смена временного пароля ----------
@@ -118,17 +168,17 @@ function renderLogin(message = "") {
 function renderPasswordChange(message = "") {
   root.innerHTML = `
     <div class="login-wrap">
-      <form class="card login-card" id="pwd" novalidate>
+      <form class="card login-card" id="pwd" novalidate autocomplete="off">
         <div class="stack-sm"><div class="eyebrow">Первый вход</div><h2>Задайте свой пароль</h2>
           <p class="small muted">${esc(ctx.user.name)}, у вас временный пароль. Пока вы его не замените, панель закрыта.
           Новый пароль: не короче 12 символов, без логина и не из простых.</p></div>
         ${message ? `<div class="notice notice-danger">${icon("alert")}<div>${esc(message)}</div></div>` : ""}
         <div class="field"><label for="p-old">Временный пароль</label>
-          <input class="input" id="p-old" type="password" autocomplete="current-password" required></div>
+          <input class="input" id="p-old" ${SECRET_FIELD} required></div>
         <div class="field"><label for="p-new">Новый пароль</label>
-          <input class="input" id="p-new" type="password" autocomplete="new-password" minlength="12" required></div>
+          <input class="input" id="p-new" ${SECRET_FIELD} minlength="12" required></div>
         <div class="field"><label for="p-again">Новый пароль ещё раз</label>
-          <input class="input" id="p-again" type="password" autocomplete="new-password" required></div>
+          <input class="input" id="p-again" ${SECRET_FIELD} required></div>
         <button class="btn btn-primary btn-lg" type="submit" id="p-btn">Сохранить и войти</button>
       </form>
     </div>`;
@@ -140,12 +190,14 @@ function renderPasswordChange(message = "") {
       return;
     }
     const btn = $("#p-btn");
+    const newPassword = $("#p-new").value;
     setBusy(btn, true);
     try {
       ctx.user = await api("/api/auth/password", {
         method: "POST",
-        body: { current_password: $("#p-old").value, new_password: $("#p-new").value },
+        body: { current_password: $("#p-old").value, new_password: newPassword },
       });
+      offerToSavePassword(ctx.user.login, newPassword);
       toast("Пароль сохранён");
       await boot();
     } catch (err) {
@@ -260,6 +312,7 @@ async function route() {
   }
   if (typeof cleanup?.destroy === "function") cleanup.destroy();
   cleanup = null;
+  clearContextActions();
 
   const content = $("#content");
   // старый раздел коротко уходит, новый приходит каскадом

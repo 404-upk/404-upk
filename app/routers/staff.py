@@ -136,7 +136,8 @@ def list_tickets(
     counts = dict(db.execute(counts_stmt).all())
 
     return {
-        "items": [views.ticket_brief(t) for t in items],
+        # переходы нужны меню правой кнопки: оно открывается сразу, без запроса к серверу
+        "items": [{**views.ticket_brief(t), "transitions": views.ticket_transitions(t, user)} for t in items],
         "total": total,
         "page": page,
         "pages": max((total + per_page - 1) // per_page, 1),

@@ -1252,9 +1252,11 @@ a[data-href] { cursor: pointer; }
   background: color-mix(in srgb, var(--surface) 94%, transparent);
   backdrop-filter: blur(14px) saturate(1.2);
   box-shadow: var(--shadow), 0 20px 44px -20px rgba(0, 0, 0, 0.6);
+  max-height: calc(100dvh - 16px); overflow-y: auto; overscroll-behavior: contain;
   transform-origin: 0 0;
   animation: ui-menu-in 0.16s var(--ease-out) both;
 }
+.ctx-sub { z-index: 126; min-width: 210px; }
 .ctx-menu.from-right { transform-origin: 100% 0; }
 .ctx-menu.from-bottom { transform-origin: 0 100%; }
 .ctx-menu.from-right.from-bottom { transform-origin: 100% 100%; }
@@ -1270,6 +1272,18 @@ a[data-href] { cursor: pointer; }
 .ctx-item:disabled { color: var(--faint); cursor: default; }
 .ctx-item:disabled .icon { opacity: 0.5; }
 .ctx-item kbd { font: inherit; font-size: 12px; color: var(--muted); }
+.ctx-item[aria-expanded="true"] { background: var(--surface-3); }
+.ctx-chevron { margin-right: -3px; }
+.ctx-item.is-danger, .ctx-item.is-danger .icon { color: var(--red); }
+.ctx-item.is-danger:hover:not(:disabled), .ctx-item.is-danger:focus-visible { background: var(--red-soft); }
+.ctx-item.is-danger:disabled, .ctx-item.is-danger:disabled .icon, .ctx-item.is-danger:disabled kbd { color: var(--faint); }
+.ctx-title { max-width: 288px; padding: 6px 10px 5px; overflow: hidden; color: var(--muted); font-size: 12.5px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.ctx-tools { display: flex; gap: 2px; }
+.ctx-item.ctx-tool { flex: 1; justify-content: center; width: auto; padding: 8px 0; }
+/* строка или карточка, для которой открыто меню */
+.ctx-target { outline: 2px solid var(--primary); outline-offset: -2px; }
+tr.ctx-target { outline: 0; }
+tr.ctx-target > td { background: var(--primary-soft); }
 .ctx-sep { height: 1px; margin: 5px 8px; background: var(--border); }
 .ctx-label { padding: 6px 10px 4px; font-size: 11px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
 .ctx-foot { padding: 6px 10px 4px; font-size: 11.5px; color: var(--muted); border-top: 1px solid var(--border); margin-top: 5px; }
@@ -1442,6 +1456,9 @@ html.is-scroll-drag, html.is-scroll-drag * { -webkit-user-select: none; user-sel
   .ui-scroll-star svg { animation: none; }
 }
 @media print { .ui-scroll, .ui-scroll-dust { display: none !important; } }
+
+/* Поле пароля без type="password" (SECRET_FIELD в core.js): символы скрыты */
+[data-secret] { -webkit-text-security: disc; }
 
 /* ===== Своё перетаскивание (lift.js) ===== */
 img, a { -webkit-user-drag: none; }

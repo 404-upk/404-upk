@@ -21,7 +21,7 @@ router = APIRouter(prefix="/api/manage", tags=["Администрировани
 # ---------- сотрудники ----------
 
 
-def _user(u: User) -> dict:
+def _user(u: User, open_tickets: dict[int, int] | None = None) -> dict:
     return {
         "id": u.id,
         "name": u.name,
@@ -32,13 +32,21 @@ def _user(u: User) -> dict:
         "is_active": u.is_active,
         "telegram_linked": bool(u.tg_chat_id),
         "must_change_password": u.must_change_password,
+        "open_tickets": (open_tickets or {}).get(u.id, 0),
         "created_at": ts.iso(u.created_at),
     }
 
 
 @router.get("/users")
 def users(_: User = Depends(admin_only), db: Session = Depends(get_db)):
-    return [_user(u) for u in db.scalars(select(User).order_by(User.role, User.name)).all()]
+    open_tickets = dict(
+        db.execute(
+            select(Ticket.assignee_id, func.count(Ticket.id))
+            .where(Ticket.status.in_(ts.OPEN_STATUSES), Ticket.assignee_id.is_not(None))
+            .group_by(Ticket.assignee_id)
+        ).all()
+    )
+    return [_user(u, open_tickets) for u in db.scalars(select(User).order_by(User.role, User.name)).all()]
 
 
 @router.post("/users", status_code=201)
@@ -82,6 +90,23 @@ def update_user(user_id: int, payload: UserUpdateIn, me: User = Depends(admin_on
         db.execute(UserSession.__table__.delete().where(UserSession.user_id == user.id))
     db.commit()
     return _user(user)
+
+
+@router.delete("/users/{user_id}")
+def delete_user(user_id: int, me: User = Depends(admin_only), db: Session = Depends(get_db)):
+    """Удаляет учётную запись насовсем. Открытые заявки возвращаются в очередь, в истории заявок имя сохраняется.
+
+    Удаляет только администратор и не себя, поэтому хотя бы один администратор в системе всегда остаётся.
+    """
+    user = db.get(User, user_id)
+    if not user:
+        raise HTTPException(404, "Сотрудник не найден")
+    if user.id == me.id:
+        raise HTTPException(400, "Нельзя удалить самого себя")
+    released = ts.release_assignee(db, user, me)
+    db.delete(user)
+    db.commit()
+    return {"ok": True, "released": released}
 
 
 # ---------- помещения и QR ----------
@@ -165,6 +190,19 @@ def update_location(location_id: int, payload: LocationIn, _: User = Depends(upk
     loc.is_active = payload.is_active
     db.commit()
     return _location(loc)
+
+
+@router.delete("/locations/{location_id}")
+def delete_location(location_id: int, _: User = Depends(upk_staff), db: Session = Depends(get_db)):
+    loc = db.get(Location, location_id)
+    if not loc:
+        raise HTTPException(404, "Помещение не найдено")
+    # у заявок помещение остаётся в истории, поэтому такое можно только отключить
+    if db.scalar(select(func.count(Ticket.id)).where(Ticket.location_id == loc.id)):
+        raise HTTPException(400, "По этому помещению есть заявки, его можно только отключить")
+    db.delete(loc)
+    db.commit()
+    return {"ok": True}
 
 
 @router.post("/locations/{location_id}/regenerate")

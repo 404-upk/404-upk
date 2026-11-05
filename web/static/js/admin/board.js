@@ -1,4 +1,5 @@
-import { api, esc, icon, openModal, priorityChip, relTime, toast } from "../core.js";
+import { api, contextActions, esc, icon, pageActions, priorityChip, relTime, toast } from "../core.js";
+import { NEED_NOTE, askNote, ticketMenu } from "./ticket-actions.js";
 import { assigneeCell } from "./tickets.js";
 
 const COLUMNS = [
@@ -10,42 +11,11 @@ const COLUMNS = [
   ["resolved", "Решены за неделю"],
 ];
 
-const NEED_NOTE = {
-  resolved: "Что было сделано? Комментарий увидит заявитель",
-  rejected: "Причина отклонения",
-  need_info: "Что нужно уточнить у заявителя?",
-};
-
 // Мышью перетаскиваем сами: при встроенном перетаскивании браузер рисует системную стрелку поверх нашего указателя.
 // На сенсорных экранах остаётся встроенное.
 const MOUSE_DRAG = matchMedia("(hover: hover) and (pointer: fine)").matches;
 const DRAG_THRESHOLD = 6; // столько пикселей ещё считается обычным нажатием
 const EDGE_SCROLL = 48; // у края доски она прокручивается сама
-
-function askNote(status) {
-  return new Promise((resolve) => {
-    let done = false;
-    const { el, close } = openModal({
-      title: status === "resolved" ? "Заявка решена" : "Нужны уточнения",
-      body: `<textarea class="textarea" id="bn" rows="4" maxlength="2000" placeholder="${esc(NEED_NOTE[status])}"></textarea>`,
-      footer: `<button class="btn" data-close>Отмена</button><button class="btn btn-primary" id="bn-ok">Сохранить</button>`,
-    });
-    el.querySelector("#bn-ok").addEventListener("click", () => {
-      const note = el.querySelector("#bn").value.trim();
-      if (!note) return toast("Нужен комментарий", "error");
-      done = true;
-      close();
-      resolve(note);
-    });
-    const obs = new MutationObserver(() => {
-      if (!el.isConnected) {
-        obs.disconnect();
-        if (!done) resolve(null);
-      }
-    });
-    obs.observe(document.body, { childList: true });
-  });
-}
 
 export async function render({ el, setHead }) {
   setHead(`<span class="small muted hide-mobile">${icon("info", "icon-sm")} Перетащите карточку в другую колонку или нажмите Shift и стрелку влево или вправо</span>`);
@@ -56,6 +26,12 @@ export async function render({ el, setHead }) {
   let focusAfter = null;
   let justDragged = false;
   let cancelDrag = null;
+
+  contextActions(".kcard", (c) => {
+    const t = tickets.find((x) => String(x.id) === c.dataset.id);
+    return t ? ticketMenu(t, { refresh: load }) : null;
+  });
+  pageActions(() => [{ label: "Обновить доску", ic: "refresh", action: load }]);
 
   async function load() {
     const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);

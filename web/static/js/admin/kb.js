@@ -1,7 +1,7 @@
-import { api, confirmDialog, esc, fmtDate, icon, openModal, toast } from "../core.js";
+import { api, confirmDialog, contextActions, copyText, esc, fmtDate, icon, openModal, pageActions, toast } from "../core.js";
 import { ctx } from "./ctx.js";
 
-function form(a = {}) {
+function form(a) {
   return `
     <div class="field"><label for="kb-q">Вопрос или название</label><input class="input" id="kb-q" maxlength="200" value="${esc(a.question || "")}"></div>
     <div class="field"><label for="kb-a">Ответ</label><textarea class="textarea" id="kb-a" rows="7" maxlength="4000">${esc(a.answer || "")}</textarea>
@@ -25,7 +25,7 @@ export async function render({ el, setHead }) {
     openModal({
       title: a ? "Статья базы знаний" : "Новая статья",
       wide: true,
-      body: form(a),
+      body: form(a || {}),
       footer: `${a ? `<button class="u-mr-auto u-red btn btn-ghost" id="kb-del">${icon("trash", "icon-sm")} Удалить</button>` : ""}
         <button class="btn" data-close>Отмена</button><button class="btn btn-primary" id="kb-save">Сохранить</button>`,
       onMount(m, close) {
@@ -49,16 +49,50 @@ export async function render({ el, setHead }) {
           }
         });
         m.querySelector("#kb-del")?.addEventListener("click", async () => {
-          if (!(await confirmDialog("Удалить статью?", "Помощник перестанет на неё ссылаться.", "Удалить", true))) return;
-          await api(`/api/manage/kb/${a.id}`, { method: "DELETE" });
-          toast("Статья удалена");
-          close();
-          load();
+          if (await removeArticle(a)) close();
         });
       },
     });
 
   document.getElementById("kb-add").addEventListener("click", () => edit(null));
+
+  async function removeArticle(a) {
+    if (!(await confirmDialog("Удалить статью?", "Помощник перестанет на неё ссылаться.", "Удалить", true))) return false;
+    try {
+      await api(`/api/manage/kb/${a.id}`, { method: "DELETE" });
+      toast("Статья удалена");
+      await load();
+      return true;
+    } catch (err) {
+      toast(err.message, "error");
+      return false;
+    }
+  }
+
+  contextActions(".card[data-id]", (card) => {
+    const a = items.find((x) => String(x.id) === card.dataset.id);
+    if (!a) return null;
+    const { question, answer, category_id, source, keywords, is_active } = a;
+    return {
+      title: a.question,
+      items: [
+        { label: "Изменить", ic: "edit", action: () => edit(a) },
+        { label: "Скопировать ответ", ic: "copy", action: () => copyText(a.answer) },
+        {
+          label: is_active ? "Выключить статью" : "Включить статью",
+          ic: "lock",
+          async action() {
+            await api(`/api/manage/kb/${a.id}`, { method: "PUT", body: { question, answer, category_id, source, keywords, is_active: !is_active } });
+            toast(is_active ? "Статья выключена, помощник её не использует" : "Статья включена");
+            await load();
+          },
+        },
+        "sep",
+        { label: "Удалить", ic: "trash", danger: true, action: () => removeArticle(a) },
+      ],
+    };
+  });
+  pageActions(() => [{ label: "Новая статья", ic: "plus", action: () => edit(null) }]);
 
   async function load() {
     items = await api("/api/manage/kb");

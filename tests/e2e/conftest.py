@@ -130,9 +130,22 @@ def create_ticket(page, title: str, qr_key: str = QR_214, category: str = "equip
     return resp.json()
 
 
-def login_admin(page):
-    page.goto("/admin")
-    page.fill("#l-login", ADMIN[0])
-    page.fill("#l-pass", ADMIN[1])
+def submit_admin_login(page):
+    page.fill("#l-nick", ADMIN[0])
+    page.fill("#l-secret", ADMIN[1])
     page.keyboard.press("Enter")
     page.locator(".nav a").first.wait_for()
+
+
+_admin_cookies: list[dict] = []
+
+
+def login_admin(page):
+    """Вход в панель. Сессия переиспользуется: сервер разрешает 10 входов одного логина за 5 минут."""
+    if _admin_cookies:
+        page.context.add_cookies(_admin_cookies)
+    page.goto("/admin")
+    page.locator(".nav a, #l-nick").first.wait_for()
+    if page.locator("#l-nick").count():
+        submit_admin_login(page)
+        _admin_cookies[:] = page.context.cookies()

@@ -1,4 +1,4 @@
-import { $, $$, api, errorBlock, esc, h, icon, plural, setBusy } from "./core.js";
+import { $, $$, api, contextActions, copyText, download, errorBlock, esc, h, icon, plural, setBusy } from "./core.js";
 
 const LAYOUTS = [1, 2, 4, 6];
 const LAYOUT_KEY = "upk-qr-per-sheet";
@@ -41,7 +41,7 @@ function groupsOf(items) {
 
 function card(l) {
   return h(`
-    <article class="print-card">
+    <article class="print-card" data-id="${l.id}">
       <div class="print-brand"><img src="/static/img/icon.svg" alt="" draggable="false">УПК · Цифровой помощник</div>
       <h2>${esc(l.title)}</h2>
       <p class="print-place">${esc(placeOf(l))}</p>
@@ -211,6 +211,20 @@ function page(items, warning) {
     await Promise.allSettled($$("img", stage).map((img) => img.decode()));
     setBusy(printBtn, false);
     window.print();
+  });
+
+  contextActions(".print-card[data-id]", (el) => {
+    const l = items.find((x) => String(x.id) === el.dataset.id);
+    if (!l) return null;
+    return {
+      title: l.full_title,
+      items: [
+        { label: "Убрать с листа", ic: "x", action: () => setRooms(roomInputs.filter((i) => i.value === String(l.id)), false) },
+        { label: "Скачать PNG", ic: "download", action: () => download(`/api/manage/locations/${l.id}/qr.png`) },
+        { label: "Скопировать ссылку", ic: "copy", action: () => copyText(l.url) },
+        { label: "Открыть форму заявки", ic: "external", action: () => window.open(`/r/${l.qr_key}`, "_blank", "noopener") },
+      ],
+    };
   });
 
   draw();

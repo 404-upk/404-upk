@@ -4,7 +4,7 @@ import re
 
 from playwright.sync_api import expect
 
-from .conftest import QR_214, create_ticket, login_admin
+from .conftest import QR_214, create_ticket, login_admin, submit_admin_login
 
 HSCROLL = "document.documentElement.scrollWidth > window.innerWidth + 1"
 
@@ -146,7 +146,7 @@ def test_page_opens_offline_and_message_is_sent_when_back_online(page):
 
 
 def test_own_tooltip_and_context_menu(page):
-    """Подсказки и меню по правой кнопке в стиле сайта; в поле ввода остаётся меню браузера."""
+    """Подсказки и меню по правой кнопке в стиле сайта; в поле ввода своё меню правки текста."""
     page.goto("/")
     page.hover("#theme")
     expect(page.locator(".ui-tip.is-on")).to_have_text("Тема: Полночь")
@@ -156,11 +156,17 @@ def test_own_tooltip_and_context_menu(page):
     menu = page.get_by_role("menu", name="Действия на странице")
     expect(menu).to_be_visible()
     expect(menu.get_by_role("menuitem", name=re.compile("Обновить страницу"))).to_be_visible()
-    menu.get_by_role("menuitemradio", name=re.compile("Горный снег")).click()
+    menu.get_by_role("menuitem", name="Тема оформления").hover()
+    page.get_by_role("menuitemradio", name=re.compile("Горный снег")).click()
     expect(page.locator("html")).to_have_attribute("data-theme", "light")
     expect(menu).to_have_count(0)
 
     page.locator("#message").click(button="right")
+    expect(page.get_by_role("menu", name="Действия с полем")).to_be_visible()
+    page.keyboard.press("Escape")
+    expect(page.locator(".ctx-menu")).to_have_count(0)
+    # с зажатым Shift остаётся меню браузера
+    page.locator("#message").click(button="right", modifiers=["Shift"])
     expect(page.locator(".ctx-menu")).to_have_count(0)
 
 
@@ -309,3 +315,187 @@ def test_link_has_no_system_bar_or_drag_and_still_opens(page):
     page.mouse.down()
     page.mouse.up()
     expect(page).to_have_url(re.compile("/privacy"))
+
+
+def _menu(page):
+    return page.get_by_role("menu", name="Действия на странице")
+
+
+def test_employee_is_deleted_from_context_menu(page):
+    """Сотрудника удаляют правой кнопкой, себя удалить нельзя; действия показывают, с кем работаем."""
+    login_admin(page)
+    created = page.request.post(
+        "/api/manage/users",
+        data={"name": "Временный Сотрудник", "login": "temp.worker", "role": "executor", "password": "temp-password-1"},
+    )
+    assert created.ok, created.text()
+    page.goto("/admin#/users")
+
+    row = page.locator("tr[data-user]", has_text="temp.worker")
+    row.click(button="right")
+    expect(_menu(page).locator(".ctx-title")).to_have_text("Временный Сотрудник")
+    expect(row).to_have_class(re.compile("ctx-target"))
+    _menu(page).get_by_role("menuitem", name=re.compile("Удалить")).click()
+    page.get_by_role("dialog").get_by_role("button", name="Удалить").click()
+    expect(row).to_have_count(0)
+
+    page.locator("tr[data-user]", has_text="Администратор системы").click(button="right")
+    expect(_menu(page).get_by_role("menuitem", name=re.compile("Удалить"))).to_be_disabled()
+    page.keyboard.press("Escape")
+    expect(_menu(page)).to_have_count(0)
+
+
+def test_ticket_is_changed_from_context_menu(page):
+    """Приоритет, исполнитель и статус меняются через подменю, в списке и на доске, мышью и с клавиатуры."""
+    create_ticket(page, "Скрипит дверь в кабинете")
+    login_admin(page)
+    page.goto("/admin#/tickets")
+    row = page.locator("tr", has_text="Скрипит дверь в кабинете")
+
+    row.click(button="right")
+    _menu(page).get_by_role("menuitem", name="Приоритет").hover()
+    page.get_by_role("menuitemradio", name="Высокий").click()
+    expect(row).to_contain_text("Высокий")
+
+    # клавиатура: подменю открывается стрелкой вправо, закрывается стрелкой влево, меню остаётся
+    row.click(button="right")
+    _menu(page).get_by_role("menuitem", name="Исполнитель").focus()
+    page.keyboard.press("ArrowRight")
+    expect(page.locator(".ctx-sub:not(.is-leaving)")).to_be_visible()
+    page.keyboard.press("ArrowLeft")
+    expect(page.locator(".ctx-sub")).to_have_count(0)
+    expect(_menu(page).get_by_role("menuitem", name="Исполнитель")).to_be_focused()
+
+    _menu(page).get_by_role("menuitem", name="Исполнитель").click()
+    page.get_by_role("menuitemradio", name=re.compile("Шамиль Алиев")).click()
+    expect(row).to_contain_text("Шамиль Алиев")
+
+    page.goto("/admin#/board")
+    card = page.locator(".kcard", has_text="Скрипит дверь в кабинете")
+    card.click(button="right")
+    _menu(page).get_by_role("menuitem", name="Статус").hover()
+    page.get_by_role("menu", name="Статус").get_by_role("menuitem", name="В работе").click()
+    expect(page.locator('.col[data-status="in_progress"] .kcard', has_text="Скрипит дверь в кабинете")).to_be_visible()
+
+    # статус с обязательным комментарием спрашивает его, отмена ничего не меняет
+    card.click(button="right")
+    _menu(page).get_by_role("menuitem", name="Статус").hover()
+    page.get_by_role("menu", name="Статус").get_by_role("menuitem", name="Решена").click()
+    page.get_by_role("dialog").get_by_role("button", name="Отмена").click()
+    expect(page.locator('.col[data-status="in_progress"] .kcard', has_text="Скрипит дверь в кабинете")).to_be_visible()
+
+
+def test_room_is_deleted_from_context_menu_only_without_tickets(page):
+    """Помещение без заявок удаляется правой кнопкой, с заявками кнопка недоступна."""
+    login_admin(page)
+    created = page.request.post(
+        "/api/manage/locations",
+        data={"building": "Корпус 1", "floor": 7, "room": "777", "kind": "room", "is_active": True},
+    )
+    assert created.ok, created.text()
+    page.goto("/admin#/locations")
+
+    row = page.locator("tr", has_text="Кабинет 777")
+    row.click(button="right")
+    _menu(page).get_by_role("menuitem", name=re.compile("Удалить")).click()
+    page.get_by_role("dialog").get_by_role("button", name="Удалить").click()
+    expect(row).to_have_count(0)
+
+    page.locator("tr", has_text="Главный холл").click(button="right")
+    expect(_menu(page).get_by_role("menuitem", name=re.compile("Удалить"))).to_be_disabled()
+    page.keyboard.press("Escape")
+
+    # действия раздела видны и без строки, а в другом разделе их нет
+    page.locator("#content h1, .main-head").first.click(button="right")
+    expect(_menu(page).get_by_role("menuitem", name="Добавить помещение")).to_be_visible()
+    page.keyboard.press("Escape")
+    page.goto("/admin#/stats")
+    page.locator(".main-head").first.click(button="right")
+    expect(_menu(page).get_by_role("menuitem", name="Добавить помещение")).to_have_count(0)
+
+
+def test_new_article_form_opens_and_article_is_deleted_from_context_menu(page):
+    """«Новая статья» открывает форму, а статью можно удалить правой кнопкой."""
+    login_admin(page)
+    page.goto("/admin#/kb")
+    page.click("#kb-add")
+    page.fill("#kb-q", "Проверочная статья для удаления")
+    page.fill("#kb-a", "Проверочный ответ для удаления статьи")
+    page.click("#kb-save")
+    card = page.locator(".card[data-id]", has_text="Проверочная статья для удаления")
+    expect(card).to_be_visible()
+
+    card.click(button="right")
+    _menu(page).get_by_role("menuitem", name=re.compile("Удалить")).click()
+    page.get_by_role("dialog").get_by_role("button", name="Удалить").click()
+    expect(card).to_have_count(0)
+
+
+def test_text_field_has_own_context_menu(page):
+    """В поле ввода своё меню: выделить, вырезать, отменить, вставить; у пустого поля лишнее недоступно."""
+    page.context.grant_permissions(["clipboard-read", "clipboard-write"])
+    page.goto("/")
+    box = page.locator("#message")
+    field_menu = page.get_by_role("menu", name="Действия с полем")
+
+    box.click(button="right")
+    expect(field_menu.get_by_role("menuitem", name=re.compile("Копировать"))).to_be_disabled()
+    expect(field_menu.get_by_role("menuitem", name=re.compile("Выделить всё"))).to_be_disabled()
+    page.keyboard.press("Escape")
+
+    box.fill("Сломался проектор")
+    box.click(button="right")
+    field_menu.get_by_role("menuitem", name=re.compile("Выделить всё")).click()
+    assert box.evaluate("(el) => el.value.slice(el.selectionStart, el.selectionEnd)") == "Сломался проектор"
+    expect(box).to_be_focused()
+
+    box.click(button="right", position={"x": 30, "y": 16})
+    box.evaluate("(el) => el.select()")
+    page.keyboard.press("Escape")
+    box.evaluate(
+        "(el) => el.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, clientX: 200, clientY: 200 }))"
+    )
+    field_menu.get_by_role("menuitem", name=re.compile("Вырезать")).click()
+    expect(box).to_have_value("")
+
+    box.evaluate(
+        "(el) => el.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, clientX: 200, clientY: 200 }))"
+    )
+    field_menu.get_by_role("menuitem", name=re.compile("Вставить")).click()
+    expect(box).to_have_value("Сломался проектор")
+
+    box.evaluate(
+        "(el) => el.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, clientX: 200, clientY: 200 }))"
+    )
+    field_menu.get_by_role("menuitem", name=re.compile("Очистить")).click()
+    expect(box).to_have_value("")
+
+
+def test_login_has_own_menu_and_no_password_field(page):
+    """На входе нет поля type="password", символы пароля скрыты, недавние логины предлагает сайт."""
+    page.goto("/admin")
+    expect(page.locator('input[type="password"]')).to_have_count(0)
+    secret = page.locator("#l-secret")
+    assert secret.evaluate("(el) => getComputedStyle(el).webkitTextSecurity") == "disc"
+    secret.fill("секретный пароль")
+    secret.click(button="right")
+    field_menu = page.get_by_role("menu", name="Действия с полем")
+    expect(field_menu.get_by_role("menuitem", name=re.compile("Копировать"))).to_be_disabled()
+    page.keyboard.press("Escape")
+    secret.fill("")
+
+    submit_admin_login(page)
+    page.click("#logout")
+    expect(page.locator("#l-nick")).to_be_visible()
+    page.click("#l-nick")
+    option = page.get_by_role("option", name="admin", exact=True)
+    expect(option).to_be_visible()
+    option.click()
+    expect(page.locator("#l-nick")).to_have_value("admin")
+    expect(secret).to_be_focused()
+
+    page.click("#l-nick")
+    page.get_by_role("option", name="Забыть логины на этом устройстве").click()
+    page.fill("#l-nick", "")
+    page.click("#l-nick")
+    expect(page.get_by_role("option", name="admin", exact=True)).to_have_count(0)

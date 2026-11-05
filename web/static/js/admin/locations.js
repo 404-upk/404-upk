@@ -1,4 +1,4 @@
-import { api, confirmDialog, copyText, esc, icon, openModal, setBusy, toast } from "../core.js";
+import { api, confirmDialog, contextActions, copyText, download, esc, icon, openModal, pageActions, setBusy, toast } from "../core.js";
 import { loadLocations } from "./ctx.js";
 
 const KINDS = { room: "Кабинет", lab: "Лаборатория", common: "Общая зона" };
@@ -50,8 +50,12 @@ export async function render({ el, setHead }) {
     openModal({
       title: loc ? "Изменить помещение" : "Новое помещение",
       body: form(loc || {}),
-      footer: `<button class="btn" data-close>Отмена</button><button class="btn btn-primary" id="lf-save">Сохранить</button>`,
+      footer: `${loc && !loc.tickets ? `<button class="u-mr-auto u-red btn btn-ghost" id="lf-del">${icon("trash", "icon-sm")} Удалить</button>` : ""}
+        <button class="btn" data-close>Отмена</button><button class="btn btn-primary" id="lf-save">Сохранить</button>`,
       onMount(m, close) {
+        m.querySelector("#lf-del")?.addEventListener("click", async () => {
+          if (await removeRoom(loc)) close();
+        });
         const saveBtn = m.querySelector("#lf-save");
         const save = async () => {
           if (saveBtn.disabled) return;
@@ -84,6 +88,79 @@ export async function render({ el, setHead }) {
 
   document.getElementById("add-loc").addEventListener("click", () => edit(null));
 
+  const changeRoom = async (l, changes, done) => {
+    const { building, floor, room, zone_name, kind, is_active } = l;
+    await api(`/api/manage/locations/${l.id}`, { method: "PATCH", body: { building, floor, room, zone_name, kind, is_active, ...changes } });
+    toast(done);
+    await loadLocations();
+    await load();
+  };
+  const regenerate = async (l) => {
+    const ok = await confirmDialog(
+      "Выпустить новый QR-код?",
+      "Старая наклейка перестанет работать, её нужно будет заменить. Это полезно, если код испортили или наклеили не туда.",
+      "Выпустить",
+      true,
+    );
+    if (!ok) return;
+    try {
+      await api(`/api/manage/locations/${l.id}/regenerate`, { method: "POST" });
+      toast("Новый QR-код готов");
+      await load();
+    } catch (err) {
+      toast(err.message, "error");
+    }
+  };
+  async function removeRoom(l) {
+    const ok = await confirmDialog(`Удалить: ${l.title}?`, "Помещение и его QR-код удалятся насовсем, наклейка перестанет работать.", "Удалить", true);
+    if (!ok) return false;
+    try {
+      await api(`/api/manage/locations/${l.id}`, { method: "DELETE" });
+      toast("Помещение удалено");
+      await loadLocations();
+      await load();
+      return true;
+    } catch (err) {
+      toast(err.message, "error");
+      return false;
+    }
+  }
+
+  contextActions("tr[data-loc]", (row) => {
+    const l = items.find((x) => String(x.id) === row.dataset.loc);
+    if (!l) return null;
+    return {
+      title: l.full_title,
+      items: [
+        { label: "Изменить", ic: "edit", action: () => edit(l) },
+        {
+          label: "Заявки помещения",
+          ic: "list",
+          disabled: !l.tickets,
+          hint: l.tickets ? String(l.tickets) : "",
+          action: () => (location.hash = `#/tickets?status=&location=${l.id}`),
+        },
+        "sep",
+        { label: "Напечатать QR-код", ic: "qr", action: () => window.open(`/admin/qr-print?ids=${l.id}`, "_blank", "noopener") },
+        { label: "Скачать PNG", ic: "download", action: () => download(`/api/manage/locations/${l.id}/qr.png`) },
+        { label: "Скопировать ссылку", ic: "copy", action: () => copyText(l.url) },
+        { label: "Открыть форму заявки", ic: "external", action: () => window.open(`/r/${l.qr_key}`, "_blank", "noopener") },
+        { label: "Выпустить новый QR-код", ic: "refresh", action: () => regenerate(l) },
+        "sep",
+        {
+          label: l.is_active ? "Отключить помещение" : "Включить помещение",
+          ic: "lock",
+          action: () => changeRoom(l, { is_active: !l.is_active }, l.is_active ? "Помещение отключено" : "Помещение включено"),
+        },
+        { label: "Удалить", ic: "trash", danger: true, disabled: l.tickets > 0, hint: l.tickets ? "есть заявки" : "", action: () => removeRoom(l) },
+      ],
+    };
+  });
+  pageActions(() => [
+    { label: "Добавить помещение", ic: "plus", action: () => edit(null) },
+    { label: "Печать QR-кодов", ic: "qr", action: () => window.open("/admin/qr-print", "_blank", "noopener") },
+  ]);
+
   function draw() {
     const q = filter.toLowerCase();
     const rows = items.filter((l) => !q || l.full_title.toLowerCase().includes(q));
@@ -96,7 +173,7 @@ export async function render({ el, setHead }) {
         <thead><tr><th>QR</th><th>Помещение</th><th>Тип</th><th>Заявок</th><th>Ссылка</th><th><span class="sr-only">Действия</span></th></tr></thead>
         <tbody>${rows
           .map(
-            (l) => `<tr class="${l.is_active ? "" : "is-inactive"}${l.id === freshId ? " is-fresh" : ""}">
+            (l) => `<tr data-loc="${l.id}" class="${l.is_active ? "" : "is-inactive"}${l.id === freshId ? " is-fresh" : ""}">
               <td><img class="qr-thumb" src="/api/manage/locations/${l.id}/qr.svg" alt="QR" loading="lazy" draggable="false"></td>
               <td><div class="t-title">${esc(l.title)}</div><div class="t-sub">${esc(l.building)}${l.floor != null ? `, ${l.floor} этаж` : ""}${l.is_active ? "" : " · отключено"}</div></td>
               <td><span class="small muted">${KINDS[l.kind] || l.kind}</span></td>
@@ -123,24 +200,7 @@ export async function render({ el, setHead }) {
     });
     el.querySelectorAll("[data-copy]").forEach((b) => b.addEventListener("click", () => copyText(b.dataset.copy)));
     el.querySelectorAll("[data-edit]").forEach((b) => b.addEventListener("click", () => edit(items.find((l) => String(l.id) === b.dataset.edit))));
-    el.querySelectorAll("[data-regen]").forEach((b) =>
-      b.addEventListener("click", async () => {
-        const ok = await confirmDialog(
-          "Выпустить новый QR-код?",
-          "Старая наклейка перестанет работать, её нужно будет заменить. Это полезно, если код испортили или наклеили не туда.",
-          "Выпустить",
-          true,
-        );
-        if (!ok) return;
-        try {
-          await api(`/api/manage/locations/${b.dataset.regen}/regenerate`, { method: "POST" });
-          toast("Новый QR-код готов");
-          await load();
-        } catch (err) {
-          toast(err.message, "error");
-        }
-      }),
-    );
+    el.querySelectorAll("[data-regen]").forEach((b) => b.addEventListener("click", () => regenerate(items.find((l) => String(l.id) === b.dataset.regen))));
     if (freshId !== null) {
       freshId = null;
       el.querySelector("tr.is-fresh")?.scrollIntoView({ block: "center", behavior: "smooth" });

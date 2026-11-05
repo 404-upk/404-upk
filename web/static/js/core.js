@@ -37,6 +37,10 @@ const ICONS = {
   sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
   moon: '<path d="M20 14.5A8.5 8.5 0 0 1 9.5 4 8.5 8.5 0 1 0 20 14.5Z"/>',
   cloud: '<path d="M7 18.5a4.5 4.5 0 0 1-.7-8.95A6 6 0 0 1 17.9 10a4.25 4.25 0 0 1-.65 8.5z"/>',
+  undo: '<path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-2"/>',
+  scissors: '<circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M8.1 8.1 20 20M14.5 9.5 20 4M8.1 15.9 11 13"/>',
+  selectAll: '<path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><path d="M9 12h6"/>',
+  print: '<path d="M7 9V4h10v5M7 17H5a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2"/><rect x="7" y="14" width="10" height="6" rx="1"/>',
   search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
   filter: '<path d="M3 5h18l-7 8.5V19l-4 2v-7.5L3 5Z"/>',
   download: '<path d="M12 4v11"/><path d="m7 10 5 5 5-5"/><path d="M4 20h16"/>',
@@ -1123,114 +1127,334 @@ function watchLinks() {
 }
 
 // ---------- своё меню по правой кнопке ----------
-// В полях ввода, на телефоне и с зажатым Shift остаётся меню браузера:
-// там нужны «Вставить», проверка орфографии и инструменты разработчика.
+// На телефоне и с зажатым Shift остаётся меню браузера: там проверка орфографии и инструменты разработчика.
+
+// В таких полях своё меню правки текста
+const TEXT_FIELD = 'textarea, input:not([type]), input:is([type="text"], [type="search"], [type="url"], [type="tel"], [type="email"], [type="password"], [type="number"])';
+
+// Менеджер паролей браузера открывает свой список, когда видит логин рядом с полем type="password".
+// Поэтому там, где это возможно, пароль лежит в обычном поле со скрытыми символами. Браузер без такого
+// скрытия получает настоящее поле пароля: лучше его список, чем пароль открытым текстом.
+export const NO_MANAGER = 'autocomplete="off" autocapitalize="none" spellcheck="false" data-lpignore="true" data-1p-ignore data-bwignore data-form-type="other"';
+const CAN_MASK = Boolean(window.CSS?.supports?.("-webkit-text-security", "disc"));
+export const SECRET_FIELD = `type="${CAN_MASK ? "text" : "password"}" data-secret ${NO_MANAGER}`;
 
 let ctxMenu = null;
+let ctxSubTimer = 0;
 let lastPointer = "mouse";
+const ctxActions = [];
+let ctxPageActions = null;
+
+/**
+ * Свои действия правой кнопки для элементов страницы. build(el) возвращает { title, items } или null.
+ * Пункт: { label, ic, hint, action, items (подменю), checked (выбор из нескольких), disabled, danger }, между группами "sep".
+ * Панель сбрасывает действия при переходе в другой раздел (clearContextActions).
+ */
+export function contextActions(selector, build) {
+  ctxActions.push({ selector, build });
+}
+
+/** Действия всего раздела, которые нужны и без конкретной строки: добавить, обновить список */
+export function pageActions(build) {
+  ctxPageActions = build;
+}
+
+export function clearContextActions() {
+  ctxActions.length = 0;
+  ctxPageActions = null;
+}
+
+/** Скачать файл по адресу, не уходя со страницы */
+export function download(url) {
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "";
+  document.body.append(a);
+  a.click();
+  a.remove();
+}
+
+function closeCtxSub() {
+  clearTimeout(ctxSubTimer);
+  const sub = ctxMenu?.sub;
+  if (!sub) return;
+  ctxMenu.sub = null;
+  sub.parent.setAttribute("aria-expanded", "false");
+  sub.el.setAttribute("aria-hidden", "true");
+  sub.el.classList.add("is-leaving");
+  setTimeout(() => sub.el.remove(), 140);
+}
 
 function closeCtx(focusBack = true) {
   if (!ctxMenu) return;
-  const { el, opener } = ctxMenu;
+  closeCtxSub();
+  const { el, opener, target } = ctxMenu;
   ctxMenu = null;
+  target?.classList.remove("ctx-target");
+  // уходящее меню уже не считается открытым: и для читалок, и для следующего открытия
+  el.setAttribute("aria-hidden", "true");
   el.classList.add("is-leaving");
   setTimeout(() => el.remove(), 140);
   if (focusBack && opener?.isConnected) opener.focus?.({ preventScroll: true });
 }
 
-function openCtx(e) {
-  closeCtx(false);
-  hideTip();
-  // адрес берётся сразу: пока мышь над ссылкой, он может быть спрятан в data-href
-  const link = linkHref(e.target.closest?.("a[href], a[data-href]"));
-  const selected = String(window.getSelection?.() || "").trim();
-  const nav = window.navigation;
-  const items = [];
-  const add = (label, action, { hint = "", disabled = false, ic = "" } = {}) =>
-    items.push({ label, action, hint, disabled, ic });
-  if (selected) add("Копировать", () => copyText(selected), { hint: "Ctrl+C", ic: "copy" });
-  if (link) {
-    add("Открыть в новой вкладке", () => window.open(link, "_blank", "noopener"), { ic: "external" });
-    add("Скопировать адрес ссылки", () => copyText(link), { ic: "copy" });
-  }
-  if (items.length) items.push("sep");
-  add("Назад", () => history.back(), { hint: "Alt+←", disabled: nav ? !nav.canGoBack : false, ic: "arrowLeft" });
-  add("Вперёд", () => history.forward(), { hint: "Alt+→", disabled: nav ? !nav.canGoForward : false, ic: "arrowRight" });
-  add("Обновить страницу", () => location.reload(), { hint: "Ctrl+R", ic: "refresh" });
-  items.push("sep");
-  items.push("themes");
-  items.push("sep");
-  add("Скопировать ссылку на страницу", () => copyText(location.href), { ic: "copy" });
-  add("Печать", () => window.print(), { hint: "Ctrl+P", ic: "clipboard" });
+function runCtx(item) {
+  closeCtx();
+  // ошибки запросов из пунктов меню показываются понятным текстом
+  Promise.resolve()
+    .then(() => item.action?.())
+    .catch((err) => toast(err?.message || SOMETHING_WRONG, "error"));
+}
 
-  const now = currentTheme();
+function ctxMenuEl(items, label, className = "") {
+  const handlers = [];
+  const button = (it) => {
+    handlers.push(it);
+    const choice = it.checked !== undefined;
+    const lead = it.swatch ? `<span class="theme-swatch ts-${esc(it.swatch)} is-mini" aria-hidden="true"><i></i><i></i></span>` : it.ic ? icon(it.ic, "icon-sm") : "";
+    const tail = it.items ? icon("chevronRight", "icon-sm ctx-chevron") : choice ? icon("check", "icon-sm theme-check") : it.hint ? `<kbd>${esc(it.hint)}</kbd>` : "";
+    return `<button type="button" class="ctx-item${it.danger ? " is-danger" : ""}" role="${choice ? "menuitemradio" : "menuitem"}" data-h="${handlers.length - 1}"${choice ? ` aria-checked="${it.checked}"` : ""}${it.items ? ' aria-haspopup="menu" aria-expanded="false"' : ""}${it.disabled ? " disabled" : ""}>
+      ${lead}<span class="grow">${esc(it.label)}</span>${tail}</button>`;
+  };
+  const tool = (it) => {
+    handlers.push(it);
+    const name = it.hint ? `${it.label} (${it.hint})` : it.label;
+    return `<button type="button" class="ctx-item ctx-tool" role="menuitem" aria-label="${esc(it.label)}" title="${esc(name)}" data-h="${handlers.length - 1}"${it.disabled ? " disabled" : ""}>${icon(it.ic, "icon-sm")}</button>`;
+  };
   const html = items
     .map((it) => {
       if (it === "sep") return '<div class="ctx-sep" role="separator"></div>';
-      if (it === "themes")
-        return `<div class="ctx-label">Тема оформления</div>${THEMES.map(
-          (t) => `<button type="button" class="ctx-item" role="menuitemradio" aria-checked="${t.id === now}" data-ctx-theme="${t.id}">
-            <span class="theme-swatch ts-${t.id} is-mini" aria-hidden="true"><i></i><i></i></span><span class="grow">${esc(t.name)}</span>${icon("check", "icon-sm theme-check")}</button>`,
-        ).join("")}`;
-      const i = items.indexOf(it);
-      return `<button type="button" class="ctx-item" role="menuitem" data-ctx="${i}"${it.disabled ? " disabled" : ""}>
-        ${it.ic ? icon(it.ic, "icon-sm") : ""}<span class="grow">${esc(it.label)}</span>${it.hint ? `<kbd>${esc(it.hint)}</kbd>` : ""}</button>`;
+      if (it.heading) return `<div class="ctx-title">${esc(it.heading)}</div>`;
+      if (it.tools) return `<div class="ctx-tools" role="group" aria-label="Страница">${it.tools.map(tool).join("")}</div>`;
+      if (it.foot) return `<div class="ctx-foot">${esc(it.foot)}</div>`;
+      return button(it);
     })
     .join("");
-  const el = h(`<div class="ctx-menu" role="menu" aria-label="Действия на странице">${html}
-    <div class="ctx-foot">Меню браузера: Shift + правая кнопка</div></div>`);
+  const el = h(`<div class="ctx-menu ${className}" role="menu" aria-label="${esc(label)}">${html}</div>`);
+  el.addEventListener("click", (ev) => {
+    const btn = ev.target.closest(".ctx-item");
+    if (!btn || btn.disabled) return;
+    const it = handlers[Number(btn.dataset.h)];
+    if (it.items) openCtxSub(btn, it, true);
+    else runCtx(it);
+  });
+  el.addEventListener("pointerover", (ev) => {
+    clearTimeout(ctxSubTimer);
+    // мышь дошла до подменю: оно остаётся открытым
+    if (className) return;
+    const btn = ev.target.closest(".ctx-item");
+    if (!btn) return;
+    const it = handlers[Number(btn.dataset.h)];
+    if (it.items && !btn.disabled) ctxSubTimer = setTimeout(() => ctxMenu && openCtxSub(btn, it), 120);
+    else if (ctxMenu?.sub) ctxSubTimer = setTimeout(closeCtxSub, 260);
+  });
+  return el;
+}
+
+function openCtxSub(parent, it, focus = false) {
+  clearTimeout(ctxSubTimer);
+  if (ctxMenu.sub?.parent !== parent) {
+    closeCtxSub();
+    const el = ctxMenuEl(it.items, it.label, "ctx-sub");
+    document.body.append(el);
+    const r = parent.getBoundingClientRect();
+    const mw = el.offsetWidth;
+    const mh = el.offsetHeight;
+    const flip = r.right + mw + 8 > innerWidth;
+    el.style.left = `${flip ? Math.max(8, r.left - mw + 2) : r.right - 2}px`;
+    el.style.top = `${Math.max(8, Math.min(r.top - 7, innerHeight - mh - 8))}px`;
+    el.classList.toggle("from-right", flip);
+    parent.setAttribute("aria-expanded", "true");
+    ctxMenu.sub = { el, parent };
+  }
+  if (focus) ctxMenu.sub.el.querySelector(".ctx-item:not([disabled])")?.focus({ preventScroll: true });
+}
+
+function fieldItems(field) {
+  const readOnly = field.readOnly || field.disabled;
+  // пароль нельзя вырезать и скопировать, как и в обычном поле пароля
+  const secret = field.type === "password" || field.hasAttribute("data-secret");
+  const selected = field.selectionStart === null ? String(window.getSelection?.() || "") : field.value.slice(field.selectionStart, field.selectionEnd);
+  const run = (command) => {
+    field.focus({ preventScroll: true });
+    document.execCommand(command);
+  };
+  return [
+    { label: "Отменить", hint: "Ctrl+Z", ic: "undo", disabled: readOnly, action: () => run("undo") },
+    "sep",
+    { label: "Вырезать", hint: "Ctrl+X", ic: "scissors", disabled: readOnly || secret || !selected, action: () => run("cut") },
+    { label: "Копировать", hint: "Ctrl+C", ic: "copy", disabled: secret || !selected, action: () => run("copy") },
+    {
+      label: "Вставить",
+      hint: "Ctrl+V",
+      ic: "clipboard",
+      disabled: readOnly,
+      async action() {
+        let text = "";
+        try {
+          text = await navigator.clipboard.readText();
+        } catch {
+          field.focus({ preventScroll: true });
+          toast("Браузер не дал доступ к буферу обмена. Нажмите Ctrl+V", "error");
+          return;
+        }
+        field.focus({ preventScroll: true });
+        if (text) document.execCommand("insertText", false, text);
+      },
+    },
+    "sep",
+    {
+      label: "Выделить всё",
+      hint: "Ctrl+A",
+      ic: "selectAll",
+      disabled: !field.value,
+      action() {
+        field.focus({ preventScroll: true });
+        field.select();
+      },
+    },
+    {
+      label: "Очистить",
+      ic: "x",
+      disabled: readOnly || !field.value,
+      action() {
+        field.focus({ preventScroll: true });
+        field.select();
+        document.execCommand("delete");
+      },
+    },
+    { foot: "Меню браузера: Shift + правая кнопка" },
+  ];
+}
+
+function showCtx(items, label, { x0, y0, opener, target = null }) {
+  const el = ctxMenuEl(items, label);
   document.body.append(el);
+  target?.classList.add("ctx-target");
+  ctxMenu = { el, opener, target, sub: null, openedAt: performance.now() };
+
+  const mw = el.offsetWidth;
+  const mh = el.offsetHeight;
+  const left = x0 + mw + 8 > innerWidth ? Math.max(8, x0 - mw) : x0;
+  const top = y0 + mh + 8 > innerHeight ? Math.max(8, Math.min(y0 - mh, innerHeight - mh - 8)) : y0;
+  el.style.left = `${left}px`;
+  el.style.top = `${top}px`;
+  el.classList.toggle("from-right", left < x0);
+  el.classList.toggle("from-bottom", top < y0);
+  el.querySelector(".ctx-item:not([disabled])")?.focus({ preventScroll: true });
+}
+
+function openCtx(e) {
+  closeCtx(false);
+  hideTip();
+  const field = e.target.closest?.(TEXT_FIELD);
+  if (field) {
+    // после выбора пункта фокус вернётся в поле, и выделение в нём сохранится
+    showCtx(fieldItems(field), "Действия с полем", { x0: e.clientX, y0: e.clientY, opener: field });
+    return;
+  }
+  // адрес берётся сразу: пока мышь над ссылкой, он может быть спрятан в data-href
+  const linkEl = e.target.closest?.("a[href], a[data-href]");
+  const link = linkHref(linkEl);
+  const selected = String(window.getSelection?.() || "").trim();
+  const nav = window.navigation;
   const opener = document.activeElement;
-  ctxMenu = { el, opener };
 
   // у края экрана меню разворачивается внутрь
   const fromKeys = e.clientX === 0 && e.clientY === 0;
   const anchor = fromKeys && opener?.getBoundingClientRect ? opener.getBoundingClientRect() : null;
   const x0 = anchor ? anchor.left + 12 : e.clientX;
   const y0 = anchor ? anchor.bottom : e.clientY;
-  const mw = el.offsetWidth;
-  const mh = el.offsetHeight;
-  const left = x0 + mw + 8 > innerWidth ? Math.max(8, x0 - mw) : x0;
-  const top = y0 + mh + 8 > innerHeight ? Math.max(8, y0 - mh) : y0;
-  el.style.left = `${left}px`;
-  el.style.top = `${top}px`;
-  el.classList.toggle("from-right", left < x0);
-  el.classList.toggle("from-bottom", top < y0);
 
-  el.addEventListener("click", (ev) => {
-    const btn = ev.target.closest(".ctx-item");
-    if (!btn || btn.disabled) return;
-    const theme = btn.dataset.ctxTheme;
-    closeCtx();
-    if (theme) {
-      if (theme !== currentTheme()) {
-        switchTheme(theme, x0, y0, () => {
-          document.querySelectorAll("#theme").forEach((b) => b.dispatchEvent(new CustomEvent("upk:theme-render")));
-        });
-      }
-      return;
+  // то, что под мышью: строка таблицы, карточка. Берётся самый вложенный элемент
+  let target = null;
+  let group = null;
+  for (const provider of ctxActions) {
+    const el = e.target.closest?.(provider.selector);
+    if (!el || (target && !target.contains(el))) continue;
+    const built = provider.build(el);
+    if (built?.items?.length) {
+      target = el;
+      group = built;
     }
-    items[Number(btn.dataset.ctx)]?.action?.();
-  });
-  el.querySelector(".ctx-item:not([disabled])")?.focus({ preventScroll: true });
+  }
+
+  const items = [];
+  const section = (list) => {
+    if (items.length) items.push("sep");
+    items.push(...list);
+  };
+  if (selected) section([{ label: "Копировать", action: () => copyText(selected), hint: "Ctrl+C", ic: "copy" }]);
+  if (group) section([...(group.title ? [{ heading: group.title }] : []), ...group.items]);
+  // ссылка внутри строки: всё нужное уже есть среди действий самой строки
+  if (link && !target?.contains(linkEl)) {
+    section([
+      { label: "Открыть в новой вкладке", action: () => window.open(link, "_blank", "noopener"), ic: "external" },
+      { label: "Скопировать адрес ссылки", action: () => copyText(link), ic: "copy" },
+    ]);
+  }
+  const page = ctxPageActions?.();
+  if (page?.length) section(page);
+  const now = currentTheme();
+  section([
+    {
+      tools: [
+        { label: "Назад", action: () => history.back(), hint: "Alt+←", disabled: nav ? !nav.canGoBack : false, ic: "arrowLeft" },
+        { label: "Вперёд", action: () => history.forward(), hint: "Alt+→", disabled: nav ? !nav.canGoForward : false, ic: "arrowRight" },
+        { label: "Обновить страницу", action: () => location.reload(), hint: "Ctrl+R", ic: "refresh" },
+        { label: "Скопировать ссылку на страницу", action: () => copyText(location.href), ic: "copy" },
+        { label: "Печать", action: () => window.print(), hint: "Ctrl+P", ic: "print" },
+      ],
+    },
+    {
+      label: "Тема оформления",
+      ic: themeById(now).icon,
+      items: THEMES.map((t) => ({
+        label: t.name,
+        swatch: t.id,
+        checked: t.id === now,
+        action() {
+          if (t.id === currentTheme()) return;
+          switchTheme(t.id, x0, y0, () => {
+            document.querySelectorAll("#theme").forEach((b) => b.dispatchEvent(new CustomEvent("upk:theme-render")));
+          });
+        },
+      })),
+    },
+    { foot: "Меню браузера: Shift + правая кнопка" },
+  ]);
+
+  showCtx(items, "Действия на странице", { x0, y0, opener, target });
 }
 
 function watchContextMenu() {
+  const inMenus = (node) => ctxMenu && (ctxMenu.el.contains(node) || ctxMenu.sub?.el.contains(node));
   document.addEventListener("pointerdown", (e) => {
     lastPointer = e.pointerType || "mouse";
-    if (ctxMenu && !ctxMenu.el.contains(e.target)) closeCtx(false);
+    if (ctxMenu && !inMenus(e.target)) closeCtx(false);
   }, true);
   document.addEventListener("contextmenu", (e) => {
     if (e.shiftKey || lastPointer === "touch" || lastPointer === "pen") return;
-    if (e.target.closest?.("input, textarea, select, [contenteditable=''], [contenteditable='true'], .ctx-menu")) return;
+    if (e.target.closest?.("[contenteditable=''], [contenteditable='true']")) return;
     e.preventDefault();
+    // правая кнопка по самому меню ничего нового не открывает
+    if (e.target.closest?.(".ctx-menu")) return;
     openCtx(e);
   });
   document.addEventListener("keydown", (e) => {
     if (!ctxMenu) return;
-    const list = [...ctxMenu.el.querySelectorAll(".ctx-item:not([disabled])")];
-    const i = list.indexOf(document.activeElement);
-    if (e.key === "Escape") closeCtx();
+    const inSub = Boolean(ctxMenu.sub?.el.contains(document.activeElement));
+    const box = inSub ? ctxMenu.sub.el : ctxMenu.el;
+    const list = [...box.querySelectorAll(".ctx-item:not([disabled])")];
+    const active = document.activeElement;
+    const i = list.indexOf(active);
+    if (e.key === "Escape" || (e.key === "ArrowLeft" && inSub)) {
+      if (inSub) {
+        const { parent } = ctxMenu.sub;
+        closeCtxSub();
+        parent.focus({ preventScroll: true });
+      } else if (e.key === "Escape") closeCtx();
+    } else if (e.key === "ArrowRight" && !inSub && active?.getAttribute("aria-haspopup")) active.click();
     else if (e.key === "ArrowDown" || e.key === "ArrowUp") list[(i + (e.key === "ArrowDown" ? 1 : -1) + list.length) % list.length]?.focus();
     else if (e.key === "Home") list[0]?.focus();
     else if (e.key === "End") list[list.length - 1]?.focus();
@@ -1243,7 +1467,14 @@ function watchContextMenu() {
   }, true);
   window.addEventListener("blur", () => closeCtx(false));
   window.addEventListener("resize", () => closeCtx(false));
-  window.addEventListener("scroll", () => closeCtx(false), { passive: true });
+  // прокрутка закрывает меню, но не ту, что ещё докатывается в момент его открытия
+  window.addEventListener("scroll", () => ctxMenu && performance.now() - ctxMenu.openedAt > 200 && closeCtx(false), { passive: true });
+  // пароль не копируется и не вырезается и с клавиатуры
+  for (const type of ["copy", "cut"]) {
+    document.addEventListener(type, (e) => {
+      if (e.target instanceof Element && e.target.closest("[data-secret]")) e.preventDefault();
+    });
+  }
 }
 
 // ---------- звёздные полосы прокрутки ----------

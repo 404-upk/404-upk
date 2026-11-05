@@ -248,6 +248,18 @@ def set_assignee(db: Session, ticket: Ticket, assignee: User | None, actor: User
         _log(db, ticket, "status", actor, "assigned", "review")
 
 
+def release_assignee(db: Session, user: User, actor: User) -> int:
+    """Снимает сотрудника с открытых заявок: над ними больше никто не работает, они возвращаются на рассмотрение."""
+    tickets = db.scalars(select(Ticket).where(Ticket.assignee_id == user.id, Ticket.status.in_(OPEN_STATUSES))).all()
+    for ticket in tickets:
+        set_assignee(db, ticket, None, actor)
+        if ticket.status == "in_progress":
+            ticket.status = "review"
+            _log(db, ticket, "status", actor, "in_progress", "review")
+        ticket.updated_at = utcnow()
+    return len(tickets)
+
+
 def set_priority(db: Session, ticket: Ticket, priority: str, actor: User) -> None:
     if priority not in PRIORITY_LABELS:
         raise HTTPException(400, "Неизвестный приоритет")

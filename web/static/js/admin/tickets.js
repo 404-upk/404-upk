@@ -1,5 +1,6 @@
-import { $, api, debounce, esc, fmtDate, h, icon, leaveAndRemove, lightbox, priorityChip, relTime, setBusy, statusChip, toast } from "../core.js";
+import { $, api, contextActions, debounce, download, esc, fmtDate, h, icon, leaveAndRemove, lightbox, pageActions, priorityChip, relTime, setBusy, statusChip, toast } from "../core.js";
 import { can, ctx, initials, loadAssignees } from "./ctx.js";
+import { ticketMenu } from "./ticket-actions.js";
 
 const TABS = [
   ["open", "Открытые"],
@@ -542,6 +543,16 @@ export async function render({ el, setHead, params, id }) {
   // ---------- жизненный цикл ----------
 
   await load();
+  contextActions("#list [data-id]", (row) => {
+    const t = state.data?.items.find((x) => String(x.id) === row.dataset.id);
+    return t ? ticketMenu(t, { refresh: () => load(true) }) : null;
+  });
+  pageActions(() => [
+    { label: "Обновить список", ic: "refresh", action: () => load() },
+    { label: "Сбросить фильтры", ic: "filter", action: resetFilters },
+    ...(manage ? [{ label: "Скачать Excel", ic: "download", action: () => download(`/api/staff/export.xlsx?${query()}`) }] : []),
+  ]);
+
   if (id) openTicket(id);
   const onChanged = () => load(true);
   window.addEventListener("tickets:changed", onChanged);

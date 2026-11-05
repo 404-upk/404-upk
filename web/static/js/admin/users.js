@@ -1,11 +1,9 @@
-import { api, copyText, esc, icon, openModal, setBusy, toast } from "../core.js";
+import { NO_MANAGER, api, confirmDialog, contextActions, copyText, esc, icon, openModal, pageActions, plural, setBusy, toast } from "../core.js";
+import { attachCombo } from "./combo.js";
 import { ctx, initials, loadAssignees } from "./ctx.js";
 
 const ROLES = { admin: "Администратор", staff: "Сотрудник УПК", executor: "Исполнитель" };
 
-// Менеджер паролей браузера открывает свой список, когда видит рядом логин и поле type="password".
-// Здесь администратор заводит чужую учётную запись, поэтому такого поля нет, а подсказки и пароль свои.
-const NO_MANAGER = 'autocomplete="off" autocapitalize="none" spellcheck="false" data-lpignore="true" data-1p-ignore data-bwignore data-form-type="other"';
 const LOGIN_RE = /^[a-z0-9_.-]{3,60}$/i;
 const PASSWORD_MIN = 8;
 const PASSWORD_ALPHABET = "abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -36,106 +34,12 @@ function newPassword(length = 14) {
   return Array.from(crypto.getRandomValues(new Uint32Array(length)), (v) => PASSWORD_ALPHABET[v % PASSWORD_ALPHABET.length]).join("");
 }
 
-/** Свой список логинов под полем: тот же вид, что у выпадающих списков сайта */
-function attachLoginMenu(input, nameInput, taken) {
-  const menuId = "u-nick-menu";
-  let menu = null;
-  let options = [];
-  let active = -1;
-
-  const place = () => {
-    if (!menu) return;
-    const r = input.getBoundingClientRect();
-    menu.style.left = `${r.left}px`;
-    menu.style.top = `${r.bottom + 6}px`;
-    menu.style.minWidth = `${r.width}px`;
-    menu.style.maxHeight = `${Math.max(120, innerHeight - r.bottom - 18)}px`;
-  };
-  const close = () => {
-    if (!menu) return;
-    const leaving = menu;
-    menu = null;
-    active = -1;
-    input.setAttribute("aria-expanded", "false");
-    input.removeAttribute("aria-activedescendant");
-    leaving.classList.add("is-leaving");
-    setTimeout(() => leaving.remove(), 160);
-    window.removeEventListener("resize", place);
-    window.removeEventListener("scroll", place, true);
-  };
-  const setActive = (i) => {
-    active = i;
-    menu.querySelectorAll(".ui-option").forEach((n, index) => n.classList.toggle("is-active", index === active));
-    if (active >= 0) input.setAttribute("aria-activedescendant", `${menuId}-${active}`);
-    else input.removeAttribute("aria-activedescendant");
-  };
-  const refresh = () => {
-    options = loginVariants(nameInput.value, input.value.trim(), taken);
-    if (!options.length) return close();
-    if (!menu) {
-      menu = document.createElement("div");
-      menu.className = "ui-select-menu login-menu";
-      menu.id = menuId;
-      menu.setAttribute("role", "listbox");
-      menu.setAttribute("aria-label", "Свободные логины");
-      // нажатие по списку не должно забирать фокус у поля, иначе список закроется раньше выбора
-      menu.addEventListener("pointerdown", (e) => e.preventDefault());
-      menu.addEventListener("click", (e) => {
-        const item = e.target.closest(".ui-option");
-        if (item) choose(Number(item.dataset.i));
-      });
-      menu.addEventListener("pointermove", (e) => {
-        const item = e.target.closest(".ui-option");
-        if (item && Number(item.dataset.i) !== active) setActive(Number(item.dataset.i));
-      });
-      document.body.append(menu);
-      input.setAttribute("aria-expanded", "true");
-      window.addEventListener("resize", place);
-      window.addEventListener("scroll", place, true);
-    }
-    active = -1;
-    input.removeAttribute("aria-activedescendant");
-    menu.innerHTML = `<div class="login-menu-title">Свободные логины</div>${options
-      .map((login, i) => `<div class="ui-option mono" role="option" id="${menuId}-${i}" data-i="${i}" aria-selected="false"><span>${esc(login)}</span></div>`)
-      .join("")}`;
-    place();
-  };
-  function choose(i) {
-    input.value = options[i];
-    close();
-    input.dispatchEvent(new Event("input", { bubbles: true }));
-    close();
-  }
-
-  input.addEventListener("focus", refresh);
-  input.addEventListener("input", refresh);
-  input.addEventListener("blur", close);
-  input.addEventListener("keydown", (e) => {
-    if (!menu) {
-      if (e.key === "ArrowDown") refresh();
-      return;
-    }
-    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-      e.preventDefault();
-      const step = e.key === "ArrowDown" ? 1 : -1;
-      setActive((active + step + options.length + (active < 0 && step < 0 ? 1 : 0)) % options.length);
-    } else if (e.key === "Enter" && active >= 0) {
-      e.preventDefault();
-      choose(active);
-    } else if (e.key === "Escape") {
-      // окно с формой при этом остаётся открытым
-      e.stopPropagation();
-      close();
-    }
-  });
-}
-
 function userForm(u = {}) {
   return `
     <div class="field"><label for="u-name">Имя и фамилия</label><input class="input" id="u-name" maxlength="120" value="${esc(u.name || "")}"></div>
     <div class="field"><label for="u-pos">Должность</label><input class="input" id="u-pos" maxlength="120" value="${esc(u.position || "")}" placeholder="Например: электрик"></div>
     <div class="u-gap12 grid-2">
-      <div class="field"><label for="u-nick">Логин</label><input class="input" id="u-nick" maxlength="60" value="${esc(u.login || "")}" ${u.id ? "disabled" : `role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="u-nick-menu"`} ${NO_MANAGER}>
+      <div class="field"><label for="u-nick">Логин</label><input class="input" id="u-nick" maxlength="60" value="${esc(u.login || "")}" ${u.id ? "disabled" : ""} ${NO_MANAGER}>
         ${u.id ? "" : `<span class="hint" id="u-nick-hint">Латиница, цифры, точка, дефис</span>`}</div>
       <div class="field"><label for="u-role">Роль</label><select class="select" id="u-role">${Object.entries(ROLES)
         .map(([k, v]) => `<option value="${k}" ${(u.role || "staff") === k ? "selected" : ""}>${v}</option>`)
@@ -155,19 +59,58 @@ export async function render({ el, setHead }) {
   let users = [];
   let categories = [];
 
+  const refresh = async () => {
+    await loadAssignees();
+    await load();
+  };
+  const changeUser = async (u, body, done) => {
+    await api(`/api/manage/users/${u.id}`, { method: "PATCH", body });
+    toast(done);
+    await refresh();
+  };
+  const removeUser = async (u) => {
+    const open = u.open_tickets || 0;
+    const tickets = open
+      ? ` ${open} ${plural(open, "открытая заявка вернётся", "открытые заявки вернутся", "открытых заявок вернётся")} на рассмотрение без исполнителя.`
+      : "";
+    const ok = await confirmDialog(
+      `Удалить: ${u.name}?`,
+      `Учётная запись удалится насовсем, войти с ней будет нельзя.${tickets} История заявок сохранится. Если сотрудник может вернуться, лучше отключить доступ.`,
+      "Удалить",
+      true,
+    );
+    if (!ok) return false;
+    try {
+      await api(`/api/manage/users/${u.id}`, { method: "DELETE" });
+      toast("Сотрудник удалён");
+      await refresh();
+      return true;
+    } catch (err) {
+      toast(err.message, "error");
+      return false;
+    }
+  };
+
   const edit = (u) =>
     openModal({
       title: u ? u.name : "Новый сотрудник",
       body: userForm(u || {}),
-      footer: `<button class="btn" data-close>Отмена</button><button class="btn btn-primary" id="u-save">Сохранить</button>`,
+      footer: `${u && u.id !== ctx.user.id ? `<button class="u-mr-auto u-red btn btn-ghost" id="u-del">${icon("trash", "icon-sm")} Удалить</button>` : ""}
+        <button class="btn" data-close>Отмена</button><button class="btn btn-primary" id="u-save">Сохранить</button>`,
       onMount(m, close) {
+        m.querySelector("#u-del")?.addEventListener("click", async () => {
+          if (await removeUser(u)) close();
+        });
         const saveBtn = m.querySelector("#u-save");
         const nameInput = m.querySelector("#u-name");
         const loginInput = m.querySelector("#u-nick");
         const secretInput = m.querySelector("#u-secret");
         const taken = new Set(users.map((x) => x.login.toLowerCase()));
         if (!u) {
-          attachLoginMenu(loginInput, nameInput, taken);
+          attachCombo(loginInput, {
+            title: "Свободные логины",
+            options: () => loginVariants(nameInput.value, loginInput.value.trim(), taken),
+          });
           const hint = m.querySelector("#u-nick-hint");
           loginInput.addEventListener("input", () => {
             const busy = taken.has(loginInput.value.trim().toLowerCase());
@@ -237,6 +180,44 @@ export async function render({ el, setHead }) {
 
   document.getElementById("u-add").addEventListener("click", () => edit(null));
 
+  contextActions("tr[data-user]", (row) => {
+    const u = users.find((x) => String(x.id) === row.dataset.user);
+    if (!u) return null;
+    const me = u.id === ctx.user.id;
+    return {
+      title: u.name,
+      items: [
+        { label: "Изменить", ic: "edit", action: () => edit(u) },
+        { label: "Скопировать логин", ic: "copy", action: () => copyText(u.login) },
+        {
+          label: "Заявки сотрудника",
+          ic: "list",
+          hint: u.open_tickets ? String(u.open_tickets) : "",
+          action: () => (location.hash = `#/tickets?status=&assignee=${u.id}`),
+        },
+        "sep",
+        {
+          label: "Роль",
+          ic: "users",
+          disabled: me,
+          items: Object.entries(ROLES).map(([value, label]) => ({
+            label,
+            checked: u.role === value,
+            action: () => (u.role === value ? undefined : changeUser(u, { role: value }, `Роль: ${label}`)),
+          })),
+        },
+        {
+          label: u.is_active ? "Отключить доступ" : "Включить доступ",
+          ic: "lock",
+          disabled: me,
+          action: () => changeUser(u, { is_active: !u.is_active }, u.is_active ? "Доступ отключён" : "Доступ включён"),
+        },
+        { label: "Удалить", ic: "trash", danger: true, disabled: me, hint: me ? "это вы" : "", action: () => removeUser(u) },
+      ],
+    };
+  });
+  pageActions(() => [{ label: "Добавить сотрудника", ic: "plus", action: () => edit(null) }]);
+
   async function load() {
     [users, categories] = await Promise.all([api("/api/manage/users"), api("/api/manage/categories")]);
     const executors = users.filter((u) => u.is_active);
@@ -245,13 +226,17 @@ export async function render({ el, setHead }) {
         <thead><tr><th>Сотрудник</th><th>Логин</th><th>Роль</th><th>Telegram</th><th>Статус</th><th><span class="sr-only">Действия</span></th></tr></thead>
         <tbody>${users
           .map(
-            (u) => `<tr>
+            (u) => `<tr data-user="${u.id}">
               <td><span class="row"><span class="avatar avatar-sm">${esc(initials(u.name))}</span><span><div class="t-title">${esc(u.name)}</div><div class="t-sub">${esc(u.position || "")}</div></span></span></td>
               <td class="mono small">${esc(u.login)}</td>
               <td>${esc(u.role_label)}</td>
               <td>${u.telegram_linked ? `<span class="u-green tag">${icon("telegram", "icon-sm")} подключён</span>` : `<span class="faint small">нет</span>`}</td>
               <td>${u.is_active ? `<span class="chip st-resolved">активен</span>` : `<span class="chip st-rejected">отключён</span>`}</td>
-              <td><button class="btn btn-ghost btn-icon btn-sm" data-edit="${u.id}" title="Изменить" aria-label="Изменить">${icon("edit", "icon-sm")}</button></td>
+              <td class="nowrap"><button class="btn btn-ghost btn-icon btn-sm" data-edit="${u.id}" title="Изменить" aria-label="Изменить">${icon("edit", "icon-sm")}</button>${
+                u.id === ctx.user.id
+                  ? ""
+                  : `<button class="btn btn-ghost btn-icon btn-sm u-red" data-del="${u.id}" title="Удалить" aria-label="Удалить: ${esc(u.name)}">${icon("trash", "icon-sm")}</button>`
+              }</td>
             </tr>`,
           )
           .join("")}</tbody></table></div></section>
@@ -277,6 +262,7 @@ export async function render({ el, setHead }) {
       </section>`;
 
     el.querySelectorAll("[data-edit]").forEach((b) => b.addEventListener("click", () => edit(users.find((u) => String(u.id) === b.dataset.edit))));
+    el.querySelectorAll("[data-del]").forEach((b) => b.addEventListener("click", () => removeUser(users.find((u) => String(u.id) === b.dataset.del))));
     el.querySelectorAll("[data-cat-assignee]").forEach((s) =>
       s.addEventListener("change", async () => {
         const body = s.value ? { default_assignee_id: Number(s.value) } : { clear_assignee: true };

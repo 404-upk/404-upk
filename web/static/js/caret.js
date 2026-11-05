@@ -3,7 +3,7 @@
 // поэтому при любой ошибке остаётся обычный. Поля паролей и чисел не трогаются: в них положение
 // курсора нельзя надёжно измерить.
 
-const FIELD = 'textarea, input:is([type="text"], [type="search"], [type="email"], [type="url"], [type="tel"], :not([type]))';
+const FIELD = 'textarea, input:not([data-secret]):is([type="text"], [type="search"], [type="email"], [type="url"], [type="tel"], :not([type]))';
 const COPY = [
   "boxSizing", "width", "paddingTop", "paddingRight", "paddingBottom", "paddingLeft",
   "borderTopWidth", "borderRightWidth", "borderBottomWidth", "borderLeftWidth", "borderStyle",
