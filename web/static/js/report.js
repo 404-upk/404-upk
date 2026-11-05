@@ -239,8 +239,14 @@ function renderRoomNote(animate = false) {
         </div>`,
         )
         .join("")}
+      <button type="button" class="u-self-start btn btn-ghost btn-sm" data-other>У меня другая проблема</button>
     </div>`;
   if (animate) expandIn(box);
+  box.querySelector("[data-other]").addEventListener("click", () => {
+    const field = $("#message") || $("#d-desc");
+    field?.focus({ preventScroll: true });
+    field?.scrollIntoView({ behavior: "smooth", block: "center" });
+  });
   box.querySelectorAll("[data-join]").forEach((b) =>
     b.addEventListener("click", async () => {
       setBusy(b, true);
@@ -562,9 +568,14 @@ async function ask(rawText) {
       state.suggestedLocation = reply.suggested_location;
       renderPlace();
     }
-    addAiCard(reply);
+    // сводка по кабинету уходит сразу: иначе страница сдвинется уже после прокрутки к ответу
+    const note = $("#room-note");
+    if (note) note.innerHTML = "";
+    const card = addAiCard(reply);
     if (reply.suggest_ticket) openDraft(reply);
     else renderComposer();
+    // кнопка отправки исчезла: фокус идёт к ответу, а не в начало страницы
+    if (!document.activeElement || document.activeElement === document.body) card.focus({ preventScroll: true });
   } catch (err) {
     typing.remove();
     addErrorBubble(err, text);
@@ -616,7 +627,6 @@ function addErrorBubble(err, text) {
 const KIND_ICONS = { question: "book", fault: "clipboard", danger: "alert", unclear: "help", unknown: "info", secret: "lock" };
 
 function addAiCard(reply) {
-  const confidence = Math.round((reply.confidence || 0) * 100);
   const tips = reply.tips?.length
     ? `<ul class="ai-tips">${reply.tips.map((t) => `<li>${icon("check")}<span>${esc(t)}</span></li>`).join("")}</ul>`
     : "";
@@ -636,7 +646,7 @@ function addAiCard(reply) {
   }
 
   const card = h(`
-    <article class="ai-card kind-${esc(reply.kind)}">
+    <article class="ai-card kind-${esc(reply.kind)}" tabindex="-1">
       <div class="ai-card-head">
         <span class="ai-avatar">${reply.kind === "danger" ? icon("alert") : markSvg()}</span>
         <div class="grow">
@@ -649,12 +659,6 @@ function addAiCard(reply) {
       <div class="ai-card-body">
         <div class="ai-answer">${esc(reply.answer)}</div>
         ${tips}${clarify}${sources}${actions}
-        <div class="ai-meta">
-          <span>${icon("sparkles", "icon-sm")} ${esc(reply.engine_label)}</span>
-          ${reply.category ? `<span>Категория: ${esc(categoryName(reply.category))}</span>` : ""}
-          <span class="confidence" title="Уверенность помощника">уверенность <span class="confidence-bar"><i data-css-pct="${confidence}"></i></span> ${confidence}%</span>
-        </div>
-        ${reply.notice ? `<div class="small faint">${icon("info", "icon-sm")} ${esc(reply.notice)}</div>` : ""}
       </div>
     </article>`);
 
@@ -666,6 +670,7 @@ function addAiCard(reply) {
   textIn(card.querySelector(".ai-answer"));
   ambient.pulseAt(card.querySelector(".ai-avatar"), reply.kind === "danger" ? 1 : 0.4);
   card.scrollIntoView({ behavior: "smooth", block: "start" });
+  return card;
 }
 
 // ---------- черновик заявки ----------
@@ -689,11 +694,13 @@ function openDraft(reply, manual = false) {
   state.similar = [];
   state.dupDismissed = false;
   state.draftFresh = true;
+  state.draftMore = false;
   renderComposer();
   renderDraft();
   expandIn($("#draft"), { duration: 760 });
   checkSimilar();
-  setTimeout(() => $("#draft").scrollIntoView({ behavior: "smooth", block: "start" }), 80);
+  // советы помощника остаются на экране: к форме прокручиваем, только если её открыли кнопкой
+  if (manual) setTimeout(() => $("#draft").scrollIntoView({ behavior: "smooth", block: "start" }), 80);
 }
 
 /** Черновик заявки на этом устройстве: переживает обрыв сети и перезагрузку страницы. Фото не сохраняется. */
@@ -722,6 +729,17 @@ function saveTicketDraft() {
 async function restoreTicketDraft() {
   const saved = drafts.get("ticket");
   if (!saved || state.draft || !saved.description) return;
+  const otherRoom = saved.locationId != null && state.location && state.location.id !== saved.locationId;
+  if (otherRoom && !saved.queued) {
+    // отсканирован QR другого кабинета: старый текст нельзя приписать новому помещению
+    drafts.remove("ticket");
+    return;
+  }
+  if (otherRoom) {
+    // заявка уже ждёт отправки без сети и относится к своему кабинету
+    state.location = null;
+    state.roomStatus = null;
+  }
   if (saved.locationId != null && !state.location) {
     try {
       state.locations = state.locations || (await api("/api/locations"));
@@ -790,6 +808,7 @@ function renderDraft() {
 
   const fresh = state.draftFresh;
   state.draftFresh = false;
+  const more = state.draftMore || !!state.photoUrl || !d.title;
   box.innerHTML = `
     <form class="card draft ${fresh ? "" : "no-enter"}" id="draft-form" novalidate>
       <div class="card-pad">
@@ -799,28 +818,34 @@ function renderDraft() {
         </div>
         <div id="dup"></div>
         <div class="field"><span class="label">Где это</span>${placeField}</div>
-        <div class="field"><span class="label">Категория</span><div class="cat-grid" role="radiogroup">${cats}</div></div>
-        <div class="field">
-          <label for="d-title">Коротко о проблеме</label>
-          <input class="input" id="d-title" maxlength="120" value="${esc(d.title)}" placeholder="Например: Не работает проектор">
-        </div>
         <div class="field">
           <label for="d-desc">Описание</label>
           <textarea class="textarea" id="d-desc" maxlength="2000" placeholder="Что случилось, как давно, что уже пробовали">${esc(d.description)}</textarea>
         </div>
-        <div class="field"><span class="label">Фото</span><div id="d-photo"></div></div>
-        <div class="field">
-          <label for="d-contact">Как к вам обращаться <span class="faint">(необязательно)</span></label>
-          <input class="input" id="d-contact" maxlength="120" value="${esc(d.contact)}" placeholder="Имя или группа, если сотруднику нужно будет уточнить детали">
-        </div>
+        <details class="draft-more" id="d-more" ${more ? "open" : ""}>
+          <summary>Уточнить: фото, категория, контакт</summary>
+          <div class="draft-more-body">
+            <div class="field"><span class="label">Фото</span><div id="d-photo"></div></div>
+            <div class="field"><span class="label">Категория</span><div class="cat-grid" role="radiogroup">${cats}</div></div>
+            <div class="field">
+              <label for="d-title">Коротко о проблеме</label>
+              <input class="input" id="d-title" maxlength="120" value="${esc(d.title)}" placeholder="Например: Не работает проектор">
+            </div>
+            <div class="field">
+              <label for="d-contact">Как к вам обращаться <span class="faint">(необязательно)</span></label>
+              <input class="input" id="d-contact" maxlength="120" value="${esc(d.contact)}" placeholder="Имя или группа, если сотруднику нужно будет уточнить детали">
+            </div>
+          </div>
+        </details>
         <p class="small muted">Отправляя заявку, вы соглашаетесь с <a href="/privacy" target="_blank" rel="noopener">обработкой данных</a>. Имя указывать необязательно.</p>
-        <div id="d-error"></div>
-        <button class="btn btn-primary btn-lg btn-block" type="submit" id="submit-btn">${icon("send")} Отправить заявку</button>
+        <div id="d-error" role="alert"></div>
+        <div class="draft-send"><button class="btn btn-primary btn-lg btn-block" type="submit" id="submit-btn">${icon("send")} Отправить заявку</button></div>
         <button class="btn btn-ghost btn-block" type="button" data-cancel>Отмена</button>
       </div>
     </form>`;
 
   const form = $("#draft-form");
+  $("#d-more").addEventListener("toggle", (e) => (state.draftMore = e.target.open));
   form.querySelectorAll("[data-pick]").forEach((b) => b.addEventListener("click", pickLocation));
   form.querySelectorAll("[data-cat]").forEach((b) =>
     b.addEventListener("click", () => {
@@ -936,10 +961,17 @@ async function submit() {
   const d = state.draft;
   if (state.sending) return;
   d.error = null;
-  if ((d.description || "").trim().length < 5) d.error = "Опишите проблему хотя бы парой слов.";
-  else if (!state.location && !state.locationNote.trim()) d.error = "Укажите, где это: выберите помещение или напишите этаж и кабинет.";
+  let invalid = null;
+  if ((d.description || "").trim().length < 5) {
+    d.error = "Опишите проблему хотя бы парой слов.";
+    invalid = $("#d-desc");
+  } else if (!state.location && !state.locationNote.trim()) {
+    d.error = "Укажите, где это: выберите помещение или напишите этаж и кабинет.";
+    invalid = $("#d-note");
+  }
   if (d.error) {
     renderError();
+    invalid?.focus({ preventScroll: true });
     $("#d-error").scrollIntoView({ behavior: "smooth", block: "center" });
     return;
   }

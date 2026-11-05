@@ -18,6 +18,7 @@ def test_report_from_qr_to_status_page(page):
     page.click("#ask-btn")
     expect(page.locator("#d-desc")).to_be_visible()  # помощник предложил оформить заявку
 
+    page.click("#d-more summary")
     page.fill("#d-title", "Не работает проектор")
     page.fill("#d-contact", "Группа ИС-21")
     page.click("#submit-btn")
@@ -637,6 +638,7 @@ def test_focus_is_not_lost_after_sending_a_ticket(page):
     page.fill("#message", "В кабинете не работает проектор, экран не включается")
     page.click("#ask-btn")
     expect(page.locator("#d-desc")).to_be_visible()
+    page.click("#d-more summary")
     page.fill("#d-title", "Не включается проектор")
     page.click("#submit-btn")
     expect(page.locator(".ticket-number")).to_be_visible()
@@ -661,3 +663,66 @@ def test_panel_keyboard_and_screen_reader_paths(page):
     expect(page.locator(".card[data-id]").first).to_be_visible()
     expect(page.locator("#content")).to_be_focused()
     expect(page.locator("#content")).to_have_attribute("aria-label", "База знаний")
+
+
+def _ask_for_draft(page, url):
+    page.goto(url)
+    page.fill("#message", "Не работает проектор, экран не включается")
+    page.click("#ask-btn")
+    expect(page.locator("#d-desc")).to_be_visible()
+
+
+def test_new_qr_does_not_inherit_draft_of_another_room(page):
+    """Черновик открывается снова в своём кабинете, но не переезжает в другой вместе с новым QR-кодом."""
+    _ask_for_draft(page, f"/r/{QR_214}")
+    page.reload()
+    expect(page.locator("#d-desc")).to_have_value(re.compile("проектор"))
+
+    page.goto("/r/r1055mmc")
+    expect(page.locator("#place")).to_contain_text("Кабинет 105")
+    expect(page.locator("#message")).to_be_visible()
+    expect(page.locator("#d-desc")).to_have_count(0)
+
+
+def test_phone_shows_advice_and_send_button_together(page):
+    """После ответа помощника на телефоне видны и советы, и кнопка отправки, а служебных подписей нет."""
+    page.set_viewport_size({"width": 390, "height": 760})
+    _ask_for_draft(page, f"/r/{QR_214}")
+    page.wait_for_timeout(900)  # плавная прокрутка
+    box = page.evaluate(
+        """() => ({
+            card: document.querySelector('.ai-card').getBoundingClientRect().top,
+            bottom: document.querySelector('#submit-btn').getBoundingClientRect().bottom,
+            height: innerHeight,
+            focused: document.activeElement.classList.contains('ai-card'),
+        })"""
+    )
+    assert box["card"] >= 0
+    assert box["bottom"] <= box["height"]
+    assert box["focused"]
+    card = page.locator(".ai-card")
+    expect(card).not_to_contain_text("уверенность")
+    expect(card).not_to_contain_text("Демо-режим")
+    expect(page.locator("#d-contact")).to_be_hidden()
+
+
+def test_missing_place_error_is_announced_and_moves_focus(page):
+    """Ошибка про помещение озвучивается, а фокус переходит в поле, которое нужно заполнить."""
+    page.goto("/")
+    page.fill("#message", "в коридоре не горит свет")
+    page.click("#ask-btn")
+    expect(page.locator("#d-desc")).to_be_visible()
+    page.click("#submit-btn")
+    expect(page.locator('#d-error[role="alert"]')).to_contain_text("Укажите, где это")
+    expect(page.locator("#d-note")).to_be_focused()
+
+
+def test_room_with_ticket_leads_to_another_problem(page):
+    """В кабинете с открытой заявкой можно одним нажатием перейти к описанию своей проблемы."""
+    _ask_for_draft(page, "/r/r106duni")
+    page.click("#submit-btn")
+    expect(page.locator(".ticket-number")).to_be_visible()
+
+    page.goto("/r/r106duni")
+    page.get_by_role("button", name="У меня другая проблема").click()
+    expect(page.locator("#message")).to_be_focused()

@@ -790,6 +790,15 @@ body:has(> .page) > .footer { width: 100%; }
 
 .draft { margin-top: 4px; }
 .draft .card-pad { display: flex; flex-direction: column; gap: 16px; }
+.draft-more > summary { display: flex; align-items: center; gap: 8px; min-height: 44px; font-weight: 600; cursor: pointer; list-style: none; border-radius: var(--radius-sm); }
+.draft-more > summary::-webkit-details-marker { display: none; }
+.draft-more > summary::after { content: "+"; margin-left: auto; color: var(--muted); font-size: 20px; line-height: 1; }
+.draft-more[open] > summary::after { content: "\2212"; }
+.draft-more-body { display: flex; flex-direction: column; gap: 16px; padding-top: 10px; }
+@media (max-width: 720px) and (min-height: 480px) {
+  /* кнопка отправки всегда на экране, пока форма видна */
+  .draft-send { position: sticky; bottom: 0; z-index: 2; padding: 10px 0 calc(10px + env(safe-area-inset-bottom, 0px)); background: var(--surface); }
+}
 .cat-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
 .cat-option {
   display: flex;
