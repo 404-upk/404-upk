@@ -87,8 +87,14 @@ html:not(.is-revealed) .footer { animation-play-state: paused; }
 .input:hover:not(:focus), .select:hover:not(:focus), .textarea:hover:not(:focus) { border-color: color-mix(in srgb, var(--text) 26%, transparent); }
 
 /* ---------- свет под курсором ---------- */
+/* Координаты курсора не наследуются: иначе каждое движение мыши пересчитывало стили всего содержимого карточки
+   (в блоке «Состояние колледжа» это вся схема здания). Их берёт только свет, ::after ниже */
+@property --mx { syntax: "<length-percentage>"; inherits: false; initial-value: 50%; }
+@property --my { syntax: "<length-percentage>"; inherits: false; initial-value: 50%; }
 .card, .place-pill, .composer, .room-note, .kcard { position: relative; }
 .card::after, .place-pill::after, .composer::after, .room-note::after, .kcard::after, .example::after {
+  --mx: inherit;
+  --my: inherit;
   content: "";
   position: absolute;
   inset: 0;
