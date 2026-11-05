@@ -996,3 +996,32 @@ h2.h3 { font-size: 16px; font-weight: 600; letter-spacing: normal; }
   .example, .btn, .input, .pl-help { min-height: 44px; }
   .btn-icon, .pl-help { min-width: 44px; }
 }
+
+/* ---------- свой указатель для мыши (cursor.js) ---------- */
+html.has-cursor, html.has-cursor * { cursor: none !important; }
+html.has-cursor :is(input:not([type="checkbox"], [type="radio"], [type="file"], [type="button"], [type="submit"]), textarea, [contenteditable="true"]) { cursor: text !important; }
+.cursor, .cursor-ring, .cursor-bit { position: fixed; top: 0; left: 0; z-index: 2147483000; width: 0; height: 0; pointer-events: none; }
+.cursor, .cursor-ring { opacity: 0; transition: opacity 0.2s ease; will-change: transform; }
+.cursor.is-on, .cursor-ring.is-on { opacity: 1; }
+.cursor { color: var(--text); }
+.cursor-pose { width: 0; height: 0; transition: transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.2s ease; }
+.cursor svg { display: block; width: 22px; height: 22px; margin: -11px 0 0 -11px; fill: currentColor; filter: drop-shadow(0 0 1px rgba(0, 0, 0, 0.7)) drop-shadow(0 0 5px var(--primary)); animation: cursor-idle 3.4s ease-in-out infinite; }
+.cursor.is-hover .cursor-pose { transform: scale(1.4) rotate(45deg); }
+.cursor.is-down .cursor-pose { transform: scale(0.72); }
+.cursor.is-hover.is-down .cursor-pose { transform: scale(1.05) rotate(45deg); }
+.cursor.is-disabled .cursor-pose { transform: scale(0.85); opacity: 0.45; }
+.cursor.is-text .cursor-pose { opacity: 0; }
+.cursor-ring i { display: block; width: 36px; height: 36px; margin: -18px 0 0 -18px; border: 1px solid var(--primary); border-radius: 50%; opacity: 0.38; transition: transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.2s ease; }
+.cursor-ring.is-hover i { transform: scale(1.45); opacity: 0.7; }
+.cursor-ring.is-down i { transform: scale(0.72); opacity: 0.9; }
+.cursor-ring.is-text i, .cursor-ring.is-disabled i { opacity: 0; }
+.cursor-bit svg { display: block; width: 14px; height: 14px; margin: -7px 0 0 -7px; fill: var(--primary); filter: drop-shadow(0 0 3px var(--primary)); }
+@keyframes cursor-idle { 0%, 100% { transform: scale(1) rotate(0deg); } 50% { transform: scale(0.88) rotate(12deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .cursor svg { animation: none; }
+  .cursor-pose { transition: none; }
+  .cursor-ring { display: none; }
+}
+@media print {
+  .cursor, .cursor-ring, .cursor-bit { display: none; }
+}

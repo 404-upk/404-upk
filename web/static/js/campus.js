@@ -1,8 +1,9 @@
 // Индикаторы состояния: без заявок, есть заявка, срочная заявка.
 
 import { esc } from "./core.js";
+import { SPARK_PATH } from "./cursor.js";
 
-const SPARK = "M12 0C12.9 7.6 16.4 11.1 24 12C16.4 12.9 12.9 16.4 12 24C11.1 16.4 7.6 12.9 0 12C7.6 11.1 11.1 7.6 12 0Z";
+const SPARK = SPARK_PATH;
 
 export const CAMPUS_NODE = { calm: "clear", busy: "open", heavy: "open" };
 
