@@ -162,7 +162,7 @@
 @media (max-width: 899px) {
   .fv-overlay { padding: 0; }
   .fv { width: 100%; height: 100%; border-radius: 0; border: 0; }
-  .fv-head { flex-wrap: wrap; padding: 14px 16px 12px; gap: 10px 12px; }
+  .fv-head { flex-wrap: wrap; padding: calc(14px + env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 12px max(16px, env(safe-area-inset-left)); gap: 10px 12px; }
   .fv-titles h2 { font-size: 22px; }
   .fv-tabs { order: 3; width: 100%; }
   .fv-tabs button { flex: 1; }

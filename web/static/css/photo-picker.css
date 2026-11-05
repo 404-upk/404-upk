@@ -111,6 +111,10 @@
 .pp-note.is-on { opacity: 1; transform: none; }
 .pp-note.is-error { color: var(--text); border-color: color-mix(in srgb, var(--red) 45%, var(--border)); background: color-mix(in srgb, var(--red) 14%, var(--surface)); }
 
+/* новое фото несут над предпросмотром: оно заменит показанное */
+.pp-stage[data-mode="shot"].is-over { box-shadow: inset 0 0 0 2px var(--primary), inset 0 0 50px -12px var(--primary); }
+.pp-file:has(input:focus-visible) { box-shadow: var(--ring); }
+
 /* кнопки под сценой */
 .pp-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; }
 .pp-actions[hidden] { display: none; }

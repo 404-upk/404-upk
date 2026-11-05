@@ -2,9 +2,10 @@
 // Теперь сначала открывается окно в стиле сайта: снять камерой прямо на странице, перетащить файл,
 // вставить скриншот из буфера. Системное окно остаётся только за кнопкой «Выбрать файл»:
 // заглянуть в папки компьютера сайт сам не может, это умеет только браузер своим окном.
-// Загружается при первом нажатии на «Фото», на старте страницы не нужно.
+// Любое выбранное фото сначала показывается здесь крупно, и только после «Прикрепить» уходит в заявку.
+// Загружается заранее, пока человек пишет сообщение (warm), на старте страницы не нужно.
 
-import { esc, icon, loadCss, openModal } from "./core.js";
+import { esc, icon, loadCss, openModal, preparePhoto } from "./core.js";
 import { SPARK_PATH } from "./cursor.js";
 
 const COARSE = matchMedia("(pointer: coarse)");
@@ -30,7 +31,13 @@ async function clipboardImage() {
   return null;
 }
 
-const firstImage = (files) => [...(files || [])].find((f) => f.type?.startsWith("image/")) || null;
+const isImage = (f) => !!f && (f.type?.startsWith("image/") || /\.(heic|heif)$/i.test(f.name || ""));
+const firstImage = (files) => [...(files || [])].find(isImage) || null;
+
+/** Стили окна заранее: при нажатии на «Фото» окно откроется сразу */
+export function warm() {
+  loadCss("/static/css/photo-picker.css");
+}
 
 function stamp() {
   const d = new Date();
@@ -50,6 +57,7 @@ export async function pickPhoto({ onFile, maxMb = 8 } = {}) {
   let stream = null;
   let shot = null;
   let shotUrl = "";
+  let shotFrom = "camera";
   let facing = "environment";
 
   const body = `
@@ -65,13 +73,14 @@ export async function pickPhoto({ onFile, maxMb = 8 } = {}) {
         </div>
         <video class="pp-video" playsinline muted></video>
         <span class="pp-corners" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
-        <img class="pp-shot" alt="Снимок с камеры">
+        <img class="pp-shot" alt="Выбранное фото">
         <span class="pp-flash" aria-hidden="true"></span>
         <div class="pp-note" role="status" aria-live="polite"></div>
       </div>
       <div class="pp-actions" data-for="drop">
         ${cameras ? `<button type="button" class="btn btn-primary pp-cam">${icon("camera")}<span>Снять камерой</span></button>` : ""}
-        <button type="button" class="btn ${cameras ? "" : "btn-primary"} pp-file">${icon("image")}<span>${phone ? "Из галереи" : "Выбрать файл"}</span></button>
+        <label class="btn ${cameras ? "" : "btn-primary"} file-btn pp-file">${icon("image")}<span>${phone ? "Из галереи" : "Выбрать файл"}</span>
+          <input type="file" accept="image/*" class="pp-input" aria-label="${phone ? "Выбрать фото из галереи" : "Выбрать файл с фото"}"></label>
         ${canPaste ? `<button type="button" class="btn btn-ghost pp-paste">${icon("clipboard")}<span>Вставить</span></button>` : ""}
       </div>
       <div class="pp-actions pp-cam-bar" data-for="camera" hidden>
@@ -84,10 +93,9 @@ export async function pickPhoto({ onFile, maxMb = 8 } = {}) {
         <button type="button" class="btn btn-primary pp-use">${icon("check")}<span>Прикрепить</span></button>
       </div>
       <p class="pp-hint">Фото до ${esc(String(maxMb))} МБ. По нему быстрее понять, что сломалось и что взять с собой.</p>
-      <input type="file" accept="image/*" class="pp-input" hidden>
     </div>`;
 
-  openModal({
+  const { el } = openModal({
     title: "Фото к заявке",
     body,
     onMount(overlay, close) {
@@ -121,14 +129,35 @@ export async function pickPhoto({ onFile, maxMb = 8 } = {}) {
         img.removeAttribute("src");
       };
 
-      /** Готово: проверка и передача фото заявке */
+      /** Готово: фото уходит в заявку, окно закрывается */
       const done = (file) => {
         if (!file) return;
-        if (!file.type?.startsWith("image/")) return say("Это не фото. Подойдёт снимок или скриншот: JPG, PNG, HEIC.", true);
-        if (file.size > maxMb * 1024 * 1024) return say(`Фото больше ${maxMb} МБ. Выберите поменьше или снимите камерой.`, true);
         close();
         onFile?.(file);
       };
+
+      /**
+       * Предпросмотр: любое фото (с камеры, из галереи, из буфера) сначала показывается крупно.
+       * Большой снимок с телефона тут же уменьшается и переводится в JPEG.
+       */
+      let previewSeq = 0;
+      async function preview(file, from) {
+        if (!isImage(file)) return say("Это не фото. Подойдёт снимок или скриншот: JPG, PNG, HEIC.", true);
+        const mine = ++previewSeq;
+        say("Готовим фото…");
+        const ready = await preparePhoto(file);
+        if (mine !== previewSeq || !overlay.isConnected) return;
+        if (ready.size > maxMb * 1024 * 1024) return say(`Фото больше ${maxMb} МБ. Выберите другое или снимите камерой.`, true);
+        forgetShot();
+        shot = ready;
+        shotFrom = from;
+        shotUrl = URL.createObjectURL(ready);
+        img.onerror = () => say("Предпросмотр в этом браузере недоступен, но фото прикрепится к заявке.");
+        img.src = shotUrl;
+        root.querySelector(".pp-retake span").textContent = from === "camera" ? "Переснять" : "Другое фото";
+        say("");
+        setMode("shot");
+      }
 
       async function startCamera() {
         forgetShot();
@@ -176,10 +205,7 @@ export async function pickPhoto({ onFile, maxMb = 8 } = {}) {
           (blob) => {
             if (!blob) return say("Снимок не получился, попробуйте ещё раз.", true);
             stopCamera();
-            shot = blob;
-            shotUrl = URL.createObjectURL(blob);
-            img.src = shotUrl;
-            setMode("shot");
+            preview(new File([blob], `photo-${stamp()}.jpg`, { type: "image/jpeg" }), "camera");
           },
           "image/jpeg",
           0.9,
@@ -193,7 +219,12 @@ export async function pickPhoto({ onFile, maxMb = 8 } = {}) {
         drop.classList.add("is-tap");
         drop.addEventListener("click", () => (cameras ? startCamera() : input.click()));
       }
-      root.querySelector(".pp-retake").addEventListener("click", startCamera);
+      root.querySelector(".pp-retake").addEventListener("click", () => {
+        if (shotFrom === "camera") return startCamera();
+        forgetShot();
+        say("");
+        setMode("drop");
+      });
       root.querySelector(".pp-shutter").addEventListener("click", capture);
       root.querySelector(".pp-back").addEventListener("click", () => {
         stopCamera();
@@ -205,19 +236,19 @@ export async function pickPhoto({ onFile, maxMb = 8 } = {}) {
         stopCamera();
         startCamera();
       });
-      root.querySelector(".pp-use").addEventListener("click", () => {
-        if (shot) done(new File([shot], `photo-${stamp()}.jpg`, { type: "image/jpeg" }));
+      root.querySelector(".pp-use").addEventListener("click", () => done(shot));
+      // системное окно выбора файла открывается только прямым нажатием на «Выбрать файл» / «Из галереи»:
+      // поле лежит внутри кнопки, так iOS Safari надёжно открывает своё меню и сообщает о выбранном фото
+      input.addEventListener("click", () => say(""));
+      input.addEventListener("change", () => {
+        const file = input.files?.[0];
+        input.value = "";
+        if (file) preview(file, "file");
       });
-      // системное окно выбора файла: только по прямому нажатию
-      root.querySelector(".pp-file").addEventListener("click", () => {
-        say("");
-        input.click();
-      });
-      input.addEventListener("change", () => done(input.files[0]));
       root.querySelector(".pp-paste")?.addEventListener("click", async () => {
         try {
           const file = await clipboardImage();
-          if (file) done(file);
+          if (file) preview(file, "file");
           else say("В буфере обмена нет картинки. Сделайте скриншот (Win + Shift + S) и нажмите ещё раз.", true);
         } catch {
           say("Браузер не дал прочитать буфер обмена. Нажмите Ctrl + V прямо в этом окне.", true);
@@ -228,7 +259,7 @@ export async function pickPhoto({ onFile, maxMb = 8 } = {}) {
       let depth = 0;
       const hasFiles = (e) => [...(e.dataTransfer?.types || [])].includes("Files");
       overlay.addEventListener("dragenter", (e) => {
-        if (!hasFiles(e) || stage.dataset.mode !== "drop") return;
+        if (!hasFiles(e) || stage.dataset.mode === "camera") return;
         e.preventDefault();
         depth += 1;
         stage.classList.add("is-over");
@@ -236,7 +267,7 @@ export async function pickPhoto({ onFile, maxMb = 8 } = {}) {
       overlay.addEventListener("dragover", (e) => {
         if (!hasFiles(e)) return;
         e.preventDefault();
-        e.dataTransfer.dropEffect = stage.dataset.mode === "drop" ? "copy" : "none";
+        e.dataTransfer.dropEffect = stage.dataset.mode === "camera" ? "none" : "copy";
       });
       overlay.addEventListener("dragleave", () => {
         depth = Math.max(0, depth - 1);
@@ -247,9 +278,9 @@ export async function pickPhoto({ onFile, maxMb = 8 } = {}) {
         e.preventDefault();
         depth = 0;
         stage.classList.remove("is-over");
-        if (stage.dataset.mode !== "drop") return;
+        if (stage.dataset.mode === "camera") return;
         const file = firstImage(e.dataTransfer.files);
-        if (file) done(file);
+        if (file) preview(file, "file");
         else say("Перетащите картинку: снимок или скриншот.", true);
       });
 
@@ -258,7 +289,7 @@ export async function pickPhoto({ onFile, maxMb = 8 } = {}) {
         const file = firstImage(e.clipboardData?.files);
         if (!file) return;
         e.preventDefault();
-        done(file);
+        preview(file, "file");
       };
       document.addEventListener("paste", onPaste);
 
@@ -276,4 +307,6 @@ export async function pickPhoto({ onFile, maxMb = 8 } = {}) {
       setMode("drop");
     },
   });
+  // общее окно ставит фокус на первое поле, а здесь это скрытое поле файла: фокус на главную кнопку
+  el.querySelector('[data-for="drop"] .btn-primary:not(label)')?.focus({ preventScroll: true });
 }

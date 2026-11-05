@@ -352,6 +352,45 @@ function onModalKey(e) {
   }
 }
 
+// на телефоне окно — лист снизу (app.css): его можно смахнуть вниз за ручку и заголовок, как на iPhone
+const SHEET = matchMedia("(max-width: 560px)");
+function swipeToClose(sheet, close) {
+  const head = sheet?.querySelector(".modal-head");
+  if (!head) return;
+  let y0 = null;
+  let dy = 0;
+  let t0 = 0;
+  head.addEventListener("pointerdown", (e) => {
+    if (e.pointerType === "mouse" || !SHEET.matches || e.target.closest("button, a, input, select, textarea")) return;
+    y0 = e.clientY;
+    dy = 0;
+    t0 = performance.now();
+    try {
+      head.setPointerCapture(e.pointerId);
+    } catch {
+      /* без захвата лист всё равно тянется, пока палец над заголовком */
+    }
+    sheet.classList.add("is-dragging");
+  });
+  head.addEventListener("pointermove", (e) => {
+    if (y0 == null) return;
+    // вверх лист почти не тянется, вниз — за пальцем
+    const raw = e.clientY - y0;
+    dy = raw > 0 ? raw : raw / 6;
+    sheet.style.setProperty("--sheet-y", `${dy}px`);
+  });
+  const end = () => {
+    if (y0 == null) return;
+    y0 = null;
+    sheet.classList.remove("is-dragging");
+    const fast = dy / Math.max(1, performance.now() - t0) > 0.6;
+    if (dy > 110 || (fast && dy > 30)) close();
+    else sheet.style.setProperty("--sheet-y", "0px");
+  };
+  head.addEventListener("pointerup", end);
+  head.addEventListener("pointercancel", end);
+}
+
 export function openModal({ title, body, footer = "", wide = false, onMount }) {
   const titleId = `modal-title-${++modalSeq}`;
   const opener = document.activeElement;
@@ -385,6 +424,7 @@ export function openModal({ title, body, footer = "", wide = false, onMount }) {
   if (!modalStack.length) document.addEventListener("keydown", onModalKey);
   modalStack.push(entry);
   document.body.append(overlay);
+  swipeToClose(overlay.querySelector(".modal"), close);
   onMount?.(overlay, close);
   const first = overlay.querySelector("input, textarea, select") || overlay.querySelector(".modal-foot .btn, [data-close]");
   first?.focus();
@@ -435,6 +475,90 @@ export function lightbox(src) {
   document.addEventListener("keydown", onKey);
   document.body.append(el);
   el.querySelector("button").focus();
+}
+
+// ---------- фото к заявке ----------
+// Снимок с iPhone бывает 6–15 МБ и в формате HEIC: такой не пройдёт по размеру, а предпросмотр
+// и сотрудники в панели его могут не увидеть. Фото уменьшается до 2560 точек по длинной стороне
+// и сохраняется в JPEG прямо на устройстве: загрузка быстрее, качества для заявки хватает.
+
+const PHOTO_SIDE = 2560;
+const PHOTO_KEEP = 2.5 * 1024 * 1024; // меньше этого JPEG, PNG и WebP остаются как есть
+const preparedPhotos = new WeakSet();
+
+async function decodePhoto(file) {
+  // createImageBitmap сам поворачивает снимок по EXIF; если не умеет этот формат, пробуем через <img>
+  if (window.createImageBitmap) {
+    try {
+      return await createImageBitmap(file);
+    } catch {
+      /* ниже второй способ */
+    }
+  }
+  const url = URL.createObjectURL(file);
+  try {
+    const img = new Image();
+    img.decoding = "async";
+    img.src = url;
+    await img.decode();
+    return img;
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+/** Фото, готовое к заявке: уменьшенное и в JPEG, если нужно. Если браузер не смог его прочитать, возвращается как было */
+export async function preparePhoto(file) {
+  if (!file || preparedPhotos.has(file)) return file;
+  let pic;
+  try {
+    pic = await decodePhoto(file);
+  } catch {
+    return file;
+  }
+  const w = pic.width || pic.naturalWidth;
+  const hgt = pic.height || pic.naturalHeight;
+  const common = /^image\/(jpeg|png|webp)$/.test(file.type);
+  if (common && file.size <= PHOTO_KEEP && Math.max(w, hgt) <= PHOTO_SIDE) {
+    pic.close?.();
+    preparedPhotos.add(file);
+    return file;
+  }
+  const k = Math.min(1, PHOTO_SIDE / Math.max(w, hgt));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.round(w * k);
+  canvas.height = Math.round(hgt * k);
+  const g = canvas.getContext("2d");
+  // прозрачный скриншот на белом фоне, а не на чёрном
+  g.fillStyle = "#fff";
+  g.fillRect(0, 0, canvas.width, canvas.height);
+  g.drawImage(pic, 0, 0, canvas.width, canvas.height);
+  pic.close?.();
+  const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.86));
+  if (!blob) return file;
+  const name = `${(file.name || "photo").replace(/\.[^.]+$/, "") || "photo"}.jpg`;
+  const out = new File([blob], name, { type: "image/jpeg", lastModified: file.lastModified || Date.now() });
+  preparedPhotos.add(out);
+  return out;
+}
+
+/**
+ * Обычный выбор фото браузера, когда своего окна нет. Поле обязательно лежит на странице:
+ * iOS Safari не сообщает о выбранном файле, если поле не прикреплено к документу.
+ */
+export function chooseFileNative(onFile, { capture = "" } = {}) {
+  // поле от прошлого раза, если выбор тогда отменили, а браузер не сообщил об отмене
+  document.querySelectorAll(".native-photo").forEach((n) => n.remove());
+  const input = h(`<input type="file" accept="image/*" class="sr-only native-photo" tabindex="-1" aria-hidden="true"${capture ? ` capture="${esc(capture)}"` : ""}>`);
+  const cleanup = () => setTimeout(() => input.remove(), 0);
+  input.addEventListener("change", () => {
+    const file = input.files?.[0];
+    cleanup();
+    if (file) onFile(file);
+  });
+  input.addEventListener("cancel", cleanup);
+  document.body.append(input);
+  input.click();
 }
 
 export function setBusy(button, busy, text) {

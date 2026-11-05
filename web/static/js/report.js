@@ -2,6 +2,7 @@ import {
   $,
   ApiError,
   api,
+  chooseFileNative,
   copyText,
   drafts,
   enableOffline,
@@ -10,8 +11,10 @@ import {
   fmtDate,
   h,
   icon,
+  lightbox,
   myTickets,
   openModal,
+  preparePhoto,
   priorityChip,
   relTime,
   setBusy,
@@ -371,19 +374,31 @@ function renderComposer() {
   });
   bindPhotoDrop(form);
   renderPhotoSlot();
+  warmPhotoPicker();
 }
 
-/** Своё окно для фото: камера на странице, перетаскивание, вставка из буфера. Загружается при первом нажатии */
+/** Своё окно для фото: камера на странице, перетаскивание, вставка из буфера */
 function openPhotoPicker() {
   const maxMb = state.meta?.max_upload_mb || 8;
-  import("./photo-picker.js")
+  photoPicker()
     .then(({ pickPhoto }) => pickPhoto({ onFile: onPhoto, maxMb }))
-    .catch(() => {
-      // окно не загрузилось (нет сети и нет копии): остаётся обычный выбор файла браузера
-      const input = h('<input type="file" accept="image/*" hidden>');
-      input.addEventListener("change", () => onPhoto(input.files[0]));
-      input.click();
-    });
+    // окно не загрузилось (слабая сеть, нет копии): остаётся обычный выбор фото браузера
+    .catch(() => chooseFileNative(onPhoto));
+}
+
+// окно фото загружается заранее, пока человек пишет: на слабой сети нажатие на «Фото» не ждёт загрузки
+let pickerLoad = null;
+function photoPicker() {
+  pickerLoad ||= import("./photo-picker.js").catch((err) => {
+    pickerLoad = null;
+    throw err;
+  });
+  return pickerLoad;
+}
+function warmPhotoPicker() {
+  setTimeout(() => {
+    photoPicker().then(({ warm }) => warm?.()).catch(() => {});
+  }, 1500);
 }
 
 /** Фото можно бросить прямо на блок с сообщением: блок подсвечивается, пока файл над ним */
@@ -441,20 +456,37 @@ function renderPhotoSlot() {
   }
   slot.innerHTML = `
     <div class="photo-preview">
-      <img src="${state.photoUrl}" alt="Фото">
+      ${photoThumb()}
       <div class="grow">${status}</div>
       <button type="button" class="btn btn-ghost btn-icon btn-sm" data-remove aria-label="Убрать фото">${icon("x")}</button>
     </div>`;
   slot.querySelector("[data-remove]").addEventListener("click", removePhoto);
+  bindThumb(slot);
 }
 
+/** Миниатюра фото: нажатие открывает его крупно */
+function photoThumb() {
+  return `<button type="button" class="photo-thumb" data-zoom aria-label="Посмотреть фото крупно">
+    <img src="${state.photoUrl}" alt="">${icon("search", "icon-sm")}</button>`;
+}
+function bindThumb(root) {
+  root.querySelector("[data-zoom]")?.addEventListener("click", () => state.photoUrl && lightbox(state.photoUrl));
+}
+
+let photoSeq = 0;
 async function onPhoto(file) {
   if (!file) return;
   const limit = (state.meta?.max_upload_mb || 8) * 1024 * 1024;
-  if (!file.type.startsWith("image/")) {
+  // снимок HEIC из «Файлов» на iPhone приходит без типа: узнаём его по расширению
+  if (!file.type.startsWith("image/") && !/\.(heic|heif)$/i.test(file.name || "")) {
     toast("Можно прикрепить только фото", "error");
     return;
   }
+  // большой снимок с телефона уменьшается и переводится в JPEG: так он пройдёт по размеру и покажется в предпросмотре
+  const mine = ++photoSeq;
+  file = await preparePhoto(file);
+  // пока готовилось это фото, выбрали другое
+  if (mine !== photoSeq) return;
   if (file.size > limit) {
     toast(`Фото больше ${state.meta?.max_upload_mb || 8} МБ, выберите поменьше`, "error");
     return;
@@ -490,6 +522,7 @@ async function onPhoto(file) {
 }
 
 function removePhoto() {
+  photoSeq += 1;
   if (state.photoUrl) URL.revokeObjectURL(state.photoUrl);
   state.photo = null;
   state.photoUrl = null;
@@ -819,11 +852,12 @@ function renderDraftPhoto() {
   if (state.photoUrl) {
     slot.innerHTML = `
       <div class="u-m0 photo-preview">
-        <img src="${state.photoUrl}" alt="Фото">
+        ${photoThumb()}
         <div class="grow small muted">${state.photoAi === "loading" ? "ИИ смотрит на фото…" : "Фото будет прикреплено"}</div>
-        <button type="button" class="btn btn-ghost btn-icon btn-sm" aria-label="Убрать фото">${icon("x")}</button>
+        <button type="button" class="btn btn-ghost btn-icon btn-sm" data-remove aria-label="Убрать фото">${icon("x")}</button>
       </div>`;
-    slot.querySelector("button").addEventListener("click", removePhoto);
+    slot.querySelector("[data-remove]").addEventListener("click", removePhoto);
+    bindThumb(slot);
   } else {
     slot.innerHTML = `<button type="button" class="u-self-start btn">${icon("camera")} Добавить фото</button>`;
     slot.querySelector("button").addEventListener("click", openPhotoPicker);

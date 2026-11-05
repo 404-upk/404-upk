@@ -608,6 +608,22 @@ body:has(> .page) > .footer { width: 100%; }
   background: var(--surface-2);
 }
 .photo-preview img { width: 52px; height: 52px; object-fit: cover; border-radius: 8px; }
+/* миниатюра нажимается: фото открывается крупно */
+.photo-thumb {
+  position: relative; flex: none; display: block; width: 64px; height: 64px; padding: 0;
+  border: 1px solid color-mix(in srgb, var(--primary) 35%, var(--border)); border-radius: 10px;
+  background: var(--surface-3); overflow: hidden; cursor: zoom-in;
+  box-shadow: 0 6px 18px -10px color-mix(in srgb, var(--primary) 70%, transparent);
+  animation: thumb-in 0.5s var(--ease-out, ease-out) both;
+}
+.photo-thumb img { width: 100%; height: 100%; border-radius: 0; object-fit: cover; transition: transform 0.4s var(--ease-out, ease-out); }
+.photo-thumb .icon {
+  position: absolute; right: 4px; bottom: 4px; width: 18px; height: 18px; padding: 3px; border-radius: 50%;
+  background: color-mix(in srgb, var(--bg) 70%, transparent); color: var(--text);
+}
+.photo-thumb:hover img { transform: scale(1.06); }
+.photo-thumb:active { transform: scale(0.96); }
+@keyframes thumb-in { from { opacity: 0; transform: scale(0.85); filter: blur(4px); } }
 
 .examples { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
 .example {
@@ -1215,3 +1231,73 @@ a[data-href] { cursor: pointer; }
 @keyframes caret-in { from { clip-path: inset(50% 0 50% 0); } to { clip-path: inset(0); } }
 @media (prefers-reduced-motion: reduce) { .ui-caret, .ui-caret.is-on { transition: none; animation: none; } }
 @media print { .ui-caret { display: none; } }
+
+/* ===== iPhone и iPad: системные элементы в цветах темы ===== */
+/* Safari на iOS 26 красит «жидкое стекло» своих панелей по фону страницы и закреплённой шапке,
+   поэтому фон задан и корню: панели, строка состояния и область «оттягивания» страницы — в цвет темы.
+   Меню выбора фото, клавиатура, колёса даты и времени следуют color-scheme темы, а выделенные
+   пункты в них, галочки и курсор ввода — фирменному васильковому (accent-color, caret-color). */
+html {
+  background-color: var(--bg);
+  accent-color: var(--primary);
+  caret-color: var(--primary);
+  -webkit-tap-highlight-color: color-mix(in srgb, var(--primary) 18%, transparent);
+}
+/* iOS увеличивает страницу, если у поля шрифт меньше 16 px: на сенсорных экранах поля не мельче */
+@media (pointer: coarse) {
+  input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"], [type="color"]), select, textarea { font-size: max(16px, 1em); }
+}
+/* автозаполнение паролей и контактов: вместо жёлтой или голубой заливки системы — цвета темы */
+input:-webkit-autofill, input:-webkit-autofill:hover, input:-webkit-autofill:focus, textarea:-webkit-autofill {
+  -webkit-text-fill-color: var(--text);
+  -webkit-box-shadow: 0 0 0 1000px var(--surface) inset;
+  caret-color: var(--primary);
+  transition: background-color 9999s ease-out;
+}
+/* долгое нажатие на кнопки и схему не вызывает системную лупу и меню «Скопировать»; у ссылок и фото оно остаётся */
+.btn, .pf, .pp-stage, .pp-shutter, .photo-thumb, .nav, .topbar .brand { -webkit-touch-callout: none; }
+
+/* вырезы экрана: «чёлка» и Dynamic Island в альбомной ориентации, полоска «домой» снизу */
+.topbar { padding-top: env(safe-area-inset-top); }
+.topbar-inner { padding-left: max(20px, env(safe-area-inset-left)); padding-right: max(20px, env(safe-area-inset-right)); }
+.page { padding-left: max(20px, env(safe-area-inset-left)); padding-right: max(20px, env(safe-area-inset-right)); }
+.footer { padding-left: max(20px, env(safe-area-inset-left)); padding-right: max(20px, env(safe-area-inset-right)); padding-bottom: calc(30px + env(safe-area-inset-bottom)); }
+.toasts { bottom: calc(20px + env(safe-area-inset-bottom)); }
+.lightbox { padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); }
+.lightbox-close { top: max(16px, env(safe-area-inset-top)); right: max(16px, env(safe-area-inset-right)); }
+
+/* на телефоне окна выезжают снизу листом, как системные на iPhone, но в цветах сайта:
+   полупрозрачное стекло темы, ручка сверху, лист можно смахнуть вниз */
+@media (max-width: 560px) {
+  .overlay { align-items: flex-end; padding: max(12px, env(safe-area-inset-top)) 0 0; }
+  /* .overlay > .modal сильнее общих правил анимации окна в motion.css */
+  .overlay > .modal {
+    --sheet-y: 0px;
+    width: 100%;
+    max-height: calc(100dvh - max(12px, env(safe-area-inset-top)) - 8px);
+    padding-bottom: env(safe-area-inset-bottom);
+    border-radius: 26px 26px 0 0;
+    border-bottom: 0;
+    background: color-mix(in srgb, var(--surface) 90%, transparent);
+    backdrop-filter: blur(22px) saturate(1.4);
+    -webkit-backdrop-filter: blur(22px) saturate(1.4);
+    box-shadow: 0 -18px 50px -20px rgba(0, 0, 0, 0.55), inset 0 1px 0 color-mix(in srgb, var(--text) 8%, transparent);
+    transform: translateY(var(--sheet-y));
+    transition: transform 0.35s var(--ease-out, ease-out);
+    animation: sheet-up 0.46s var(--ease-out, ease-out) both;
+  }
+  .overlay > .modal::before {
+    content: ""; display: block; width: 38px; height: 5px; margin: 8px auto 0; border-radius: 3px;
+    background: color-mix(in srgb, var(--text) 26%, transparent);
+  }
+  .overlay > .modal.is-dragging { transition: none; }
+  .modal-head { padding-top: 10px; touch-action: none; }
+  :root .overlay.is-leaving { animation: fade-out 0.3s ease-in both; }
+  :root .overlay.is-leaving > .modal { animation: sheet-down 0.3s ease-in both; }
+}
+@keyframes sheet-up { from { transform: translateY(100%); } }
+@keyframes sheet-down { from { transform: translateY(var(--sheet-y, 0px)); } to { transform: translateY(100%); } }
+@keyframes fade-out { to { opacity: 0; } }
+@media (max-width: 560px) and (prefers-reduced-motion: reduce) {
+  .overlay > .modal, :root .overlay.is-leaving > .modal { animation: none; transition: none; }
+}
